@@ -22,7 +22,7 @@ function configFrom(x){
 }
 function wildId(r){return r.config.tiles.find(t=>t.wild)?.id||0}
 function patternWin(r,hand,pattern){
- if(hand.length!==9||!Array.isArray(pattern)||pattern.length<1||pattern.length>21)return false;
+ if(hand.length!==9||!Array.isArray(pattern)||pattern.length<1||pattern.length>99)return false;
  const wild=wildId(r),have=new Map(),need=new Map();
  for(const id of hand)if(id!==wild)have.set(id,(have.get(id)||0)+1);
  for(const id of pattern)if(id!==wild)need.set(id,(need.get(id)||0)+1);
@@ -38,7 +38,15 @@ function patternWin(r,hand,pattern){
   if(explicit>0&&wildInHand>explicit+missing)return false;
   return explicit<=wildInHand&&missing<=wildInHand-explicit;
  }
- // 10〜21枚登録：候補の中から9種類を各1枚ずつ集める「バラ牌9種類」の役。
+ // 10枚以上の役：異なる牌を各3枚ずつ登録した「三枚組候補」。
+ // 4種類×3枚=12枠、10種類×3枚=30枠でも登録できる。
+ // あがりは候補から異なる3組をそろえた9枚。特別牌は不足枚数を代用。
+ if(pattern.length>9&&need.size>=3&&[...need.values()].every(n=>n===3)){
+  if(!tripleWin(r,hand))return false;
+  if([...have].some(([id,n])=>!need.has(id)||n>3))return false;
+  return have.size+(wildInHand>=3?1:0)>=3 || wildInHand>0;
+ }
+ // 10〜99枚登録：候補の中から9種類を各1枚ずつ集める「バラ牌9種類」の役。
  // 例えば21種類登録なら、候補の異なる8種類でテンパイ、異なる9種類であがり。
  // 同じ牌2枚を異なる2種類として数えてはいけない。
  const allowed=new Set(pattern);
@@ -58,7 +66,7 @@ function win(room,hand){
  const matches=[];
  if(threeGroups)matches.push({name:'三組そろえ',points:1000});
  for(const y of room.config.yaku){
-  if(!Array.isArray(y.pattern)||y.pattern.length<1||y.pattern.length>21)continue;
+  if(!Array.isArray(y.pattern)||y.pattern.length<1||y.pattern.length>99)continue;
   // 1-8 tiles specify an additional role condition; do not let partial hands win.
   if(y.pattern.length<9&&!threeGroups)continue;
   if(patternWin(room,hand,y.pattern))matches.push(y);
