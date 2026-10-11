@@ -17,15 +17,19 @@ function configFrom(x){
  // Older saved settings identified tile 21 as the special tile.
  if(!tiles.some(t=>t.wild)&&!x?.wildDeleted&&tiles.length>=21&&tiles[20].name==='特別牌')tiles[20].wild=true;
  const wild=tiles.find(t=>t.wild);if(wild)tiles.forEach(t=>{t.wild=t.id===wild.id});
- const yaku=(Array.isArray(x?.yaku)?x.yaku:[]).slice(0,100).filter(y=>Array.isArray(y.pattern)&&y.pattern.length===9&&y.pattern.every(n=>Number.isInteger(n)&&n>=1&&n<=tiles.length)).map(y=>({name:safe(y.name),points:Math.max(1,Math.min(100000,Math.floor(+y.points||1000))),pattern:y.pattern}));
+ const yaku=(Array.isArray(x?.yaku)?x.yaku:[]).slice(0,100).filter(y=>Array.isArray(y.pattern)&&y.pattern.length>=1&&y.pattern.length<=9&&y.pattern.every(n=>Number.isInteger(n)&&n>=1&&n<=tiles.length)).map(y=>({name:safe(y.name),points:Math.max(1,Math.min(100000,Math.floor(+y.points||1000))),pattern:y.pattern}));
  return {tiles,yaku,wildDeleted:!!x?.wildDeleted};
 }
 function wildId(r){return r.config.tiles.find(t=>t.wild)?.id||0}
 function patternWin(r,hand,pattern){
- const wild=wildId(r),have=Array(r.config.tiles.length+1).fill(0),need=Array(r.config.tiles.length+1).fill(0);
- hand.forEach(n=>have[n]++);pattern.forEach(n=>need[n]++);
- let missing=0;for(let i=1;i<have.length;i++){if(i===wild)continue;if(have[i]>need[i])return false;missing+=need[i]-have[i]}
- return missing<=(wild?have[wild]:0)&&(wild?need[wild]<=have[wild]:true);
+ if(hand.length!==9||!Array.isArray(pattern)||pattern.length<1||pattern.length>9)return false;
+ const wild=wildId(r),have=new Map(),need=new Map();
+ for(const id of hand)if(id!==wild)have.set(id,(have.get(id)||0)+1);
+ for(const id of pattern)if(id!==wild)need.set(id,(need.get(id)||0)+1);
+ let missing=0;for(const [id,n] of need)missing+=Math.max(0,n-(have.get(id)||0));
+ const available=wild?hand.filter(id=>id===wild).length:0;
+ const requestedWild=pattern.filter(id=>id===wild).length;
+ return requestedWild<=available&&missing<=available-requestedWild;
 }
 function tripleWin(r,hand){
  const wild=wildId(r),counts=Array(r.config.tiles.length+1).fill(0);hand.forEach(n=>counts[n]++);
@@ -38,7 +42,18 @@ function resultGroups(r,hand,yaku){
  const wild=wildId(r), counts=new Map();for(const id of hand)if(id!==wild)counts.set(id,(counts.get(id)||0)+1);
  let remaining=wild?hand.filter(id=>id===wild).length:0;
  let targets=[];
- if(yaku&&Array.isArray(yaku.pattern))targets=yaku.pattern.slice();
+ if(yaku&&Array.isArray(yaku.pattern)){
+  targets=yaku.pattern.slice();
+  const leftover=new Map(counts),wildRequested=wild?targets.filter(n=>n===wild).length:0;
+  let spareWild=remaining-wildRequested;
+  for(const id of targets){
+   if(id===wild)continue;
+   if((leftover.get(id)||0)>0)leftover.set(id,leftover.get(id)-1);
+   else if(spareWild>0)spareWild--;
+  }
+  for(const [id,n] of [...leftover].sort((a,b)=>a[0]-b[0]))for(let k=0;k<n;k++)targets.push(id);
+  while(targets.length<9)targets.push(wild);
+ }
  else if(yaku?.name==='三組そろえ'){
   for(const [id,n] of [...counts].sort((a,b)=>a[0]-b[0]))for(let k=0;k<Math.ceil(n/3)*3;k++)targets.push(id);
   if(targets.length>9)return null;
