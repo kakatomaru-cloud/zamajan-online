@@ -227,7 +227,123 @@ body:has(#lobby:not(.hidden)) header .zj-bgm-volume {
  #lobby #titleBgmVolume {width:116px;}
 }
 </style>
-</head><body><header><h1>ザマじゃん <small>ONLINE</small></h1><div class="row"><button id="globalExit" type="button" class="hidden" style="border:3px solid #ffe099;background:#9c2720;color:white;font-weight:900;box-shadow:0 0 16px #ffae4488">🚪 部屋から退出・タイトルへ</button><button type="button" id="zscoreTop" class="zscore-open">🏆 ザマじゃん得点表</button><a href="zamajan.html" style="color:#e5c78a">オフライン版</a></div><button id="bgmToggle" type="button" style="position:fixed;right:14px;bottom:14px;z-index:10000;background:#16120b;color:#f6d18c;border:2px solid #bd9153;border-radius:9px;padding:12px 17px;cursor:pointer;font-weight:bold;box-shadow:0 3px 14px #000b" aria-label="BGMの再生・停止">♪ BGMを再生</button><label class="zj-bgm-volume">音量 <input id="onlineBgmVolume" type="range" min="0" max="100" step="1" value="70" aria-label="BGMの音量"><span id="onlineBgmVolumeValue">70%</span></label></header><main><section class="panel" id="lobby"><h2>インターネット対戦</h2><div class="zj-title-bgm" role="group" aria-label="タイトル画面のBGM音量設定"><label for="titleBgmVolume">♪ BGM 音量</label><input id="titleBgmVolume" type="range" min="0" max="100" step="1" value="70" aria-label="タイトル画面のBGM音量"><output id="titleBgmVolumeValue" for="titleBgmVolume">70%</output></div><p>友達と同じ6桁のルーム番号で参加できます。部屋を作る人の牌設定・役設定を使用します。</p><div class="row"><label>名前 <input id="nickname" maxlength="20" value="あなた"></label><label>対戦局数 <select id="rounds"><option>1</option><option>2</option><option selected>4</option><option>8</option><option>12</option><option>16</option><option>20</option></select></label></div><div class="row" style="margin-top:15px"><button id="create">部屋を作る</button><input id="roomCode" inputmode="numeric" maxlength="6" placeholder="6桁のルーム番号"><button id="join">部屋に参加</button></div><div class="panel" style="margin:16px 0 0;max-width:850px;background:#090807d9"><b>以前のザマじゃんの牌画像・役設定を反映</b><p class="muted">オフライン版の「設定を書き出す」で保存したJSONファイルを選ぶと、部屋主の牌画像・名前・役をオンライン対戦に適用できます。</p><div class="row" style="margin:10px 0"><button type="button" id="configExport">現在の牌・役設定をバックアップ（JSON保存）</button><button type="button" id="configClear">保存設定を初期化</button></div><label>設定JSONを読み込む <input id="configImport" type="file" accept=".json,application/json"></label><div id="imageNotice">未読み込み：標準の絵文字牌を使用します</div></div><p class="muted">サーバーに公開後、友達にこのページのURLとルーム番号を伝えてください。</p></section><section id="room" class="panel hidden"><div class="row"><h2>ルーム <span id="code" class="copy"></span></h2><button id="copy">番号をコピー</button><button class="leave-room">部屋から退出してタイトルに戻る</button></div><div id="members"></div><p id="roomHelp" class="muted"></p><button id="start" class="hidden">対戦開始（空席はCPU）</button></section><section id="play" class="hidden"><div class="bar"><div class="status" id="message"></div><div class="timer" id="timer"></div><button type="button" id="zscorePlay" class="zscore-open">🏆 得点表を見る</button><button class="leave-room">部屋から退出してタイトルに戻る</button></div><div class="board"><div class="center-mark">龍</div><div id="players"></div><div id="discards" class="discard-area"></div><div id="hand" class="myhand"></div></div><div class="panel"><span id="guide"></span><div id="logs" class="muted"></div></div></section></main><div id="overlay" class="overlay hidden"><div class="modal"><div id="outcome"></div><div class="actions"><button id="next" class="hidden">次の局へ</button><button id="home">部屋から退出してタイトルに戻る</button></div></div></div><div id="zscoreMask" class="zscore-mask hidden" role="dialog" aria-modal="true" aria-labelledby="zscoreHeading"><div class="zscore-dialog"><button id="zscoreClose" class="zscore-close" type="button">✕ 閉じる</button><div class="zscore-banner"><h2 id="zscoreHeading">ザマじゃん得点表</h2></div><div class="zscore-body"><p class="zscore-sub" id="zscoreContext"></p><div id="zscoreList"></div></div></div></div><script src="/socket.io/socket.io.js"></script><script>
+
+<style id="zj-online-audio-layout-fix">
+/* Audio controls stay in the header toolbar and never cover the title/game artwork. */
+header .row{display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+header #bgmToggle{
+ position:static!important;right:auto!important;bottom:auto!important;
+ z-index:auto!important;padding:8px 12px!important;box-shadow:none!important;
+ flex-shrink:0;
+}
+header .zj-bgm-volume{
+ position:static!important;right:auto!important;bottom:auto!important;
+ z-index:auto!important;display:inline-flex!important;align-items:center;
+ flex-wrap:nowrap;gap:8px;margin:0;padding:8px 12px;
+ width:auto;max-width:100%;box-shadow:none;
+}
+header .zj-bgm-volume input{width:105px;max-width:28vw}
+#lobby:not(.hidden)~*{} /* no layout effects */
+body:has(#lobby:not(.hidden)) header .zj-bgm-volume{display:none!important}
+@media(max-width:650px){
+ header .row{gap:8px}
+ header #bgmToggle{padding:6px 9px!important;font-size:12px!important}
+ header .zj-bgm-volume{padding:5px 8px;font-size:11px}
+ header .zj-bgm-volume input{width:90px}
+}
+</style>
+</head><body><script id="zj-shared-score-popup">
+/* Shared versioned, popup score sheet. Called synchronously from a click. */
+(function(){
+'use strict';
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const imageOK=s=>typeof s==='string'&&/^data:image\/(?:png|jpe?g|webp|gif);base64,/i.test(s);
+function scoreRoleVisible(pattern,activeIds){
+ if(!Array.isArray(pattern)||!pattern.length)return false;
+ if(pattern.every(id=>activeIds.has(id)))return true;
+ // 1枚ずつの候補役：山にある異なる牌が9種類以上あれば表示
+ if(pattern.length>=9&&new Set(pattern).size===pattern.length){
+  return new Set(pattern.filter(id=>activeIds.has(id))).size>=9;
+ }
+ // 3枚組の候補役：山にある牌だけで3種類以上の三枚組を作れるなら表示
+ const counts=new Map();
+ for(const id of pattern)counts.set(id,(counts.get(id)||0)+1);
+ if(pattern.length>=9&&counts.size>=3&&[...counts.values()].every(n=>n===3)){
+  return [...counts.keys()].filter(id=>activeIds.has(id)).length>=3;
+ }
+ return false;
+}
+function buildScoreHtml(cfg,context,hero){
+ const tiles=Array.isArray(cfg?.tiles)?cfg.tiles:[];
+ const activeTiles=tiles.filter(t=>Number(t.count)>0);
+ const activeIds=new Set(activeTiles.map(t=>t.id));
+ const roles=Array.isArray(cfg?.yaku)?cfg.yaku.map((r,i)=>({...r,_i:i})).filter(r=>{
+  return scoreRoleVisible(r.pattern,activeIds);
+ }).sort((a,b)=>Number(b.points||0)-Number(a.points||0)||a._i-b._i):[];
+ const counts=new Map(activeTiles.map(t=>[t.id,{uses:0,roles:0}]));
+ roles.forEach(y=>{
+  const appearances=new Set();
+  for(const id of Array.isArray(y.pattern)?y.pattern:[]){
+   if(!activeIds.has(id))continue;  // 山が0枚の牌はカウントしない
+   counts.get(id).uses++;
+   appearances.add(id);
+  }
+  appearances.forEach(id=>counts.get(id).roles++);
+ });
+ const tileFace=t=>{
+  if(imageOK(t?.image))return `<img loading="lazy" src="${esc(t.image)}" alt="${esc(t.name)}">`;
+  return `<span class="emoji">${esc(t?.emoji||'🀄')}</span>`;
+ };
+ const rows=roles.map((y,i)=>{
+  const pattern=Array.isArray(y.pattern)?y.pattern:[];
+  const picts=pattern.filter(id=>activeIds.has(id)).map(id=>{
+   const t=tiles.find(x=>x.id===id);if(!t)return '';
+   const empty=!activeIds.has(id);
+   return `<div class="tile ${empty?'disabled':''}" title="${esc(t.name)}${empty?'（山0枚・集計対象外）':''}">${tileFace(t)}<small>${esc(t.name)}</small>${empty?'<span class="zero">山0</span>':''}</div>`;
+  }).join('');
+  return `<article class="role"><span class="rank">${String(i+1).padStart(2,'0')}</span><div class="role-main"><h3>${esc(y.name||'名称なし')}</h3><div class="role-tiles">${picts}</div></div><strong class="points">${Number(y.points||0).toLocaleString('ja-JP')}<small>点</small></strong></article>`;
+ }).join('');
+ const usage=activeTiles.map(t=>{
+  const item=counts.get(t.id);
+  return `<article class="usage"><div class="usage-face">${tileFace(t)}</div><div class="usage-main"><small>No.${t.id}</small><strong>${esc(t.name||'牌'+t.id)}</strong><span>山 ${Number(t.count)}枚</span></div><div class="usage-stats"><strong>${item.uses}<small>枚</small></strong><span>登録 ${item.roles}役</span></div></article>`;
+ }).join('');
+ const banner=imageOK(hero)?`background-image:linear-gradient(180deg,rgba(7,7,8,.15),rgba(8,8,10,.92)),url('${hero}')`:
+ (typeof hero==='string'&&/^url\([\"']?data:image\//i.test(hero)?`background-image:linear-gradient(180deg,rgba(7,7,8,.15),rgba(8,8,10,.92)),${hero}`:
+ (typeof hero==='string'&&(hero.startsWith('http://')||hero.startsWith('https://'))?`background-image:linear-gradient(180deg,rgba(7,7,8,.15),rgba(8,8,10,.92)),url('${hero.replace(/['"<>]/g,'')}')`:''));
+ return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ザマじゃん得点表</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,'Hiragino Kaku Gothic ProN',sans-serif}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#3e301b,#14191d 42%,#090e13);color:#f5eaca;min-height:100vh}
+header{padding:46px 34px 36px;border-bottom:4px double #d4a95b;text-align:center;background-color:#161511;background-position:center;background-size:cover;${banner};position:relative}
+header h1{color:#ffe4a1;text-shadow:0 2px 8px #000,0 0 22px #a98137;font-size:clamp(30px,5.7vw,56px);letter-spacing:.08em;margin:5px 0 8px}header p{color:#e9d7ac;margin:0;font-size:14px;font-weight:700;text-shadow:0 2px 7px #000}
+.toolbar{position:sticky;top:0;z-index:2;display:flex;gap:10px;justify-content:flex-end;padding:9px 18px;background:#101619ee;border-bottom:1px solid #806235}
+.toolbar button{cursor:pointer;padding:7px 16px;border:1px solid #d3ab60;border-radius:7px;background:#332714;color:#ffebbf;font-weight:700}
+main{max-width:1120px;margin:auto;padding:22px 16px 65px}.section-title{font-size:clamp(23px,4vw,32px);color:#ffd688;border-bottom:1px solid #b48b4c;padding-bottom:8px;margin:22px 0 18px}
+.role{display:flex;align-items:center;gap:16px;margin-bottom:14px;padding:15px 18px;border:1px solid #9d7740;border-radius:12px;background:linear-gradient(125deg,#22252a,#111820);box-shadow:0 3px 15px #0006}
+.rank{align-self:flex-start;padding:3px 9px;border:1px solid #d5b36e;color:#ffd992;border-radius:6px;font-weight:900;font-size:15px}.role-main{min-width:0;flex:1}.role h3{font-size:clamp(17px,3vw,23px);color:#fff0c8;margin:0 0 10px;overflow-wrap:anywhere}.role-tiles{display:flex;flex-wrap:wrap;gap:5px}
+.tile{position:relative;width:clamp(42px,8vw,68px);min-height:73px;padding:3px;background:#eee6d4;border-radius:6px;border-bottom:6px solid #a59b8c;color:#161d1d;text-align:center;overflow:hidden}.tile img{width:100%;height:60px;object-fit:cover;border-radius:3px}.tile .emoji{display:block;font-size:31px;padding:5px 0}.tile small{display:block;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tile.disabled{opacity:.38;filter:grayscale(.8)}.zero{position:absolute;top:0;right:0;background:#983c3c;color:#fff;font-size:10px;padding:2px}
+.points{font-size:clamp(24px,4vw,34px);color:#ffe5a1;white-space:nowrap;text-align:right}.points small{font-size:13px;margin-left:4px}
+.description{color:#d8c9a5;line-height:1.7;margin:10px 0 20px}.usage-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.usage{display:flex;align-items:center;gap:10px;min-width:0;background:#12252a;border:1px solid #916e38;border-radius:10px;padding:10px}
+.usage-face{height:70px;width:51px;background:#f3ead6;color:#252425;border-radius:5px;display:flex;justify-content:center;align-items:center;overflow:hidden;flex-shrink:0}
+.usage-face img{height:100%;width:100%;object-fit:cover}.usage-face .emoji{font-size:30px}.usage-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;font-size:12px}.usage-main strong{font-size:15px;overflow-wrap:anywhere}.usage-main small{color:#d4b478}.usage-main span{color:#b8c8c6}.usage-stats{text-align:right;color:#ffdda0;white-space:nowrap}.usage-stats strong{display:block;font-size:25px}.usage-stats small{font-size:11px}.usage-stats span{display:block;font-size:11px;color:#d3d9d7}
+@media(max-width:620px){header{padding:34px 14px 26px}.role{flex-wrap:wrap;padding:12px;gap:8px}.rank{align-self:auto}.points{margin-left:auto}.usage-grid{grid-template-columns:repeat(auto-fill,minmax(165px,1fr))}.usage{padding:8px;gap:7px}.usage-face{height:60px;width:42px}}
+@media print{body{background:white;color:#222}header{background:#222!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.role,.usage{break-inside:avoid;box-shadow:none}.role{border:1px solid #777}.toolbar{display:none}}
+</style></head><body><div class="toolbar"><button onclick="window.print()">🖨 印刷</button><button onclick="window.close()">✕ 閉じる</button></div>
+<header><p>ZAMA-JAN · OFFICIAL SCORE SHEET</p><h1>ザマじゃん得点表</h1><p>${esc(context)}</p></header>
+<main><h2 class="section-title">🏆 役一覧 · 高得点順</h2><p class="description">山0枚の牌を含む役は原則非表示です。ただし、9枚以上の異なる牌を各1枚集める役は表示します。山0枚の牌自体は表示・集計しません。</p>${rows||'<p>登録された役はありません。</p>'}
+<h2 class="section-title">🀄 牌ごとの役使用数</h2><p class="description">役に登録された枚数を合計しています。「登録 ○役」はその牌が登場する役の種類数です。山の枚数が0の牌は表示せず、集計もしません。</p>
+<div class="usage-grid">${usage||'<p>山に入っている牌がありません。</p>'}</div><p class="description">基本役：三組そろえ（1,000点）。基本役は上の登録枚数には含みません。</p></main></body></html>`;
+}
+window.zjOpenScoreSheet=function(config,context,hero,provided){
+ const popup=provided||window.open('','zamajan-score-sheet','width=1110,height=800,resizable=yes,scrollbars=yes');
+ if(!popup)return false;
+ try{popup.document.open();popup.document.write(buildScoreHtml(config,context,hero));popup.document.close();popup.focus();return true;}
+ catch(e){console.warn('得点表を別ウィンドウに表示できませんでした',e);try{popup.close()}catch{}return false;}
+};
+})();
+
+</script><header><h1>ザマじゃん <small>ONLINE</small></h1><div class="row"><button id="globalExit" type="button" class="hidden" style="border:3px solid #ffe099;background:#9c2720;color:white;font-weight:900;box-shadow:0 0 16px #ffae4488">🚪 部屋から退出・タイトルへ</button><button type="button" id="zscoreTop" class="zscore-open">🏆 ザマじゃん得点表</button><a href="zamajan.html" style="color:#e5c78a">オフライン版</a><button id="bgmToggle" type="button" style="position:fixed;right:14px;bottom:14px;z-index:10000;background:#16120b;color:#f6d18c;border:2px solid #bd9153;border-radius:9px;padding:12px 17px;cursor:pointer;font-weight:bold;box-shadow:0 3px 14px #000b" aria-label="BGMの再生・停止">♪ BGMを再生</button><label class="zj-bgm-volume">音量 <input id="onlineBgmVolume" type="range" min="0" max="100" step="1" value="3" aria-label="BGMの音量"><span id="onlineBgmVolumeValue">3%</span></label></div></header><main><section class="panel" id="lobby"><h2>インターネット対戦</h2><div class="zj-title-bgm" role="group" aria-label="タイトル画面のBGM音量設定"><label for="titleBgmVolume">♪ BGM 音量</label><input id="titleBgmVolume" type="range" min="0" max="100" step="1" value="3" aria-label="タイトル画面のBGM音量"><output id="titleBgmVolumeValue" for="titleBgmVolume">3%</output></div><p>友達と同じ6桁のルーム番号で参加できます。部屋を作る人の牌設定・役設定を使用します。</p><div class="row"><label>名前 <input id="nickname" maxlength="20" value="あなた"></label><label>対戦局数 <select id="rounds"><option>1</option><option>2</option><option selected>4</option><option>8</option><option>12</option><option>16</option><option>20</option></select></label></div><div class="row" style="margin-top:15px"><button id="create">部屋を作る</button><input id="roomCode" inputmode="numeric" maxlength="6" placeholder="6桁のルーム番号"><button id="join">部屋に参加</button></div><div class="panel" style="margin:16px 0 0;max-width:850px;background:#090807d9"><b>以前のザマじゃんの牌画像・役設定を反映</b><p class="muted">オフライン版の「設定を書き出す」で保存したJSONファイルを選ぶと、部屋主の牌画像・名前・役をオンライン対戦に適用できます。</p><div class="row" style="margin:10px 0"><button type="button" id="configExport">現在の牌・役設定をバックアップ（JSON保存）</button><button type="button" id="configClear">保存設定を初期化</button></div><label>設定JSONを読み込む <input id="configImport" type="file" accept=".json,application/json"></label><div id="imageNotice">未読み込み：標準の絵文字牌を使用します</div></div><p class="muted">サーバーに公開後、友達にこのページのURLとルーム番号を伝えてください。</p></section><section id="room" class="panel hidden"><div class="row"><h2>ルーム <span id="code" class="copy"></span></h2><button id="copy">番号をコピー</button><button class="leave-room">部屋から退出してタイトルに戻る</button></div><div id="members"></div><p id="roomHelp" class="muted"></p><button id="start" class="hidden">対戦開始（空席はCPU）</button></section><section id="play" class="hidden"><div class="bar"><div class="status" id="message"></div><div class="timer" id="timer"></div><button type="button" id="zscorePlay" class="zscore-open">🏆 得点表を見る</button><button class="leave-room">部屋から退出してタイトルに戻る</button></div><div class="board"><div class="center-mark">龍</div><div id="players"></div><div id="discards" class="discard-area"></div><div id="hand" class="myhand"></div></div><div class="panel"><span id="guide"></span><div id="logs" class="muted"></div></div></section></main><div id="overlay" class="overlay hidden"><div class="modal"><div id="outcome"></div><div class="actions"><button id="next" class="hidden">次の局へ</button><button id="home">部屋から退出してタイトルに戻る</button></div></div></div><div id="zscoreMask" class="zscore-mask hidden" role="dialog" aria-modal="true" aria-labelledby="zscoreHeading"><div class="zscore-dialog"><button id="zscoreClose" class="zscore-close" type="button">✕ 閉じる</button><div class="zscore-banner"><h2 id="zscoreHeading">ザマじゃん得点表</h2></div><div class="zscore-body"><p class="zscore-sub" id="zscoreContext"></p><div id="zscoreList"></div></div></div></div><script src="/socket.io/socket.io.js"></script><script>
 'use strict';const $=id=>document.getElementById(id),socket=io(),key='zamajan-online-reconnect',localKey='zamajan-set-v01';let state=null,session=null,seenRound=0,seenResult='',clock=null,importedConfig=null;const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));function tile(id,button=false,index=0){const t=state.config.tiles[id-1]||{name:"不明な牌",emoji:"🀄"};const inner=t.image?`<img src="${escape(t.image)}" alt="${escape(t.name)}">`:`<span class="symbol">${t.emoji}</span>`;return button?`<button class="tile" data-idx="${index}">${inner}${t.imageOnly?'':`<small>${escape(t.name)}</small>`}</button>`:`<span class="tile">${inner}${t.imageOnly?'':`<small>${escape(t.name)}</small>`}</span>`}
 function voice(word,male=false){try{const u=new SpeechSynthesisUtterance(word);u.lang='ja-JP';u.rate=male?.72:.92;u.pitch=male?.6:1.35;const vs=speechSynthesis.getVoices().filter(v=>v.lang.startsWith('ja'));const preferred=vs.find(v=>male?/male|ichiro|otoya|takumi/i.test(v.name):/female|nanami|haruka|kyoko/i.test(v.name));if(preferred)u.voice=preferred;speechSynthesis.speak(u)}catch{}}
 // 画像を含む牌設定は IndexedDB に保存。対戦情報とは別管理する。
@@ -274,7 +390,7 @@ function parsePortableBackup(raw){
   (t.count!=null&&(!Number.isInteger(+t.count)||+t.count<0||+t.count>40))))throw Error('牌の設定に不正なデータがあります');
  if(yaku.some(y=>!y||typeof y.name!=='string'||y.name.length>80||
   !Number.isInteger(y.points)||y.points<1||y.points>100000||
-  !Array.isArray(y.pattern)||(y.pattern.length<1||y.pattern.length>21)||
+  !Array.isArray(y.pattern)||(y.pattern.length<1||y.pattern.length>99)||
   y.pattern.some(n=>!Number.isInteger(n)||n<1||n>tiles.length)))throw Error('役の設定に不正なデータがあります');
  const safeTiles=tiles.map((t,i)=>({
   id:i+1,name:t.name,emoji:typeof t.emoji==='string'?t.emoji:'🀄',
@@ -361,7 +477,11 @@ function zscoreTile(id,cfg){
  return `<span class="zscore-tile" title="${escape(t.name)}">${inside}</span>`;
 }
 async function openZscore(){
+ const popup=window.open('','zamajan-score-sheet','width=1110,height=800,resizable=yes,scrollbars=yes');
  const cfg=state?.config||importedConfig||await loadSettings();
+ if(popup && window.zjOpenScoreSheet?.(cfg,
+   state?.config?'オンライン対戦中 · 部屋主の設定':'オンライン版 · 保存済み設定',
+   new URL('title-art.jpg',location.href).href,popup))return;
  const box=$('zscoreList');
  $('zscoreContext').textContent=state?.config?'この対戦で使用中の役一覧（高得点順）':'現在の保存済み設定の役一覧（高得点順）';
  if(!cfg?.tiles?.length){box.innerHTML='<p>牌・役の設定がありません。タイトル画面で設定JSONを読み込んでください。</p>'}
@@ -369,6 +489,11 @@ async function openZscore(){
  else{
   const roles=[...cfg.yaku].sort((a,b)=>Number(b.points)-Number(a.points));
   box.innerHTML=roles.map((y,i)=>`<div class="zscore-row"><div class="zscore-role">${i+1}. ${escape(y.name)}</div><div class="zscore-tiles">${(y.pattern||[]).map(id=>zscoreTile(id,cfg)).join('')}</div><div class="zscore-points">${Number(y.points||0).toLocaleString()}点</div></div>`).join('');
+ }
+ const enabled=(cfg?.tiles||[]).filter(t=>Number(t.count)>0);
+ if(cfg && enabled.length){
+  box.innerHTML += '<h3 style="margin-top:26px;color:#ffdc8f">牌ごとの役使用数（山0枚を除く）</h3>'+
+   enabled.map(t=>`<div class="zscore-row">${zscoreTile(t.id,cfg)} ${escape(t.name)}：登録${(cfg.yaku||[]).reduce((n,y)=>n+(y.pattern||[]).filter(id=>id===t.id).length,0)}枚</div>`).join('');
  }
  $('zscoreMask').classList.remove('hidden');
 }
@@ -383,7 +508,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeZscore()});
 const onlineBgm=new Audio('/zamajan-bgm.mp3');
 onlineBgm.loop=true;onlineBgm.preload='auto';
 const onlineBgmVolumeKey='zamajan-bgm-volume-v1';
-function onlineSavedVolume(){try{const v=localStorage.getItem(onlineBgmVolumeKey);return v===null?70:Math.max(0,Math.min(100,Number(v)||0))}catch{return 70}}
+function onlineSavedVolume(){try{const v=localStorage.getItem(onlineBgmVolumeKey);return v===null?3:Math.max(0,Math.min(100,Number(v)||0))}catch{return 3}}
 const onlineBgmVolume=document.getElementById('onlineBgmVolume');
 const onlineVolumeValue=document.getElementById('onlineBgmVolumeValue');
 const onlineTitleBgmVolume=document.getElementById('titleBgmVolume');
