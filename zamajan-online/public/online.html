@@ -155,6 +155,42 @@ async function optimizeImage(src){
   };im.onerror=()=>reject(Error('画像を読み込めません'));im.src=src;
  });
 }
+
+function portableBackup(config){
+ const tiles=config.tiles.map((t,i)=>({
+  id:i+1,name:t.name,emoji:t.emoji||'🀄',image:t.image||null,
+  count:t.count,imageOnly:!!t.imageOnly,wild:!!t.wild
+ }));
+ // Explicitly mark the legacy special tile, even in older saved settings.
+ if(!tiles.some(t=>t.wild)&&!config.wildDeleted&&tiles[20]&&tiles[20].name==='特別牌')tiles[20].wild=true;
+ return {format:'zamajan-config',schemaVersion:1,app:'zamajan',
+  exportedAt:new Date().toISOString(),tiles,
+  yaku:config.yaku.map(y=>({name:y.name,points:y.points,pattern:[...y.pattern]})),
+  wildDeleted:!!config.wildDeleted};
+}
+function parsePortableBackup(raw){
+ if(!raw||typeof raw!=='object'||Array.isArray(raw))throw Error('設定データではありません');
+ if(raw.format&&raw.format!=='zamajan-config')throw Error('対応していないバックアップ形式です');
+ if(raw.schemaVersion&&raw.schemaVersion>1)throw Error('新しい形式のバックアップです。対応版へ更新してください');
+ const tiles=raw.tiles,yaku=raw.yaku;
+ if(!Array.isArray(tiles)||tiles.length<1||tiles.length>100||!Array.isArray(yaku)||yaku.length>100)throw Error('牌・役の件数が不正です');
+ if(tiles.some((t,i)=>!t||t.id!==i+1||typeof t.name!=='string'||t.name.length>80||
+  (t.image!=null&&(typeof t.image!=='string'||!/^data:image\/(png|jpeg|webp);base64,/.test(t.image)||t.image.length>650000))||
+  (t.count!=null&&(!Number.isInteger(+t.count)||+t.count<0||+t.count>40))))throw Error('牌の設定に不正なデータがあります');
+ if(yaku.some(y=>!y||typeof y.name!=='string'||y.name.length>80||
+  !Number.isInteger(y.points)||y.points<1||y.points>100000||
+  !Array.isArray(y.pattern)||y.pattern.length!==9||
+  y.pattern.some(n=>!Number.isInteger(n)||n<1||n>tiles.length)))throw Error('役の設定に不正なデータがあります');
+ const safeTiles=tiles.map((t,i)=>({
+  id:i+1,name:t.name,emoji:typeof t.emoji==='string'?t.emoji:'🀄',
+  image:t.image||null,count:t.count==null?9:+t.count,
+  imageOnly:!!t.imageOnly,wild:!!t.wild
+ }));
+ if(!safeTiles.some(t=>t.wild)&&!raw.wildDeleted&&safeTiles[20]?.name==='特別牌')safeTiles[20].wild=true;
+ if(safeTiles.filter(t=>t.wild).length>1)throw Error('特別牌が複数設定されています');
+ return {tiles:safeTiles,yaku:yaku.map(y=>({name:y.name,points:y.points,pattern:[...y.pattern]})),wildDeleted:!!raw.wildDeleted};
+}
+
 async function prepareConfig(cfg){
  if(!cfg)return null;
  if(!Array.isArray(cfg.tiles)||(cfg.tiles.length<1||cfg.tiles.length>100))throw Error('牌設定は1〜100種類で設定してください');
@@ -168,9 +204,9 @@ async function prepareConfig(cfg){
 }
 function configSummary(cfg,prefix='保存済み'){const images=cfg.tiles.filter(t=>t.image).length;$('imageNotice').textContent=`${prefix}：${images}種類の牌画像・${cfg.yaku.length}種類の役（このブラウザに保存）`}
 loadSettings().then(cfg=>{if(cfg?.tiles?.length>=1&&cfg?.tiles?.length<=100){importedConfig=cfg;configSummary(cfg)}});
-$('configExport').onclick=async()=>{const cfg=importedConfig||await loadSettings();if(!cfg){alert('保存された牌設定がありません。まずJSONを読み込んでください。');return}const blob=new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='zamajan-settings-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
+$('configExport').onclick=async()=>{const cfg=importedConfig||await loadSettings();if(!cfg){alert('保存された牌設定がありません。まずJSONを読み込んでください。');return}const blob=new Blob([JSON.stringify(portableBackup(cfg),null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='zamajan-config-v1.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
 $('configClear').onclick=async()=>{if(!confirm('このブラウザに保存された牌画像・役設定を初期化しますか？（対戦履歴は対象外）'))return;const db=await dbReady;if(db){const tx=db.transaction('settings','readwrite');tx.objectStore('settings').delete('config')}localStorage.removeItem(localKey);importedConfig=null;$('imageNotice').textContent='未読み込み：標準の絵文字牌を使用します'};
-$('configImport').addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{const cfg=JSON.parse(await f.text());if(!Array.isArray(cfg.tiles)||(cfg.tiles.length<1||cfg.tiles.length>100)||!Array.isArray(cfg.yaku))throw Error('設定ファイルの形式が違います');const prepared=await prepareConfig(cfg);importedConfig=prepared;const saved=await saveSettings(prepared);configSummary(prepared,saved?'読み込み・保存完了':'読み込み完了（保存できませんでした。JSONを保管してください）'); }catch(err){importedConfig=null;$('imageNotice').textContent='読み込み失敗：'+err.message}});
+$('configImport').addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{const cfg=parsePortableBackup(JSON.parse(await f.text()));const prepared=await prepareConfig(cfg);importedConfig=prepared;const saved=await saveSettings(prepared);configSummary(prepared,saved?'読み込み・保存完了':'読み込み完了（保存できませんでした。JSONを保管してください）'); }catch(err){importedConfig=null;$('imageNotice').textContent='読み込み失敗：'+err.message}});
 function resultTiles(result){
  if(!result.groups)return `<div class="row" style="justify-content:center">${result.hand.slice().sort((a,b)=>a-b).map(id=>tile(id)).join('')}</div>`;
  return `<div class="win-groups">${result.groups.map(group=>`<div class="win-group">${group.map(item=>`<div class="win-tile">${tile(item.id)}${item.id!==item.as?`<span class="wild-label">万能 → ${escape(state.config.tiles[item.as-1]?.name||'代用牌')}</span>`:''}</div>`).join('')}</div>`).join('')}</div>`;
