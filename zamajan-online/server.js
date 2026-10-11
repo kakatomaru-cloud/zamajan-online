@@ -1,12 +1,12 @@
 'use strict';
 const express=require('express'),http=require('http'),{Server}=require('socket.io'),crypto=require('crypto');
-const app=express(),server=http.createServer(app),io=new Server(server,{maxHttpBufferSize:12e6});
+const app=express(),server=http.createServer(app),io=new Server(server,{maxHttpBufferSize:24e6});
 app.use(express.static('public'));app.get('/',(req,res)=>res.redirect('/online.html'));
 const rooms=new Map(), names=['ねこ','いぬ','うさぎ','くま','きつね','パンダ','さる','とり','かえる','ライオン','ぞう','ぶた','うし','ねずみ','コアラ','とら','ひつじ','うま','たぬき','りす','特別牌'];
 const emojis=['🐱','🐶','🐰','🐻','🦊','🐼','🐵','🐦','🐸','🦁','🐘','🐷','🐮','🐭','🐨','🐯','🐑','🐴','🦝','🐿️','⭐'];
 const safe=(x,n=20)=>String(x||'').slice(0,n).replace(/[<>]/g,'');
 const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=crypto.randomInt(i+1);[a[i],a[j]]=[a[j],a[i]]}return a};
-function configFrom(x){const tiles=Array.from({length:21},(_,i)=>({id:i+1,name:safe(x?.tiles?.[i]?.name||names[i]),emoji:emojis[i],image:(typeof x?.tiles?.[i]?.image==='string'&&x.tiles[i].image.length<700000&&/^data:image\/(png|jpeg|webp);base64,/.test(x.tiles[i].image))?x.tiles[i].image:null,count:Math.max(0,Math.min(40,Number.isFinite(+x?.tiles?.[i]?.count)?Math.floor(+x.tiles[i].count):(i===20?1:9))),imageOnly:!!x?.tiles?.[i]?.imageOnly}));const yaku=(Array.isArray(x?.yaku)?x.yaku:[]).slice(0,60).filter(y=>Array.isArray(y.pattern)&&y.pattern.length===9&&y.pattern.every(n=>Number.isInteger(n)&&n>=1&&n<=21)).map(y=>({name:safe(y.name),points:Math.max(1,Math.min(100000,Math.floor(+y.points||1000))),pattern:y.pattern}));return {tiles,yaku}}
+function configFrom(x){const tiles=Array.from({length:21},(_,i)=>({id:i+1,name:safe(x?.tiles?.[i]?.name||names[i]),emoji:emojis[i],image:(typeof x?.tiles?.[i]?.image==='string'&&x.tiles[i].image.length<=600000&&/^data:image\/(png|jpeg|webp);base64,/.test(x.tiles[i].image))?x.tiles[i].image:null,count:Math.max(0,Math.min(40,Number.isFinite(+x?.tiles?.[i]?.count)?Math.floor(+x.tiles[i].count):(i===20?1:9))),imageOnly:!!x?.tiles?.[i]?.imageOnly}));const yaku=(Array.isArray(x?.yaku)?x.yaku:[]).slice(0,60).filter(y=>Array.isArray(y.pattern)&&y.pattern.length===9&&y.pattern.every(n=>Number.isInteger(n)&&n>=1&&n<=21)).map(y=>({name:safe(y.name),points:Math.max(1,Math.min(100000,Math.floor(+y.points||1000))),pattern:y.pattern}));return {tiles,yaku}}
 function patternWin(hand,pattern){const h=Array(22).fill(0),p=Array(22).fill(0);hand.forEach(n=>h[n]++);pattern.forEach(n=>p[n]++);let missing=0;for(let i=1;i<=20;i++){if(h[i]>p[i])return false;missing+=p[i]-h[i]}return missing<=h[21]&&p[21]<=h[21]}
 function tripleWin(hand){const counts=Array(22).fill(0);hand.forEach(x=>counts[x]++);let need=0;for(let i=1;i<=20;i++)need+=(3-counts[i]%3)%3;return need<=counts[21]&&(counts[21]-need)%3===0}
 function win(room,hand){if(hand.length!==9)return null;const matches=[];if(tripleWin(hand))matches.push({name:'三組そろえ',points:1000});for(const y of room.config.yaku)if(patternWin(hand,y.pattern))matches.push(y);return matches.sort((a,b)=>b.points-a.points)[0]||null}
@@ -37,7 +37,7 @@ io.on('connection',s=>{
   if(wasHost){const successor=r.players.find(x=>x&&!x.cpu&&x.token&&x.socket);r.host=successor?.token||null}
   broadcast(r);
  }
- s.on('leave',()=>{const r=rooms.get(s.data.room),seat=s.data.seat,p=r?.players[seat];if(!r||!p||p.socket!==s.id||p.token!==s.data.token){s.data={};return}handoff(r,seat,'退出');s.data={}});
+ s.on('leave',()=>{const r=rooms.get(s.data.room),seat=s.data.seat,p=r?.players[seat];if(!r||!p||p.socket!==s.id||p.token!==s.data.token){s.data={};return}s.data={};handoff(r,seat,'退出')});
  s.on('disconnect',()=>{const r=rooms.get(s.data.room),seat=s.data.seat,p=r?.players[seat];if(p&&p.socket===s.id){p.socket=null;broadcast(r);const token=p.token;setTimeout(()=>{const q=r.players[seat];if(q&&q.token===token&&!q.socket&&rooms.has(r.code))handoff(r,seat,'切断')},20000)}});
 
 });
