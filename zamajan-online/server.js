@@ -1,12 +1,12 @@
 'use strict';
 const express=require('express'),http=require('http'),{Server}=require('socket.io'),crypto=require('crypto');
-const app=express(),server=http.createServer(app),io=new Server(server,{maxHttpBufferSize:2e6});
+const app=express(),server=http.createServer(app),io=new Server(server,{maxHttpBufferSize:12e6});
 app.use(express.static('public'));app.get('/',(req,res)=>res.redirect('/online.html'));
 const rooms=new Map(), names=['ねこ','いぬ','うさぎ','くま','きつね','パンダ','さる','とり','かえる','ライオン','ぞう','ぶた','うし','ねずみ','コアラ','とら','ひつじ','うま','たぬき','りす','特別牌'];
 const emojis=['🐱','🐶','🐰','🐻','🦊','🐼','🐵','🐦','🐸','🦁','🐘','🐷','🐮','🐭','🐨','🐯','🐑','🐴','🦝','🐿️','⭐'];
 const safe=(x,n=20)=>String(x||'').slice(0,n).replace(/[<>]/g,'');
 const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=crypto.randomInt(i+1);[a[i],a[j]]=[a[j],a[i]]}return a};
-function configFrom(x){const tiles=Array.from({length:21},(_,i)=>({id:i+1,name:safe(x?.tiles?.[i]?.name||names[i]),emoji:emojis[i],image:(typeof x?.tiles?.[i]?.image==='string'&&x.tiles[i].image.length<100000&&/^data:image\/(png|jpeg|webp);base64,/.test(x.tiles[i].image))?x.tiles[i].image:null,count:Math.max(0,Math.min(40,Number.isFinite(+x?.tiles?.[i]?.count)?Math.floor(+x.tiles[i].count):(i===20?1:9))),imageOnly:!!x?.tiles?.[i]?.imageOnly}));const yaku=(Array.isArray(x?.yaku)?x.yaku:[]).slice(0,60).filter(y=>Array.isArray(y.pattern)&&y.pattern.length===9&&y.pattern.every(n=>Number.isInteger(n)&&n>=1&&n<=21)).map(y=>({name:safe(y.name),points:Math.max(1,Math.min(100000,Math.floor(+y.points||1000))),pattern:y.pattern}));return {tiles,yaku}}
+function configFrom(x){const tiles=Array.from({length:21},(_,i)=>({id:i+1,name:safe(x?.tiles?.[i]?.name||names[i]),emoji:emojis[i],image:(typeof x?.tiles?.[i]?.image==='string'&&x.tiles[i].image.length<700000&&/^data:image\/(png|jpeg|webp);base64,/.test(x.tiles[i].image))?x.tiles[i].image:null,count:Math.max(0,Math.min(40,Number.isFinite(+x?.tiles?.[i]?.count)?Math.floor(+x.tiles[i].count):(i===20?1:9))),imageOnly:!!x?.tiles?.[i]?.imageOnly}));const yaku=(Array.isArray(x?.yaku)?x.yaku:[]).slice(0,60).filter(y=>Array.isArray(y.pattern)&&y.pattern.length===9&&y.pattern.every(n=>Number.isInteger(n)&&n>=1&&n<=21)).map(y=>({name:safe(y.name),points:Math.max(1,Math.min(100000,Math.floor(+y.points||1000))),pattern:y.pattern}));return {tiles,yaku}}
 function patternWin(hand,pattern){const h=Array(22).fill(0),p=Array(22).fill(0);hand.forEach(n=>h[n]++);pattern.forEach(n=>p[n]++);let missing=0;for(let i=1;i<=20;i++){if(h[i]>p[i])return false;missing+=p[i]-h[i]}return missing<=h[21]&&p[21]<=h[21]}
 function tripleWin(hand){const counts=Array(22).fill(0);hand.forEach(x=>counts[x]++);let need=0;for(let i=1;i<=20;i++)need+=(3-counts[i]%3)%3;return need<=counts[21]&&(counts[21]-need)%3===0}
 function win(room,hand){if(hand.length!==9)return null;const matches=[];if(tripleWin(hand))matches.push({name:'三組そろえ',points:1000});for(const y of room.config.yaku)if(patternWin(hand,y.pattern))matches.push(y);return matches.sort((a,b)=>b.points-a.points)[0]||null}
@@ -19,7 +19,7 @@ function roundStart(r){clearTimeout(r.timer);const deck=[];for(const t of r.conf
 function finish(r,result){clearTimeout(r.timer);r.deadline=0;r.phase='result';r.result=result;log(r,result.method==='流局'?'流局':`${result.winnerName}が${result.method}！`);broadcast(r)}
 function draw(r,p){if(r.phase!=='playing'||r.turn!==p||r.drawn)return;if(!r.wall.length){finish(r,{method:'流局'});return}const t=r.wall.pop();r.hands[p].push(t);r.drawn=true;if(r.riichi[p]){const y=win(r,r.hands[p]);if(y){const gain=y.points*3;r.scores[p]+=gain;for(let i=0;i<4;i++)if(i!==p)r.scores[i]-=y.points;finish(r,{method:'ツモ',winner:p,winnerName:r.players[p].name,yaku:y.name,points:gain,hand:r.hands[p].slice()});return}}schedule(r);broadcast(r)}
 function discard(r,p,index){if(r.phase!=='playing'||r.turn!==p||!r.drawn||!Number.isInteger(index)||index<0||index>=r.hands[p].length)return;const t=r.hands[p].splice(index,1)[0];r.discards[p].push(t);r.hands[p].sort((a,b)=>a-b);r.drawn=false;log(r,`${r.players[p].name}が${r.config.tiles[t-1].name}を捨てた`);if(!r.riichi[p]&&r.scores[p]>=1000&&tenpai(r,r.hands[p])){r.riichi[p]=true;r.scores[p]-=1000;log(r,`${r.players[p].name} リーチ！`)}for(let k=1;k<4;k++){const q=(p+k)%4;if(!r.riichi[q])continue;const hand=[...r.hands[q],t],y=win(r,hand);if(y){r.scores[q]+=y.points;r.scores[p]-=y.points;finish(r,{method:'ロン',winner:q,winnerName:r.players[q].name,loser:p,yaku:y.name,points:y.points,hand});return}}if(!r.wall.length){finish(r,{method:'流局'});return}r.turn=(p+1)%4;schedule(r);broadcast(r)}
-function cpuAct(r){if(r.phase!=='playing')return;const p=r.players[r.turn];if(!p||(!p.cpu&&p.socket))return;if(r.drawn){const h=r.hands[r.turn];const counts={};h.forEach(x=>counts[x]=(counts[x]||0)+1);const idx=r.riichi[r.turn]?h.length-1:h.map((x,i)=>({x,i,c:counts[x]})).sort((a,b)=>a.c-b.c)[0].i;discard(r,r.turn,idx)}else draw(r,r.turn)}
+function cpuAct(r){if(r.phase!=='playing')return;const p=r.players[r.turn];if(!p||!p.cpu)return;if(r.drawn){const h=r.hands[r.turn];const counts={};h.forEach(x=>counts[x]=(counts[x]||0)+1);const idx=r.riichi[r.turn]?h.length-1:h.map((x,i)=>({x,i,c:counts[x]})).sort((a,b)=>a.c-b.c)[0].i;discard(r,r.turn,idx)}else draw(r,r.turn)}
 setInterval(()=>{for(const r of rooms.values())if(r.phase==='playing'&&r.deadline&&Date.now()>r.deadline+300)cpuAct(r)},500);
 function makeCode(){let c;do{c=String(crypto.randomInt(100000,1000000))}while(rooms.has(c));return c}
 function join(s,r,name,token){let seat=r.players.findIndex(p=>p&&p.token===token);if(seat<0){if(r.phase!=='lobby')return s.emit('errorMessage','対戦開始後は新規参加できません');seat=r.players.findIndex(p=>!p);if(seat<0)return s.emit('errorMessage','満員です');token=crypto.randomUUID();r.players[seat]={name:safe(name)||`プレイヤー${seat+1}`,token,socket:s.id,cpu:false}}else{r.players[seat].socket=s.id;r.players[seat].cpu=false} s.data.room=r.code;s.data.seat=seat;s.data.token=token;s.emit('joined',{code:r.code,seat,token});broadcast(r)}
@@ -30,7 +30,16 @@ io.on('connection',s=>{
  s.on('draw',()=>{const r=rooms.get(s.data.room);if(r&&r.players[r.turn]?.token===s.data.token)draw(r,r.turn)});
  s.on('discard',i=>{const r=rooms.get(s.data.room);if(r&&r.players[r.turn]?.token===s.data.token)discard(r,r.turn,i)});
  s.on('next',()=>{const r=rooms.get(s.data.room);if(!r||r.phase!=='result'||r.host!==s.data.token)return;if(r.round>=r.maxRounds){r.phase='final';r.result={method:'最終結果'};broadcast(r)}else{r.round++;roundStart(r)}});
- s.on('disconnect',()=>{const r=rooms.get(s.data.room),p=r?.players[s.data.seat];if(p&&p.socket===s.id){p.socket=null;broadcast(r)}})
+ function handoff(r,seat,reason){const p=r.players[seat];if(!p)return;if(r.phase==='lobby'){if(r.host===p.token){clearTimeout(r.timer);rooms.delete(r.code);for(const client of io.sockets.sockets.values())if(client.data.room===r.code){client.data={};client.emit('roomClosed','部屋主が退出したため、部屋を終了しました')}}else{r.players[seat]=null;broadcast(r)}return}
+  const wasHost=r.host===p.token;
+  p.socket=null;p.cpu=true;p.token=null;p.name=`CPU${seat+1}`;
+  log(r,`${seat+1}番が${reason}したため、手牌と点数をそのままCPUが引き継ぎました`);
+  if(wasHost){const successor=r.players.find(x=>x&&!x.cpu&&x.token&&x.socket);r.host=successor?.token||null}
+  broadcast(r);
+ }
+ s.on('leave',()=>{const r=rooms.get(s.data.room),seat=s.data.seat,p=r?.players[seat];if(!r||!p||p.socket!==s.id||p.token!==s.data.token){s.data={};return}handoff(r,seat,'退出');s.data={}});
+ s.on('disconnect',()=>{const r=rooms.get(s.data.room),seat=s.data.seat,p=r?.players[seat];if(p&&p.socket===s.id){p.socket=null;broadcast(r);const token=p.token;setTimeout(()=>{const q=r.players[seat];if(q&&q.token===token&&!q.socket&&rooms.has(r.code))handoff(r,seat,'切断')},20000)}});
+
 });
-setInterval(()=>{for(const [c,r] of rooms)if(!r.players.some(p=>p?.socket)&&r.phase!=='playing')rooms.delete(c)},600000);
+setInterval(()=>{for(const [c,r] of rooms){if(!r.players.some(p=>p?.socket)&&r.phase!=='playing'){clearTimeout(r.timer);rooms.delete(c)}else if(r.phase==='result'&&!r.host){if(r.round>=r.maxRounds){r.phase='final';r.result={method:'最終結果'};broadcast(r)}else{r.round++;roundStart(r)}}}},60000);
 server.listen(process.env.PORT||3000,()=>console.log('Zamajan online listening'));
