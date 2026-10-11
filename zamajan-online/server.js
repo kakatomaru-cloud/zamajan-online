@@ -14,13 +14,26 @@ function tenpai(r,hand){return r.config.tiles.some(t=>t.count>0&&win(r,[...hand,
 function broadcast(r){for(let i=0;i<4;i++){const p=r.players[i];if(p?.socket){const s=io.sockets.sockets.get(p.socket);if(s)s.emit('state',state(r,i))}}}
 function state(r,seat){return {code:r.code,seat,host:r.host===r.players[seat]?.token,phase:r.phase,round:r.round,maxRounds:r.maxRounds,turn:r.turn,drawn:r.drawn,wallCount:r.wall?.length||0,scores:r.scores,riichi:r.riichi,discards:r.discards,hand:r.hands?.[seat]||[],handCounts:r.hands?.map(h=>h.length)||[0,0,0,0],players:r.players.map(p=>p?{name:p.name,cpu:!!p.cpu,connected:!!p.socket}:null),result:r.result,config:r.config,logs:r.logs.slice(-12),deadline:r.deadline||0}}
 function log(r,s){r.logs.push(s);if(r.logs.length>100)r.logs.shift()}
-function schedule(r){clearTimeout(r.timer);if(r.phase!=='playing')return;r.deadline=Date.now()+(r.drawn?15000:5000);const round=r.round,turn=r.turn,drawn=r.drawn;r.timer=setTimeout(()=>{if(r.phase!=='playing'||r.round!==round||r.turn!==turn||r.drawn!==drawn)return;if(r.drawn)discard(r,turn,r.hands[turn].length-1);else draw(r,turn)},r.drawn?15000:5000)}
+function schedule(r){
+ clearTimeout(r.timer);
+ if(r.phase!=='playing')return;
+ const isCpu=!!r.players[r.turn]?.cpu;
+ const delay=isCpu?(r.drawn?400:300):(r.drawn?15000:5000);
+ r.deadline=Date.now()+delay;
+ const round=r.round,turn=r.turn,drawn=r.drawn;
+ r.timer=setTimeout(()=>{
+  if(r.phase!=='playing'||r.round!==round||r.turn!==turn||r.drawn!==drawn)return;
+  if(r.players[turn]?.cpu){cpuAct(r);return}
+  if(r.drawn)discard(r,turn,r.hands[turn].length-1);
+  else draw(r,turn);
+ },delay);
+}
 function roundStart(r){clearTimeout(r.timer);const deck=[];for(const t of r.config.tiles)for(let j=0;j<t.count;j++)deck.push(t.id);if(deck.length<33){r.phase='lobby';return '牌が33枚未満です'}shuffle(deck);r.hands=[[],[],[],[]];r.discards=[[],[],[],[]];r.riichi=[false,false,false,false];r.wall=deck;r.turn=0;r.drawn=false;r.result=null;r.phase='playing';for(let k=0;k<8;k++)for(let i=0;i<4;i++)r.hands[i].push(r.wall.pop());r.hands.forEach(h=>h.sort((a,b)=>a-b));log(r,`第${r.round}局 はじめ！`);schedule(r);broadcast(r);return null}
 function finish(r,result){clearTimeout(r.timer);r.deadline=0;r.phase='result';r.result=result;log(r,result.method==='流局'?'流局':`${result.winnerName}が${result.method}！`);broadcast(r)}
 function draw(r,p){if(r.phase!=='playing'||r.turn!==p||r.drawn)return;if(!r.wall.length){finish(r,{method:'流局'});return}const t=r.wall.pop();r.hands[p].push(t);r.drawn=true;if(r.riichi[p]){const y=win(r,r.hands[p]);if(y){const gain=y.points*3;r.scores[p]+=gain;for(let i=0;i<4;i++)if(i!==p)r.scores[i]-=y.points;finish(r,{method:'ツモ',winner:p,winnerName:r.players[p].name,yaku:y.name,points:gain,hand:r.hands[p].slice()});return}}schedule(r);broadcast(r)}
 function discard(r,p,index){if(r.phase!=='playing'||r.turn!==p||!r.drawn||!Number.isInteger(index)||index<0||index>=r.hands[p].length)return;const t=r.hands[p].splice(index,1)[0];r.discards[p].push(t);r.hands[p].sort((a,b)=>a-b);r.drawn=false;log(r,`${r.players[p].name}が${r.config.tiles[t-1].name}を捨てた`);if(!r.riichi[p]&&r.scores[p]>=1000&&tenpai(r,r.hands[p])){r.riichi[p]=true;r.scores[p]-=1000;log(r,`${r.players[p].name} リーチ！`)}for(let k=1;k<4;k++){const q=(p+k)%4;if(!r.riichi[q])continue;const hand=[...r.hands[q],t],y=win(r,hand);if(y){r.scores[q]+=y.points;r.scores[p]-=y.points;finish(r,{method:'ロン',winner:q,winnerName:r.players[q].name,loser:p,yaku:y.name,points:y.points,hand});return}}if(!r.wall.length){finish(r,{method:'流局'});return}r.turn=(p+1)%4;schedule(r);broadcast(r)}
 function cpuAct(r){if(r.phase!=='playing')return;const p=r.players[r.turn];if(!p||!p.cpu)return;if(r.drawn){const h=r.hands[r.turn];const counts={};h.forEach(x=>counts[x]=(counts[x]||0)+1);const idx=r.riichi[r.turn]?h.length-1:h.map((x,i)=>({x,i,c:counts[x]})).sort((a,b)=>a.c-b.c)[0].i;discard(r,r.turn,idx)}else draw(r,r.turn)}
-setInterval(()=>{for(const r of rooms.values())if(r.phase==='playing'&&r.deadline&&Date.now()>r.deadline+300)cpuAct(r)},500);
+
 function makeCode(){let c;do{c=String(crypto.randomInt(100000,1000000))}while(rooms.has(c));return c}
 function join(s,r,name,token){let seat=r.players.findIndex(p=>p&&p.token===token);if(seat<0){if(r.phase!=='lobby')return s.emit('errorMessage','対戦開始後は新規参加できません');seat=r.players.findIndex(p=>!p);if(seat<0)return s.emit('errorMessage','満員です');token=crypto.randomUUID();r.players[seat]={name:safe(name)||`プレイヤー${seat+1}`,token,socket:s.id,cpu:false}}else{r.players[seat].socket=s.id;r.players[seat].cpu=false} s.data.room=r.code;s.data.seat=seat;s.data.token=token;s.emit('joined',{code:r.code,seat,token});broadcast(r)}
 io.on('connection',s=>{
@@ -35,6 +48,7 @@ io.on('connection',s=>{
   p.socket=null;p.cpu=true;p.token=null;p.name=`CPU${seat+1}`;
   log(r,`${seat+1}番が${reason}したため、手牌と点数をそのままCPUが引き継ぎました`);
   if(wasHost){const successor=r.players.find(x=>x&&!x.cpu&&x.token&&x.socket);r.host=successor?.token||null}
+  if(r.phase==='playing'&&r.turn===seat)schedule(r);
   broadcast(r);
  }
  s.on('leave',()=>{const r=rooms.get(s.data.room),seat=s.data.seat,p=r?.players[seat];if(!r||!p||p.socket!==s.id||p.token!==s.data.token){s.data={};return}s.data={};handoff(r,seat,'退出')});
