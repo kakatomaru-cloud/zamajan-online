@@ -178,7 +178,56 @@ body:has(#play:not(.hidden)) header h1{font-size:clamp(17px,2.4vw,28px)}
 #play #discards .discard-none{grid-column:1/-1;text-align:center;opacity:.65;padding-top:20px}
 @media(max-width:850px){#play #discards .discard-entry .tile{height:43px!important}#play #discards .discard-entry{min-height:58px}#play #discards .discard-owner{font-size:8px}}
 @media(max-width:600px){#play #discards .discard-entry .tile{height:38px!important}#play #discards .discard-entry{min-height:52px}#play #discards .discard-owner{font-size:7px}}
-</style></head><body><header><h1>ザマじゃん <small>ONLINE</small></h1><div class="row"><button id="globalExit" type="button" class="hidden" style="border:3px solid #ffe099;background:#9c2720;color:white;font-weight:900;box-shadow:0 0 16px #ffae4488">🚪 部屋から退出・タイトルへ</button><button type="button" id="zscoreTop" class="zscore-open">🏆 ザマじゃん得点表</button><a href="zamajan.html" style="color:#e5c78a">オフライン版</a></div><button id="bgmToggle" type="button" style="position:fixed;right:14px;bottom:14px;z-index:10000;background:#16120b;color:#f6d18c;border:2px solid #bd9153;border-radius:9px;padding:12px 17px;cursor:pointer;font-weight:bold;box-shadow:0 3px 14px #000b" aria-label="BGMの再生・停止">♪ BGMを再生</button></header><main><section class="panel" id="lobby"><h2>インターネット対戦</h2><p>友達と同じ6桁のルーム番号で参加できます。部屋を作る人の牌設定・役設定を使用します。</p><div class="row"><label>名前 <input id="nickname" maxlength="20" value="あなた"></label><label>対戦局数 <select id="rounds"><option>1</option><option>2</option><option selected>4</option><option>8</option><option>12</option><option>16</option><option>20</option></select></label></div><div class="row" style="margin-top:15px"><button id="create">部屋を作る</button><input id="roomCode" inputmode="numeric" maxlength="6" placeholder="6桁のルーム番号"><button id="join">部屋に参加</button></div><div class="panel" style="margin:16px 0 0;max-width:850px;background:#090807d9"><b>以前のザマじゃんの牌画像・役設定を反映</b><p class="muted">オフライン版の「設定を書き出す」で保存したJSONファイルを選ぶと、部屋主の牌画像・名前・役をオンライン対戦に適用できます。</p><div class="row" style="margin:10px 0"><button type="button" id="configExport">現在の牌・役設定をバックアップ（JSON保存）</button><button type="button" id="configClear">保存設定を初期化</button></div><label>設定JSONを読み込む <input id="configImport" type="file" accept=".json,application/json"></label><div id="imageNotice">未読み込み：標準の絵文字牌を使用します</div></div><p class="muted">サーバーに公開後、友達にこのページのURLとルーム番号を伝えてください。</p></section><section id="room" class="panel hidden"><div class="row"><h2>ルーム <span id="code" class="copy"></span></h2><button id="copy">番号をコピー</button><button class="leave-room">部屋から退出してタイトルに戻る</button></div><div id="members"></div><p id="roomHelp" class="muted"></p><button id="start" class="hidden">対戦開始（空席はCPU）</button></section><section id="play" class="hidden"><div class="bar"><div class="status" id="message"></div><div class="timer" id="timer"></div><button type="button" id="zscorePlay" class="zscore-open">🏆 得点表を見る</button><button class="leave-room">部屋から退出してタイトルに戻る</button></div><div class="board"><div class="center-mark">龍</div><div id="players"></div><div id="discards" class="discard-area"></div><div id="hand" class="myhand"></div></div><div class="panel"><span id="guide"></span><div id="logs" class="muted"></div></div></section></main><div id="overlay" class="overlay hidden"><div class="modal"><div id="outcome"></div><div class="actions"><button id="next" class="hidden">次の局へ</button><button id="home">部屋から退出してタイトルに戻る</button></div></div></div><div id="zscoreMask" class="zscore-mask hidden" role="dialog" aria-modal="true" aria-labelledby="zscoreHeading"><div class="zscore-dialog"><button id="zscoreClose" class="zscore-close" type="button">✕ 閉じる</button><div class="zscore-banner"><h2 id="zscoreHeading">ザマじゃん得点表</h2></div><div class="zscore-body"><p class="zscore-sub" id="zscoreContext"></p><div id="zscoreList"></div></div></div></div><script src="/socket.io/socket.io.js"></script><script>
+</style>
+<style id="zj-20261011-interaction-fixes">
+#play #discards{height:clamp(155px,35vh,290px)!important;max-height:290px!important;min-height:120px!important;overflow-y:auto!important;overflow-x:hidden!important;grid-auto-rows:max-content!important;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#edc46c #1b1711;scroll-behavior:auto}
+#play #discards::-webkit-scrollbar{width:9px}#play #discards::-webkit-scrollbar-thumb{background:#d4ad61;border-radius:8px}
+#play .myhand button.tile{cursor:pointer!important;touch-action:manipulation;user-select:none;-webkit-tap-highlight-color:transparent}
+#play .myhand button.tile.riichi-ready-discard{outline:3px solid #ffe173!important;outline-offset:1px!important;box-shadow:0 0 18px #e4b038ba!important}
+#play .myhand button.tile:active{transform:translateY(2px);filter:brightness(1.15)}
+.zj-result-winner{margin:8px auto;font-size:clamp(16px,3vw,22px);font-weight:800;color:#f8eacb}
+.zj-result-role-label{text-align:center;font-size:14px;font-weight:900;letter-spacing:.18em;color:#f6c76b;margin:12px auto 2px}
+.zj-result-role{text-align:center;max-width:850px;margin:0 auto 12px;padding:12px 20px;border-top:2px solid #e9b95d;border-bottom:2px solid #e9b95d;color:#fff3c8;font-size:clamp(30px,6vw,55px);font-weight:900;line-height:1.15;overflow-wrap:anywhere;text-shadow:0 3px 20px #c28a2470}
+.zj-result-points{text-align:center;font-weight:900;font-size:clamp(30px,6vw,52px);color:#ffe09b;margin:6px auto 14px}
+.zj-result-points small{font-size:18px;margin-left:6px}
+.zj-bgm-volume{position:fixed;right:193px;bottom:14px;z-index:10000;display:inline-flex;align-items:center;gap:6px;padding:6px 8px;border:1px solid #a7834f;border-radius:8px;background:#1a2425;color:#f6daa0;font-size:12px;font-weight:800}
+.zj-bgm-volume input{width:100px;accent-color:#e9b550;cursor:pointer}
+.zj-bgm-volume span{min-width:30px;text-align:right}
+@media(max-width:600px){#play #discards{height:clamp(130px,31vh,220px)!important;max-height:220px!important}.zj-bgm-volume{right:14px;bottom:73px}.zj-bgm-volume input{width:86px}}
+</style>
+<style id="zj-title-bgm-volume-style">
+/* タイトル画面の BGM 音量。対戦画面の既存設定と同じ保存値を使います。 */
+#lobby .zj-title-bgm {
+ display:flex; flex-wrap:wrap; align-items:center; gap:14px;
+ width:fit-content; max-width:100%;
+ margin:0 0 20px; padding:13px 18px;
+ background:rgba(10,15,17,.88);
+ border:1px solid #d8af61; border-radius:12px;
+ box-shadow:0 4px 18px #0009;
+}
+#lobby .zj-title-bgm label {
+ margin:0; color:#ffe19c; font-weight:800; font-size:15px;
+ white-space:nowrap;
+}
+#lobby #titleBgmVolume {
+ width:clamp(130px,25vw,240px); min-width:90px; 
+ accent-color:#e9bc62; padding:0; cursor:pointer;
+}
+#lobby #titleBgmVolumeValue {
+ min-width:52px; text-align:right; font-size:16px;
+ font-weight:900; color:#ffe19c;
+ font-variant-numeric:tabular-nums;
+}
+body:has(#lobby:not(.hidden)) header .zj-bgm-volume {
+ display:none;
+}
+@media(max-width:480px) {
+ #lobby .zj-title-bgm {gap:9px; padding:10px 12px;}
+ #lobby .zj-title-bgm label {font-size:13px;}
+ #lobby #titleBgmVolume {width:116px;}
+}
+</style>
+</head><body><header><h1>ザマじゃん <small>ONLINE</small></h1><div class="row"><button id="globalExit" type="button" class="hidden" style="border:3px solid #ffe099;background:#9c2720;color:white;font-weight:900;box-shadow:0 0 16px #ffae4488">🚪 部屋から退出・タイトルへ</button><button type="button" id="zscoreTop" class="zscore-open">🏆 ザマじゃん得点表</button><a href="zamajan.html" style="color:#e5c78a">オフライン版</a></div><button id="bgmToggle" type="button" style="position:fixed;right:14px;bottom:14px;z-index:10000;background:#16120b;color:#f6d18c;border:2px solid #bd9153;border-radius:9px;padding:12px 17px;cursor:pointer;font-weight:bold;box-shadow:0 3px 14px #000b" aria-label="BGMの再生・停止">♪ BGMを再生</button><label class="zj-bgm-volume">音量 <input id="onlineBgmVolume" type="range" min="0" max="100" step="1" value="70" aria-label="BGMの音量"><span id="onlineBgmVolumeValue">70%</span></label></header><main><section class="panel" id="lobby"><h2>インターネット対戦</h2><div class="zj-title-bgm" role="group" aria-label="タイトル画面のBGM音量設定"><label for="titleBgmVolume">♪ BGM 音量</label><input id="titleBgmVolume" type="range" min="0" max="100" step="1" value="70" aria-label="タイトル画面のBGM音量"><output id="titleBgmVolumeValue" for="titleBgmVolume">70%</output></div><p>友達と同じ6桁のルーム番号で参加できます。部屋を作る人の牌設定・役設定を使用します。</p><div class="row"><label>名前 <input id="nickname" maxlength="20" value="あなた"></label><label>対戦局数 <select id="rounds"><option>1</option><option>2</option><option selected>4</option><option>8</option><option>12</option><option>16</option><option>20</option></select></label></div><div class="row" style="margin-top:15px"><button id="create">部屋を作る</button><input id="roomCode" inputmode="numeric" maxlength="6" placeholder="6桁のルーム番号"><button id="join">部屋に参加</button></div><div class="panel" style="margin:16px 0 0;max-width:850px;background:#090807d9"><b>以前のザマじゃんの牌画像・役設定を反映</b><p class="muted">オフライン版の「設定を書き出す」で保存したJSONファイルを選ぶと、部屋主の牌画像・名前・役をオンライン対戦に適用できます。</p><div class="row" style="margin:10px 0"><button type="button" id="configExport">現在の牌・役設定をバックアップ（JSON保存）</button><button type="button" id="configClear">保存設定を初期化</button></div><label>設定JSONを読み込む <input id="configImport" type="file" accept=".json,application/json"></label><div id="imageNotice">未読み込み：標準の絵文字牌を使用します</div></div><p class="muted">サーバーに公開後、友達にこのページのURLとルーム番号を伝えてください。</p></section><section id="room" class="panel hidden"><div class="row"><h2>ルーム <span id="code" class="copy"></span></h2><button id="copy">番号をコピー</button><button class="leave-room">部屋から退出してタイトルに戻る</button></div><div id="members"></div><p id="roomHelp" class="muted"></p><button id="start" class="hidden">対戦開始（空席はCPU）</button></section><section id="play" class="hidden"><div class="bar"><div class="status" id="message"></div><div class="timer" id="timer"></div><button type="button" id="zscorePlay" class="zscore-open">🏆 得点表を見る</button><button class="leave-room">部屋から退出してタイトルに戻る</button></div><div class="board"><div class="center-mark">龍</div><div id="players"></div><div id="discards" class="discard-area"></div><div id="hand" class="myhand"></div></div><div class="panel"><span id="guide"></span><div id="logs" class="muted"></div></div></section></main><div id="overlay" class="overlay hidden"><div class="modal"><div id="outcome"></div><div class="actions"><button id="next" class="hidden">次の局へ</button><button id="home">部屋から退出してタイトルに戻る</button></div></div></div><div id="zscoreMask" class="zscore-mask hidden" role="dialog" aria-modal="true" aria-labelledby="zscoreHeading"><div class="zscore-dialog"><button id="zscoreClose" class="zscore-close" type="button">✕ 閉じる</button><div class="zscore-banner"><h2 id="zscoreHeading">ザマじゃん得点表</h2></div><div class="zscore-body"><p class="zscore-sub" id="zscoreContext"></p><div id="zscoreList"></div></div></div></div><script src="/socket.io/socket.io.js"></script><script>
 'use strict';const $=id=>document.getElementById(id),socket=io(),key='zamajan-online-reconnect',localKey='zamajan-set-v01';let state=null,session=null,seenRound=0,seenResult='',clock=null,importedConfig=null;const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));function tile(id,button=false,index=0){const t=state.config.tiles[id-1]||{name:"不明な牌",emoji:"🀄"};const inner=t.image?`<img src="${escape(t.image)}" alt="${escape(t.name)}">`:`<span class="symbol">${t.emoji}</span>`;return button?`<button class="tile" data-idx="${index}">${inner}${t.imageOnly?'':`<small>${escape(t.name)}</small>`}</button>`:`<span class="tile">${inner}${t.imageOnly?'':`<small>${escape(t.name)}</small>`}</span>`}
 function voice(word,male=false){try{const u=new SpeechSynthesisUtterance(word);u.lang='ja-JP';u.rate=male?.72:.92;u.pitch=male?.6:1.35;const vs=speechSynthesis.getVoices().filter(v=>v.lang.startsWith('ja'));const preferred=vs.find(v=>male?/male|ichiro|otoya|takumi/i.test(v.name):/female|nanami|haruka|kyoko/i.test(v.name));if(preferred)u.voice=preferred;speechSynthesis.speak(u)}catch{}}
 // 画像を含む牌設定は IndexedDB に保存。対戦情報とは別管理する。
@@ -257,7 +306,16 @@ function resultTiles(result){
  if(!result.groups)return `<div class="row" style="justify-content:center">${result.hand.slice().sort((a,b)=>a-b).map(id=>tile(id)).join('')}</div>`;
  return `<div class="win-groups">${result.groups.map(group=>`<div class="win-group">${group.map(item=>`<div class="win-tile">${tile(item.id)}${item.id!==item.as?`<span class="wild-label">万能 → ${escape(state.config.tiles[item.as-1]?.name||'代用牌')}</span>`:''}</div>`).join('')}</div>`).join('')}</div>`;
 }
-function draw(){socket.emit('draw')}function discard(i){socket.emit('discard',i)}function orderedOnlineDiscards(s){
+function draw(){socket.emit('draw')}
+function discard(i){socket.emit('discard',i)}
+let lastTileAction=0;
+function playTileOnce(i){
+ if(!state||state.phase!=='playing'||state.turn!==state.seat||state.riichi[state.seat])return;
+ // Limit duplicate taps without requiring a second click.
+ if(Date.now()-lastTileAction<250)return;
+ lastTileAction=Date.now();
+ socket.emit('playTile',i);
+}function orderedOnlineDiscards(s){
  const piles=Array.isArray(s.discards)?s.discards:[[],[],[],[]];
  const total=piles.reduce((sum,p)=>sum+(Array.isArray(p)?p.length:0),0);
  const history=s.discardHistory;
@@ -278,7 +336,16 @@ function onlineDiscardHTML(s){
  if(!items.length)return '<span class="discard-none">まだ捨て牌はありません</span>';
  return items.map((d,i)=>`<div class="discard-entry ${i===items.length-1?'discard-latest':''}" title="${i+1}番目：${escape(s.players[d.seat]?.name||'')}が${escape(s.config.tiles[d.id-1]?.name||('牌'+d.id))}を捨てた"><span class="discard-order">${i+1}</span>${tile(d.id)}<span class="discard-owner">${escape(s.players[d.seat]?.name||'')}</span></div>`).join('');
 }
-function show(s){if(!session)return;state=s;if(s.config?.tiles){const count=s.config.tiles.filter(t=>t.image).length;const note=$('roomHelp');if(note)note.dataset.imageCount=String(count)}$('globalExit').classList.remove('hidden');$('lobby').classList.add('hidden');$('room').classList.toggle('hidden',s.phase!=='lobby');$('play').classList.toggle('hidden',s.phase==='lobby');$('code').textContent=s.code;$('members').innerHTML=s.players.map((p,i)=>`<p>${i+1}番：${p?escape(p.name)+(p.cpu?'（CPU）':p.connected?'（接続中）':'（切断）'):'空席'}</p>`).join('');$('roomHelp').textContent=(s.host?'参加者がそろったら対戦開始を押してください。空席はCPUになります。':'部屋主の開始を待っています。')+` 共有中の牌画像：${s.config.tiles.filter(t=>t.image).length}種類（全端末共通）`; $('start').classList.toggle('hidden',!s.host||s.phase!=='lobby');if(s.phase==='lobby')return;const current=s.players[s.turn];$('message').textContent=`第${s.round}局 ／ 山の残り ${s.wallCount}枚 ／ ${current?.name||''}の番`;$('players').innerHTML=s.players.map((p,i)=>`<div class="player p${(i-s.seat+4)%4} ${i===s.turn&&s.phase==='playing'?'active':''}"><b>${escape(p.name)}</b>　${s.scores[i].toLocaleString()}点<br>${s.riichi[i]?'<span style="color:#ffcf75">リーチ ━●━</span><br>':''}${i===s.seat?'あなた':`<div class="opponent-tiles">${Array.from({length:s.handCounts[i]},()=>'<span class="tile-back"></span>').join('')}</div>`}${i===s.turn&&s.phase==='playing'&&i!==s.seat?'<br>💭 思考中…':''}</div>`).join('');$('discards').innerHTML=onlineDiscardHTML(s);const drawnId=s.drawn&&s.turn===s.seat?s.hand[s.hand.length-1]:null;$('hand').innerHTML=s.hand.map((id,i)=>tile(id,true,i)).join('');if(drawnId!==null){$('hand').querySelectorAll('button').forEach((b,i)=>{if(s.hand[i]===drawnId)b.classList.add('matching-drawn');if(i===s.hand.length-1)b.classList.add('just-drawn')})}$('hand').querySelectorAll('button').forEach(b=>{b.disabled=s.phase!=='playing'||s.turn!==s.seat||!!s.riichi[s.seat];b.onclick=()=>s.drawn?discard(+b.dataset.idx):draw()});$('guide').textContent=s.phase==='playing'?(s.turn===s.seat?(s.riichi[s.seat]?'🔒 リーチ中：自動ツモ・自動ツモ切り（操作不要。あがりは自動判定）':s.drawn?'牌をクリックして捨ててください（15秒）':'自動ツモを待っています'):'相手の手番です'):'局の終了';$('logs').innerHTML=s.logs.slice(-4).map(x=>`<div>${escape(x)}</div>`).join('');if(s.phase==='playing'&&s.round!==seenRound){seenRound=s.round;voice('はじめ！',true)}if(s.phase==='result'||s.phase==='final'){const resultKey=s.round+'-'+s.phase;if(seenResult!==resultKey){seenResult=resultKey;if(s.phase==='result')voice(s.result.method==='流局'?'りゅうきょく':s.result.method,s.result.method==='流局')}const ranks=s.scores.map((score,i)=>({i,score,name:s.players[i].name})).sort((a,b)=>b.score-a.score);$('outcome').innerHTML=s.phase==='final'?`<h2>最終順位</h2>${ranks.map((p,i)=>`<div class="rank"><b>${['🥇','🥈','🥉','4位'][i]} ${escape(p.name)}</b><b>${p.score.toLocaleString()}点</b></div>`).join('')}`:`<h2>${escape(s.result.method)}</h2><p>${s.result.winnerName?escape(s.result.winnerName)+' ／ '+escape(s.result.yaku)+' ／ '+s.result.points.toLocaleString()+'点'+(s.result.ownBonus?'<br><strong class="own-bonus">🎉 自分ボーナス ＋1,000点</strong>':''):'山の牌がなくなりました'}</p>${s.result.hand?resultTiles(s.result):''}`;$('overlay').classList.remove('hidden');$('next').classList.toggle('hidden',!s.host||s.phase==='final');$('next').textContent=s.round>=s.maxRounds?'最終ランキングを見る':'次の局へ'}else $('overlay').classList.add('hidden')}
+let lastOnlineDiscardKey='';
+function scrollOnlineDiscards(s){
+ const el=$('discards');if(!el)return;
+ const key=String(s.code)+'/'+String(s.round)+'/'+String(orderedOnlineDiscards(s).length);
+ if(key===lastOnlineDiscardKey)return;
+ lastOnlineDiscardKey=key;
+ el.scrollTop=el.scrollHeight;
+ requestAnimationFrame(()=>{if(el.isConnected)el.scrollTop=el.scrollHeight});
+}
+function show(s){if(!session)return;state=s;if(s.config?.tiles){const count=s.config.tiles.filter(t=>t.image).length;const note=$('roomHelp');if(note)note.dataset.imageCount=String(count)}$('globalExit').classList.remove('hidden');$('lobby').classList.add('hidden');$('room').classList.toggle('hidden',s.phase!=='lobby');$('play').classList.toggle('hidden',s.phase==='lobby');$('code').textContent=s.code;$('members').innerHTML=s.players.map((p,i)=>`<p>${i+1}番：${p?escape(p.name)+(p.cpu?'（CPU）':p.connected?'（接続中）':'（切断）'):'空席'}</p>`).join('');$('roomHelp').textContent=(s.host?'参加者がそろったら対戦開始を押してください。空席はCPUになります。':'部屋主の開始を待っています。')+` 共有中の牌画像：${s.config.tiles.filter(t=>t.image).length}種類（全端末共通）`; $('start').classList.toggle('hidden',!s.host||s.phase!=='lobby');if(s.phase==='lobby')return;const current=s.players[s.turn];$('message').textContent=`第${s.round}局 ／ 山の残り ${s.wallCount}枚 ／ ${current?.name||''}の番`;$('players').innerHTML=s.players.map((p,i)=>`<div class="player p${(i-s.seat+4)%4} ${i===s.turn&&s.phase==='playing'?'active':''}"><b>${escape(p.name)}</b>　${s.scores[i].toLocaleString()}点<br>${s.riichi[i]?'<span style="color:#ffcf75">リーチ ━●━</span><br>':''}${i===s.seat?'あなた':`<div class="opponent-tiles">${Array.from({length:s.handCounts[i]},()=>'<span class="tile-back"></span>').join('')}</div>`}${i===s.turn&&s.phase==='playing'&&i!==s.seat?'<br>💭 思考中…':''}</div>`).join('');$('discards').innerHTML=onlineDiscardHTML(s);scrollOnlineDiscards(s);const drawnId=s.drawn&&s.turn===s.seat?s.hand[s.hand.length-1]:null;$('hand').innerHTML=s.hand.map((id,i)=>tile(id,true,i)).join('');$('hand').querySelectorAll('button').forEach((b,i)=>{if(s.readyDiscards?.includes(i))b.classList.add('riichi-ready-discard')});if(drawnId!==null){$('hand').querySelectorAll('button').forEach((b,i)=>{if(s.hand[i]===drawnId)b.classList.add('matching-drawn');if(i===s.hand.length-1)b.classList.add('just-drawn')})}$('hand').querySelectorAll('button').forEach(b=>{b.disabled=s.phase!=='playing'||s.turn!==s.seat||!!s.riichi[s.seat];b.onclick=()=>playTileOnce(+b.dataset.idx)});$('guide').textContent=s.phase==='playing'?(s.turn===s.seat?(s.riichi[s.seat]?'🔒 リーチ中：自動ツモ・自動ツモ切り（操作不要。あがりは自動判定）':s.drawn?'牌を1回クリックで捨てられます（15秒）':'牌は1回クリックで捨てられます（ツモ待ち中も可）'):'相手の手番です'):'局の終了';$('logs').innerHTML=s.logs.slice(-4).map(x=>`<div>${escape(x)}</div>`).join('');if(s.phase==='playing'&&s.round!==seenRound){seenRound=s.round;voice('はじめ！',true)}if(s.phase==='result'||s.phase==='final'){const resultKey=s.round+'-'+s.phase;if(seenResult!==resultKey){seenResult=resultKey;if(s.phase==='result')voice(s.result.method==='流局'?'りゅうきょく':s.result.method,s.result.method==='流局')}const ranks=s.scores.map((score,i)=>({i,score,name:s.players[i].name})).sort((a,b)=>b.score-a.score);$('outcome').innerHTML=s.phase==='final'?`<h2>最終順位</h2>${ranks.map((p,i)=>`<div class="rank"><b>${['🥇','🥈','🥉','4位'][i]} ${escape(p.name)}</b><b>${p.score.toLocaleString()}点</b></div>`).join('')}`:`<h2>${escape(s.result.method)}</h2>${s.result.winnerName?`<p class="zj-result-winner">${escape(s.result.winnerName)} のあがり</p><div class="zj-result-role-label">成立した役</div><div class="zj-result-role">${escape(s.result.yaku)}</div><div class="zj-result-points">${Number(s.result.points).toLocaleString()}<small>点</small></div>${s.result.ownBonus?'<div class="own-bonus">🎉 自分ボーナス ＋1,000点</div>':''}`:'<p>山の牌がなくなりました</p>'}${s.result.hand?resultTiles(s.result):''}`;$('overlay').classList.remove('hidden');$('next').classList.toggle('hidden',!s.host||s.phase==='final');$('next').textContent=s.round>=s.maxRounds?'最終ランキングを見る':'次の局へ'}else $('overlay').classList.add('hidden')}
 function tick(){if(!state||state.phase!=='playing'){$('timer').textContent='';return}const remaining=Math.max(0,Math.ceil((state.deadline-Date.now())/1000));$('timer').textContent=(state.riichi[state.turn]?'リーチ・自動ツモ'+(state.drawn?'切り中':'待機中'):(state.drawn?'捨て牌まで':'ツモまで'))+` ${remaining}秒`}
 setInterval(tick,200);const nicknameKey='zamajan-online-nickname-v1';
 $('nickname').value=localStorage.getItem(nicknameKey)||$('nickname').value;
@@ -314,7 +381,25 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeZscore()});
 
 // オフライン版と同じユーザー提供BGM。ブラウザの自動再生制限に対応。
 const onlineBgm=new Audio('/zamajan-bgm.mp3');
-onlineBgm.loop=true;onlineBgm.volume=0.34;onlineBgm.preload='auto';
+onlineBgm.loop=true;onlineBgm.preload='auto';
+const onlineBgmVolumeKey='zamajan-bgm-volume-v1';
+function onlineSavedVolume(){try{const v=localStorage.getItem(onlineBgmVolumeKey);return v===null?70:Math.max(0,Math.min(100,Number(v)||0))}catch{return 70}}
+const onlineBgmVolume=document.getElementById('onlineBgmVolume');
+const onlineVolumeValue=document.getElementById('onlineBgmVolumeValue');
+const onlineTitleBgmVolume=document.getElementById('titleBgmVolume');
+const onlineTitleVolumeValue=document.getElementById('titleBgmVolumeValue');
+function applyOnlineBgmVolume(value){
+ const v=Math.max(0,Math.min(100,Number(value)||0));
+ onlineBgm.volume=v/100;
+ if(onlineBgmVolume)onlineBgmVolume.value=String(v);
+ if(onlineVolumeValue)onlineVolumeValue.textContent=v+'%';
+ if(onlineTitleBgmVolume)onlineTitleBgmVolume.value=String(v);
+ if(onlineTitleVolumeValue)onlineTitleVolumeValue.textContent=v+'%';
+ try{localStorage.setItem(onlineBgmVolumeKey,String(v))}catch{}
+}
+applyOnlineBgmVolume(onlineSavedVolume());
+onlineBgmVolume?.addEventListener('input',e=>applyOnlineBgmVolume(e.target.value));
+onlineTitleBgmVolume?.addEventListener('input',e=>applyOnlineBgmVolume(e.target.value));
 let onlineBgmEnabled=true;
 const bgmToggle=document.getElementById('bgmToggle');
 function updateOnlineBgmButton(){bgmToggle.textContent=onlineBgm.paused?'♪ BGMを再生':'♫ BGMを停止'}
