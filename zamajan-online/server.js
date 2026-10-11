@@ -28,22 +28,43 @@ function patternWin(r,hand,pattern){
  for(const id of pattern)if(id!==wild)need.set(id,(need.get(id)||0)+1);
  const wildInHand=wild?hand.filter(id=>id===wild).length:0;
  if(pattern.length<=9){
-  let missing=0;for(const [id,n] of need)missing+=Math.max(0,n-(have.get(id)||0));
-  const explicit=pattern.filter(id=>id===wild).length;
+  // 1〜9枚指定：登録した牌の枚数は「最低枚数」ではなく「ちょうどその枚数」。
+  // 例：ねこ×1 を指定した役は、ねこ×2 の手牌では成立しない。
+  // 特別牌は足りない枚数の代わりになるが、実際の牌が余分にある場合は補えない。
+  for(const [id,n] of need)if((have.get(id)||0)>n)return false;
+  let missing=0;for(const [id,n] of need)missing+=n-(have.get(id)||0);
+  const explicit=wild?pattern.filter(id=>id===wild).length:0;
+  // 特別牌自身を登録した場合も、登録数を超えていれば不一致。
+  if(explicit>0&&wildInHand>explicit+missing)return false;
   return explicit<=wildInHand&&missing<=wildInHand-explicit;
  }
- // 10–21牌: the nine winning tiles must fit inside the registered tile pool.
- let unmatched=0;for(const [id,n] of have)unmatched+=Math.max(0,n-(need.get(id)||0));
- const spare=[...need].reduce((a,[id,n])=>a+Math.max(0,n-(have.get(id)||0)),0);
- const wildcardSlots=pattern.filter(id=>id===wild).length;
- return unmatched<=wildcardSlots&&wildInHand<=spare+wildcardSlots-unmatched;
+ // 10〜21枚登録：候補の中から9種類を各1枚ずつ集める「バラ牌9種類」の役。
+ // 例えば21種類登録なら、候補の異なる8種類でテンパイ、異なる9種類であがり。
+ // 同じ牌2枚を異なる2種類として数えてはいけない。
+ const allowed=new Set(pattern);
+ if(allowed.size<9)return false;
+ if([...have].some(([id,count])=>count!==1||!allowed.has(id)))return false;
+ // 特別牌は、まだ手元にない登録牌の1種類として使える。
+ return allowed.size>=have.size+wildInHand;
 }
 function tripleWin(r,hand){
  const wild=wildId(r),counts=Array(r.config.tiles.length+1).fill(0);hand.forEach(n=>counts[n]++);
  let missing=0;for(let i=1;i<counts.length;i++){if(i===wild)continue;missing+=(3-counts[i]%3)%3}
  const available=wild?counts[wild]:0;return missing<=available&&(available-missing)%3===0;
 }
-function win(room,hand){if(hand.length!==9)return null;const matches=[];if(tripleWin(room,hand))matches.push({name:'三組そろえ',points:1000});for(const y of room.config.yaku)if(patternWin(room,hand,y.pattern))matches.push(y);return matches.sort((a,b)=>b.points-a.points)[0]||null}
+function win(room,hand){
+ if(!Array.isArray(hand)||hand.length!==9)return null;
+ const threeGroups=tripleWin(room,hand);
+ const matches=[];
+ if(threeGroups)matches.push({name:'三組そろえ',points:1000});
+ for(const y of room.config.yaku){
+  if(!Array.isArray(y.pattern)||y.pattern.length<1||y.pattern.length>21)continue;
+  // 1-8 tiles specify an additional role condition; do not let partial hands win.
+  if(y.pattern.length<9&&!threeGroups)continue;
+  if(patternWin(room,hand,y.pattern))matches.push(y);
+ }
+ return matches.sort((a,b)=>b.points-a.points)[0]||null;
+}
 // Result layout: form three actual groups of three, preserving the wildcard tile.
 function resultGroups(r,hand,yaku){
  const wild=wildId(r), counts=new Map();for(const id of hand)if(id!==wild)counts.set(id,(counts.get(id)||0)+1);
@@ -81,9 +102,16 @@ function ownBonus(r,p,hand){
  if(!name||name.length<2)return false;
  return hand.some(id=>String(r.config.tiles[id-1]?.name||'').toLocaleLowerCase().includes(name));
 }
-function tenpai(r,hand){return r.config.tiles.some(t=>t.count>0&&win(r,[...hand,t.id]))}
+function tenpai(r,hand){
+ if(!Array.isArray(hand)||hand.length!==8)return false;
+ return r.config.tiles.some(t=>t.count>hand.filter(id=>id===t.id).length&&win(r,[...hand,t.id]));
+}
 function broadcast(r){for(let i=0;i<4;i++){const p=r.players[i];if(p?.socket){const s=io.sockets.sockets.get(p.socket);if(s)s.emit('state',state(r,i))}}}
-function state(r,seat){return {code:r.code,seat,host:r.host===r.players[seat]?.token,phase:r.phase,round:r.round,maxRounds:r.maxRounds,turn:r.turn,drawn:r.drawn,wallCount:r.wall?.length||0,scores:r.scores,riichi:r.riichi,discards:r.discards,discardHistory:r.discardHistory||[],hand:r.hands?.[seat]||[],handCounts:r.hands?.map(h=>h.length)||[0,0,0,0],players:r.players.map(p=>p?{name:p.name,cpu:!!p.cpu,connected:!!p.socket}:null),result:r.result,config:r.config,logs:r.logs.slice(-12),deadline:r.deadline||0}}
+function state(r,seat){
+ const h=r.hands?.[seat]||[];
+ const readyDiscards=r.phase==='playing'&&r.turn===seat&&r.drawn&&!r.riichi[seat]&&h.length===9
+  ?h.flatMap((_,i)=>tenpai(r,h.filter((__,j)=>i!==j))?[i]:[]):[];
+ return {readyDiscards,code:r.code,seat,host:r.host===r.players[seat]?.token,phase:r.phase,round:r.round,maxRounds:r.maxRounds,turn:r.turn,drawn:r.drawn,wallCount:r.wall?.length||0,scores:r.scores,riichi:r.riichi,discards:r.discards,discardHistory:r.discardHistory||[],hand:r.hands?.[seat]||[],handCounts:r.hands?.map(h=>h.length)||[0,0,0,0],players:r.players.map(p=>p?{name:p.name,cpu:!!p.cpu,connected:!!p.socket}:null),result:r.result,config:r.config,logs:r.logs.slice(-12),deadline:r.deadline||0}}
 function log(r,s){r.logs.push(s);if(r.logs.length>100)r.logs.shift()}
 function schedule(r){
  clearTimeout(r.timer);
@@ -103,7 +131,7 @@ function schedule(r){
 function roundStart(r){clearTimeout(r.timer);const deck=[];for(const t of r.config.tiles)for(let j=0;j<t.count;j++)deck.push(t.id);if(deck.length<33){r.phase='lobby';return '牌が33枚未満です'}shuffle(deck);r.hands=[[],[],[],[]];r.discards=[[],[],[],[]];r.discardHistory=[];r.riichi=[false,false,false,false];r.wall=deck;r.turn=0;r.drawn=false;r.result=null;r.phase='playing';for(let k=0;k<8;k++)for(let i=0;i<4;i++)r.hands[i].push(r.wall.pop());r.hands.forEach(h=>h.sort((a,b)=>a-b));log(r,`第${r.round}局 はじめ！`);schedule(r);broadcast(r);return null}
 function finish(r,result){clearTimeout(r.timer);r.deadline=0;r.phase='result';r.result=result;log(r,result.method==='流局'?'流局':`${result.winnerName}が${result.method}！`);broadcast(r)}
 function draw(r,p){if(r.phase!=='playing'||r.turn!==p||r.drawn)return;if(!r.wall.length){finish(r,{method:'流局'});return}const t=r.wall.pop();r.hands[p].push(t);r.drawn=true;const y=win(r,r.hands[p]);if(y){const bonus=ownBonus(r,p,r.hands[p])?1000:0;const gain=y.points*3+bonus;r.scores[p]+=gain;for(let i=0;i<4;i++)if(i!==p)r.scores[i]-=y.points;finish(r,{method:'ツモ',winner:p,winnerName:r.players[p].name,yaku:y.name,points:gain,basePoints:y.points*3,ownBonus:bonus,hand:r.hands[p].slice(),groups:resultGroups(r,r.hands[p],y)});return}schedule(r);broadcast(r)}
-function discard(r,p,index){if(r.phase!=='playing'||r.turn!==p||!r.drawn||!Number.isInteger(index)||index<0||index>=r.hands[p].length)return;const t=r.hands[p].splice(index,1)[0];r.discards[p].push(t);r.discardHistory.push({seat:p,id:t});r.hands[p].sort((a,b)=>a-b);r.drawn=false;log(r,`${r.players[p].name}が${r.config.tiles[t-1].name}を捨てた`);if(!r.riichi[p]&&r.scores[p]>=1000&&tenpai(r,r.hands[p])){r.riichi[p]=true;log(r,`${r.players[p].name} リーチ！（供託なし）`)}for(let k=1;k<4;k++){const q=(p+k)%4;if(!r.riichi[q])continue;const hand=[...r.hands[q],t],y=win(r,hand);if(y){const bonus=ownBonus(r,q,hand)?1000:0;r.scores[q]+=y.points+bonus;r.scores[p]-=y.points;finish(r,{method:'ロン',winner:q,winnerName:r.players[q].name,loser:p,yaku:y.name,points:y.points+bonus,basePoints:y.points,ownBonus:bonus,hand,groups:resultGroups(r,hand,y)});return}}if(!r.wall.length){finish(r,{method:'流局'});return}r.turn=(p+1)%4;schedule(r);broadcast(r)}
+function discard(r,p,index){if(r.phase!=='playing'||r.turn!==p||!r.drawn||!Number.isInteger(index)||index<0||index>=r.hands[p].length)return;const t=r.hands[p].splice(index,1)[0];r.discards[p].push(t);r.discardHistory.push({seat:p,id:t});r.hands[p].sort((a,b)=>a-b);r.drawn=false;log(r,`${r.players[p].name}が${r.config.tiles[t-1].name}を捨てた`);if(!r.riichi[p]&&tenpai(r,r.hands[p])){r.riichi[p]=true;log(r,`${r.players[p].name} リーチ！（供託なし）`)}for(let k=1;k<4;k++){const q=(p+k)%4;if(!r.riichi[q])continue;const hand=[...r.hands[q],t],y=win(r,hand);if(y){const bonus=ownBonus(r,q,hand)?1000:0;r.scores[q]+=y.points+bonus;r.scores[p]-=y.points;finish(r,{method:'ロン',winner:q,winnerName:r.players[q].name,loser:p,yaku:y.name,points:y.points+bonus,basePoints:y.points,ownBonus:bonus,hand,groups:resultGroups(r,hand,y)});return}}if(!r.wall.length){finish(r,{method:'流局'});return}r.turn=(p+1)%4;schedule(r);broadcast(r)}
 function cpuAct(r){if(r.phase!=='playing')return;const p=r.players[r.turn];if(!p||!p.cpu)return;if(r.drawn){const h=r.hands[r.turn];const counts={};h.forEach(x=>counts[x]=(counts[x]||0)+1);const idx=r.riichi[r.turn]?h.length-1:h.map((x,i)=>({x,i,c:counts[x]})).sort((a,b)=>a.c-b.c)[0].i;discard(r,r.turn,idx)}else draw(r,r.turn)}
 
 function makeCode(){let c;do{c=String(crypto.randomInt(100000,1000000))}while(rooms.has(c));return c}
@@ -114,6 +142,16 @@ io.on('connection',s=>{
  s.on('start',()=>{const r=rooms.get(s.data.room);if(!r||r.host!==s.data.token||r.phase!=='lobby')return;for(let i=0;i<4;i++)if(!r.players[i])r.players[i]={name:`CPU${i+1}`,cpu:true,socket:null,token:null};const err=roundStart(r);if(err)s.emit('errorMessage',err)});
  s.on('draw',()=>{const r=rooms.get(s.data.room);if(r&&r.players[r.turn]?.token===s.data.token&&!r.riichi[r.turn])draw(r,r.turn)});
  s.on('discard',i=>{const r=rooms.get(s.data.room);if(r&&r.players[r.turn]?.token===s.data.token&&!r.riichi[r.turn])discard(r,r.turn,i)});
+ // One-click tile action: if the 0.2-second automatic draw is still pending,
+ // draw first and then discard this selected tile. Server remains authoritative.
+ s.on('playTile',i=>{
+  const r=rooms.get(s.data.room);
+  if(!r||r.phase!=='playing'||r.players[r.turn]?.token!==s.data.token||r.riichi[r.turn])return;
+  if(!Number.isInteger(i)||i<0||i>=r.hands[r.turn].length+(r.drawn?0:1))return;
+  const p=r.turn;
+  if(!r.drawn)draw(r,p);
+  if(r.phase==='playing'&&r.turn===p&&r.drawn&&i<r.hands[p].length)discard(r,p,i);
+ });
  s.on('next',()=>{const r=rooms.get(s.data.room);if(!r||r.phase!=='result'||r.host!==s.data.token)return;if(r.round>=r.maxRounds){r.phase='final';r.result={method:'最終結果'};broadcast(r)}else{r.round++;roundStart(r)}});
  function handoff(r,seat,reason){const p=r.players[seat];if(!p)return;if(r.phase==='lobby'){if(r.host===p.token){clearTimeout(r.timer);rooms.delete(r.code);for(const client of io.sockets.sockets.values())if(client.data.room===r.code){client.data={};client.emit('roomClosed','部屋主が退出したため、部屋を終了しました')}}else{r.players[seat]=null;broadcast(r)}return}
   const wasHost=r.host===p.token;
