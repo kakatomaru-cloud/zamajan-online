@@ -179,7 +179,7 @@ function parsePortableBackup(raw){
   (t.count!=null&&(!Number.isInteger(+t.count)||+t.count<0||+t.count>40))))throw Error('牌の設定に不正なデータがあります');
  if(yaku.some(y=>!y||typeof y.name!=='string'||y.name.length>80||
   !Number.isInteger(y.points)||y.points<1||y.points>100000||
-  !Array.isArray(y.pattern)||y.pattern.length!==9||
+  !Array.isArray(y.pattern)||(y.pattern.length<1||y.pattern.length>9)||
   y.pattern.some(n=>!Number.isInteger(n)||n<1||n>tiles.length)))throw Error('役の設定に不正なデータがあります');
  const safeTiles=tiles.map((t,i)=>({
   id:i+1,name:t.name,emoji:typeof t.emoji==='string'?t.emoji:'🀄',
