@@ -250,7 +250,7 @@ function broadcast(r){for(let i=0;i<4;i++){
  const p=r.players[i];if(!p?.socket)continue;
  const s=io.sockets.sockets.get(p.socket);if(!s)continue;
  const payload=state(r,i);
- if(s.data.lastConfigRoom===r.code&&s.data.lastConfigObject===r.config){delete payload.config}
+ if(s.data.lastConfigRoom===r.code&&s.data.lastConfigObject===r.config&&((s.data.configBroadcastCount=(s.data.configBroadcastCount||0)+1)%120)!==0){delete payload.config}
  else{s.data.lastConfigRoom=r.code;s.data.lastConfigObject=r.config}
  s.emit('state',payload);
 }}
