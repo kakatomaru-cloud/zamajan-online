@@ -175,23 +175,86 @@ function tenpai(r,hand){
  if(!Array.isArray(hand)||hand.length!==8)return false;
  return r.config.tiles.some(t=>t.count>hand.filter(id=>id===t.id).length&&win(r,[...hand,t.id]));
 }
+
+const ZJ_ITEMS=[
+ ['smoke','🌫️ 煙幕',3000,'対象の手牌を次の1ターンだけ伏せて表示'],
+ ['breaker','💥 暗刻クラッシャー',10000,'相手の同じ牌3枚のうち1枚を山と交換'],
+ ['shock','⚡ しびれ攻撃',5000,'対象は次のツモ牌を強制的に捨てる'],
+ ['lock','🔒 牌ロック',3000,'対象の手牌1枚を次の捨て牌までロック'],
+ ['shuffle','🌪️ シャッフル地獄',8000,'対象の手牌2枚を山と交換'],
+ ['glasses','👓 透視メガネ',5000,'相手1人の手牌を3秒間表示'],
+ ['exchange','🔄 運命の交換',5000,'自分の牌1枚を山と交換'],
+ ['double','🎲 ダブルツモ',8000,'次のツモで山の2枚から1枚を選ぶ'],
+ ['wild','⭐ ワイルドチャンス',10000,'山の特別牌と自分の牌1枚を交換'],
+ ['search','🔍 リーチサーチ',3000,'今の手牌の待ち牌・役を表示'],
+ ['reset','♻️ 強制リセット',5000,'自分の牌を最大3枚山と交換'],
+ ['boost','🔥 得点ブースト',10000,'この局の自分のあがり得点1.5倍'],
+ ['revenge','🏆 リベンジボーナス',0,'4位専用。次のあがりで5,000点加算'],
+ ['steal','💰 スコアスティール',3000,'相手から3,000点を獲得'],
+ ['seal','🚫 リーチ封印',5000,'対象の次の手番でリーチ不可'],
+ ['counter','🛡️ カウンター',3000,'次の妨害を1回防ぐ'],
+ ['roulette','🎰 逆転ルーレット',0,'4位専用。0〜10,000点を獲得'],
+ ['allshuffle','🔀 全員シャッフル',8000,'全員から牌1枚を集めて再配布'],
+ ['timer','⏱️ タイムアタック',3000,'対象の次の捨て牌制限を5秒に'],
+ ['last','🃏 最後の切り札',0,'最終局4位専用。山3枚から1枚を選んで交換']
+];
+const ZJ_TARGETED=new Set(['smoke','breaker','shock','lock','shuffle','glasses','steal','seal','timer']);
+const ZJ_FREE=new Set(['revenge','roulette','last']);
+const ZJ_SWAP=new Set(['breaker','shuffle','exchange','reset','wild','last','allshuffle']);
+function zjInitItems(r){r.items={mode:r.itemMode||'both',limit:r.itemLimit||1,used:[0,0,0,0],bags:[[],[],[],[]],effects:[{},{},{},{}]}}
+function zjLast(r){return r.scores.indexOf(Math.min(...r.scores))}
+function zjRoundItems(r){const a=r.items;if(!a)return;a.used=[0,0,0,0];a.bags=[[],[],[],[]];a.effects=[{},{},{},{}];if(r.round>=2&&['both','last'].includes(a.mode)){const pool=ZJ_ITEMS.filter(x=>x[0]!=='last'||r.round===r.maxRounds);const x=pool[crypto.randomInt(pool.length)];a.bags[zjLast(r)].push(x[0]);log(r,'🎁 '+r.players[zjLast(r)].name+'に「'+x[1]+'」を無料配布')}}
+function zjPublicItems(r,seat){const a=r.items;return a?{mode:a.mode,limit:a.limit,used:a.used,bags:a.bags[seat]||[],effects:a.effects[seat]||{},lastSeat:zjLast(r),catalog:ZJ_ITEMS}:null}
+function zjEffect(r,who,id,target,description){const x=ZJ_ITEMS.find(z=>z[0]===id);const payload={id,name:x?.[1]||id,actor:who,actorName:r.players[who].name,target,targetName:target==null?null:r.players[target].name,description,at:Date.now()};log(r,'🎁 '+payload.actorName+'：'+payload.name+(target==null?'':' → '+payload.targetName)+' / '+description);io.to(r.code).emit('itemEffect',payload)}
+function zjSwap(r,p,n){if(r.riichi[p]||r.wall.length<n||r.hands[p].length<n)return false;for(let k=0;k<n;k++){const i=crypto.randomInt(r.hands[p].length),old=r.hands[p][i];r.hands[p][i]=r.wall.pop();r.wall.push(old);shuffle(r.wall)}r.hands[p].sort((a,b)=>a-b);return true}
+function zjAllowed(r,p,id){const a=r.items,x=ZJ_ITEMS.find(z=>z[0]===id);if(!a||!x||a.mode==='off'||r.phase!=='playing'||r.turn!==p||r.pendingDouble||a.used[p]>=a.limit)return false;if(ZJ_FREE.has(id)&&p!==zjLast(r))return false;if(id==='last'&&r.round!==r.maxRounds)return false;if(r.riichi[p]&&ZJ_SWAP.has(id))return false;return a.bags[p].includes(id)||(!ZJ_FREE.has(id)&&['both','paid'].includes(a.mode)&&r.scores[p]>=x[2])}
+function zjUse(r,p,data,s){
+ const id=String(data?.id||''),x=ZJ_ITEMS.find(z=>z[0]===id),target=data?.target;
+ if(!zjAllowed(r,p,id))return s.emit('errorMessage','アイテムの使用条件を満たしていません');
+ if(ZJ_TARGETED.has(id)&&(!Number.isInteger(target)||target===p||target<0||target>3))return s.emit('errorMessage','対象を選んでください');
+ const a=r.items,e=a.effects;let detail=x[3];
+ if(ZJ_TARGETED.has(id)&&['smoke','breaker','shock','lock','shuffle','seal','timer'].includes(id)&&e[target].counter){e[target].counter=false;zjEffect(r,p,'counter',target,'カウンターで攻撃を防いだ！');broadcast(r);return}
+ if(['breaker','shuffle'].includes(id)&&r.riichi[target])return s.emit('errorMessage','リーチ中の相手には交換系を使えません');
+ if(id==='smoke')e[target].smoke=true;
+ if(id==='breaker'){const h=r.hands[target],trip=[...new Set(h)].filter(v=>h.filter(t=>t===v).length>=3);if(!trip.length||!r.wall.length)return s.emit('errorMessage','相手に暗刻がないか山がありません');const v=trip[crypto.randomInt(trip.length)];h[h.indexOf(v)]=r.wall.pop();r.wall.push(v);shuffle(r.wall);h.sort((a,b)=>a-b)}
+ if(id==='shock')e[target].shock=true;
+ if(id==='lock')e[target].lock=r.hands[target][crypto.randomInt(r.hands[target].length)];
+ if(id==='shuffle'&&!zjSwap(r,target,2))return s.emit('errorMessage','交換できません');
+ if(id==='glasses')s.emit('itemPrivate',{title:r.players[target].name+'の手牌',message:r.hands[target].map(v=>r.config.tiles[v-1]?.name||v).join(' / ')});
+ if(id==='exchange'&&!zjSwap(r,p,1))return s.emit('errorMessage','山がありません');
+ if(id==='double')e[p].double=true;
+ if(id==='wild'){const wild=r.config.tiles.find(t=>t.wild)?.id;const idx=r.wall.indexOf(wild);if(idx<0)return s.emit('errorMessage','山に特別牌がありません');const j=crypto.randomInt(r.hands[p].length),old=r.hands[p][j];r.hands[p][j]=r.wall.splice(idx,1)[0];r.wall.push(old);shuffle(r.wall);r.hands[p].sort((a,b)=>a-b)}
+ if(id==='search'){const h=r.hands[p],options=r.config.tiles.filter(t=>t.count>0&&win(r,[...h.slice(0,8),t.id])).slice(0,20);s.emit('itemPrivate',{title:'リーチサーチ',message:options.length?options.map(t=>t.name).join(' / '):'現在は待ち牌の候補がありません'})}
+ if(id==='reset'&&!zjSwap(r,p,Math.min(3,r.wall.length,r.hands[p].length)))return s.emit('errorMessage','交換できません');
+ if(id==='boost')e[p].boost=true;
+ if(id==='revenge')e[p].revenge=true;
+ if(id==='steal'){const v=Math.min(3000,Math.max(0,r.scores[target]));r.scores[target]-=v;r.scores[p]+=v}
+ if(id==='seal')e[target].seal=true;
+ if(id==='counter')e[p].counter=true;
+ if(id==='roulette'){const v=crypto.randomInt(11)*1000;r.scores[p]+=v;detail=v.toLocaleString()+'点を獲得！'}
+ if(id==='allshuffle'){if(r.riichi.some(Boolean))return s.emit('errorMessage','リーチ中のプレイヤーがいるため使えません');const picks=r.hands.map(h=>h.splice(crypto.randomInt(h.length),1)[0]);shuffle(picks);r.hands.forEach((h,i)=>{h.push(picks[i]);h.sort((a,b)=>a-b)})}
+ if(id==='timer')e[target].timer=true;
+ if(id==='last'){if(r.wall.length<1)return s.emit('errorMessage','山がありません');const chosen=Number(data?.choice),discard=Number(data?.discard);if(!Number.isInteger(chosen)||chosen<0||chosen>=Math.min(3,r.wall.length)||!Number.isInteger(discard)||discard<0||discard>=r.hands[p].length)return s.emit('errorMessage','牌をプルダウンで選んでください');const wi=r.wall.length-Math.min(3,r.wall.length)+chosen,old=r.hands[p][discard];r.hands[p][discard]=r.wall.splice(wi,1)[0];r.wall.push(old);shuffle(r.wall);r.hands[p].sort((a,b)=>a-b)}
+ const i=a.bags[p].indexOf(id);if(i>=0)a.bags[p].splice(i,1);else r.scores[p]-=x[2];a.used[p]++;zjEffect(r,p,id,ZJ_TARGETED.has(id)?target:null,detail);broadcast(r);
+}
+
 function broadcast(r){for(let i=0;i<4;i++){const p=r.players[i];if(p?.socket){const s=io.sockets.sockets.get(p.socket);if(s)s.emit('state',state(r,i))}}}
 function state(r,seat){
  const h=r.hands?.[seat]||[];
  const readyDiscards=r.phase==='playing'&&r.turn===seat&&r.drawn&&!r.riichi[seat]&&h.length===9
   ?h.flatMap((_,i)=>tenpai(r,h.filter((__,j)=>i!==j))?[i]:[]):[];
- return {readyDiscards,code:r.code,seat,host:r.host===r.players[seat]?.token,phase:r.phase,round:r.round,maxRounds:r.maxRounds,turn:r.turn,firstDice:r.firstDice||null,startSeat:r.startSeat??0,drawn:r.drawn,wallCount:r.wall?.length||0,scores:r.scores,riichi:r.riichi,discards:r.discards,discardHistory:r.discardHistory||[],hand:r.hands?.[seat]||[],handCounts:r.hands?.map(h=>h.length)||[0,0,0,0],players:r.players.map(p=>p?{name:p.name,cpu:!!p.cpu,connected:!!p.socket}:null),result:r.result,config:r.config,logs:r.logs.slice(-12),deadline:r.deadline||0}}
+ return {readyDiscards,code:r.code,seat,host:r.host===r.players[seat]?.token,phase:r.phase,round:r.round,maxRounds:r.maxRounds,turn:r.turn,firstDice:r.firstDice||null,startSeat:r.startSeat??0,drawn:r.drawn,wallCount:r.wall?.length||0,scores:r.scores,riichi:r.riichi,discards:r.discards,discardHistory:r.discardHistory||[],hand:r.hands?.[seat]||[],handCounts:r.hands?.map(h=>h.length)||[0,0,0,0],players:r.players.map(p=>p?{name:p.name,cpu:!!p.cpu,connected:!!p.socket}:null),result:r.result,config:r.config,logs:r.logs.slice(-12),items:zjPublicItems(r,seat),deadline:r.deadline||0}}
 function log(r,s){r.logs.push(s);if(r.logs.length>100)r.logs.shift()}
 function schedule(r){
  clearTimeout(r.timer);
  if(r.phase!=='playing')return;
  const isCpu=!!r.players[r.turn]?.cpu;
  const isRiichi=!!r.riichi?.[r.turn];
- const delay=isCpu?(r.drawn?400:200):isRiichi?(r.drawn?450:200):(r.drawn?15000:200);
+ const delay=isCpu?(r.drawn?400:200):isRiichi?(r.drawn?450:200):(r.drawn?(r.items?.effects[r.turn]?.timer?5000:15000):200);
  r.deadline=Date.now()+delay;
  const round=r.round,turn=r.turn,drawn=r.drawn;
  r.timer=setTimeout(()=>{
-  if(r.phase!=='playing'||r.round!==round||r.turn!==turn||r.drawn!==drawn)return;
+  if(r.phase!=='playing'||r.round!==round||r.turn!==turn||r.drawn!==drawn||r.pendingDouble)return;
   if(r.players[turn]?.cpu){cpuAct(r);return}
   if(r.drawn)discard(r,turn,r.hands[turn].length-1);
   else draw(r,turn);
@@ -199,7 +262,7 @@ function schedule(r){
 }
 const STREET_FIGHTER_CPU_NAMES=["リュウ", "ケン", "春麗", "ガイル", "ブランカ", "ザンギエフ", "ダルシム", "エドモンド本田", "キャミィ", "ディージェイ", "ジュリ", "ルーク", "ジェイミー", "キンバリー", "マノン", "マリーザ", "リリー", "JP", "ラシード", "A.K.I.", "エド", "豪鬼", "ベガ", "テリー", "舞", "エレナ", "サガット", "C.ヴァイパー"];
 function randomCpuName(taken=[] ){const choices=STREET_FIGHTER_CPU_NAMES.filter(n=>!taken.includes(n));return (choices.length?choices:STREET_FIGHTER_CPU_NAMES)[Math.floor(Math.random()*(choices.length||STREET_FIGHTER_CPU_NAMES.length))]}
-function roundStart(r){clearTimeout(r.timer);const deck=[];for(const t of r.config.tiles)for(let j=0;j<t.count;j++)deck.push(t.id);if(deck.length<33){r.phase='lobby';return '牌が33枚未満です'}shuffle(deck);r.hands=[[],[],[],[]];r.discards=[[],[],[],[]];r.discardHistory=[];r.riichi=[false,false,false,false];r.wall=deck;
+function roundStart(r){clearTimeout(r.timer);const deck=[];for(const t of r.config.tiles)for(let j=0;j<t.count;j++)deck.push(t.id);if(deck.length<33){r.phase='lobby';return '牌が33枚未満です'}shuffle(deck);r.hands=[[],[],[],[]];r.discards=[[],[],[],[]];r.discardHistory=[];r.riichi=[false,false,false,false];r.pendingDouble=null;r.wall=deck;zjRoundItems(r);
 if(r.round===1&&!r.firstDice){
  r.firstDice=crypto.randomInt(1,7);
  r.startSeat=(r.firstDice-1)%4;
@@ -207,23 +270,27 @@ if(r.round===1&&!r.firstDice){
 if(r.round>1)r.startSeat=((r.startSeat??0)+1)%4;
 r.turn=r.startSeat??0;r.drawn=false;r.result=null;r.phase='playing';for(let k=0;k<8;k++)for(let i=0;i<4;i++)r.hands[i].push(r.wall.pop());r.hands.forEach(h=>h.sort((a,b)=>a-b));log(r,r.round===1?`🎲 サイコロ ${r.firstDice}！部屋主から右回りで${r.firstDice}人目：${r.players[r.startSeat].name}がスタート！`:`第${r.round}局 はじめ！`);schedule(r);broadcast(r);return null}
 function finish(r,result){clearTimeout(r.timer);r.deadline=0;r.phase='result';r.result=result;log(r,result.method==='流局'?'流局':result.method==='ロン'?`${result.winnerName}が${result.loserName||r.players[result.loser]?.name||'相手'}からロン！`:`${result.winnerName}が${result.method}！`);broadcast(r)}
-function draw(r,p){if(r.phase!=='playing'||r.turn!==p||r.drawn)return;if(!r.wall.length){finish(r,{method:'流局'});return}const t=r.wall.pop();r.hands[p].push(t);r.drawn=true;const y=win(r,r.hands[p]);if(y){const bonus=ownBonus(r,p,r.hands[p])?1000:0;const gain=y.points*3+bonus;r.scores[p]+=gain;for(let i=0;i<4;i++)if(i!==p)r.scores[i]-=y.points;finish(r,{method:'ツモ',winner:p,winnerName:r.players[p].name,yaku:y.name,points:gain,basePoints:y.points*3,ownBonus:bonus,hand:r.hands[p].slice(),groups:resultGroups(r,r.hands[p],y)});return}schedule(r);broadcast(r)}
-function discard(r,p,index){if(r.phase!=='playing'||r.turn!==p||!r.drawn||!Number.isInteger(index)||index<0||index>=r.hands[p].length)return;const t=r.hands[p].splice(index,1)[0];r.discards[p].push(t);r.discardHistory.push({seat:p,id:t});r.hands[p].sort((a,b)=>a-b);r.drawn=false;log(r,`${r.players[p].name}が${r.config.tiles[t-1].name}を捨てた`);if(!r.riichi[p]&&tenpai(r,r.hands[p])){r.riichi[p]=true;r.discardHistory[r.discardHistory.length-1].riichi=true;log(r,`${r.players[p].name} リーチ！（供託なし・宣言牌：${r.config.tiles[t-1].name}）`)}for(let k=1;k<4;k++){const q=(p+k)%4;if(!r.riichi[q])continue;const hand=[...r.hands[q],t],y=win(r,hand);if(y){const bonus=ownBonus(r,q,hand)?1000:0;r.scores[q]+=y.points+bonus;r.scores[p]-=y.points;finish(r,{method:'ロン',winner:q,winnerName:r.players[q].name,loser:p,loserName:r.players[p].name,yaku:y.name,points:y.points+bonus,basePoints:y.points,ownBonus:bonus,hand,groups:resultGroups(r,hand,y)});return}}if(!r.wall.length){finish(r,{method:'流局'});return}r.turn=(p+1)%4;schedule(r);broadcast(r)}
-function cpuAct(r){if(r.phase!=='playing')return;const p=r.players[r.turn];if(!p||!p.cpu)return;if(r.drawn){const h=r.hands[r.turn];const counts={};h.forEach(x=>counts[x]=(counts[x]||0)+1);const idx=r.riichi[r.turn]?h.length-1:h.map((x,i)=>({x,i,c:counts[x]})).sort((a,b)=>a.c-b.c)[0].i;discard(r,r.turn,idx)}else draw(r,r.turn)}
+function zjFinishDraw(r,p,t){r.hands[p].push(t);r.drawn=true;const y=win(r,r.hands[p]);if(y){const e=r.items?.effects[p]||{},base=Math.round(y.points*(e.boost?1.5:1)),extra=e.revenge?5000:0,bonus=ownBonus(r,p,r.hands[p])?1000:0,gain=base*3+extra+bonus;r.scores[p]+=gain;for(let i=0;i<4;i++)if(i!==p)r.scores[i]-=base;finish(r,{method:'ツモ',winner:p,winnerName:r.players[p].name,yaku:y.name,points:gain,basePoints:base*3,ownBonus:bonus,hand:r.hands[p].slice(),groups:resultGroups(r,r.hands[p],y)});return}schedule(r);broadcast(r)}
+function draw(r,p){if(r.phase!=='playing'||r.turn!==p||r.drawn||r.pendingDouble)return;if(!r.wall.length){finish(r,{method:'流局'});return}const e=r.items?.effects[p];if(e?.double&&r.wall.length>=2&&!r.players[p].cpu){const tiles=[r.wall.pop(),r.wall.pop()];e.double=false;clearTimeout(r.timer);r.pendingDouble={seat:p,tiles};const s=io.sockets.sockets.get(r.players[p].socket);if(s)s.emit('itemDrawOptions',tiles.map((v,i)=>({index:i,name:r.config.tiles[v-1]?.name||String(v)})));r.pendingDouble.timer=setTimeout(()=>{if(r.pendingDouble?.seat===p){r.pendingDouble=null;r.wall.push(tiles[1]);shuffle(r.wall);zjFinishDraw(r,p,tiles[0])}},15000);broadcast(r);return}if(e)e.double=false;zjFinishDraw(r,p,r.wall.pop())}
+function discard(r,p,index){if(r.phase!=='playing'||r.turn!==p||!r.drawn||!Number.isInteger(index)||index<0||index>=r.hands[p].length)return;const e=r.items?.effects[p];if(e?.lock&&r.hands[p][index]===e.lock&&!r.players[p].cpu)return;if(e?.shock&&index!==r.hands[p].length-1&&!r.players[p].cpu)return;const t=r.hands[p].splice(index,1)[0];const sealed=!!e?.seal;if(e){e.lock=null;e.shock=false;e.smoke=false;e.seal=false;e.timer=false}r.discards[p].push(t);r.discardHistory.push({seat:p,id:t});r.hands[p].sort((a,b)=>a-b);r.drawn=false;log(r,`${r.players[p].name}が${r.config.tiles[t-1].name}を捨てた`);if(!r.riichi[p]&&!sealed&&tenpai(r,r.hands[p])){r.riichi[p]=true;r.discardHistory[r.discardHistory.length-1].riichi=true;log(r,`${r.players[p].name} リーチ！（供託なし・宣言牌：${r.config.tiles[t-1].name}）`)}for(let k=1;k<4;k++){const q=(p+k)%4;if(!r.riichi[q])continue;const hand=[...r.hands[q],t],y=win(r,hand);if(y){const bonus=ownBonus(r,q,hand)?1000:0;const ef=r.items?.effects[q]||{},base=Math.round(y.points*(ef.boost?1.5:1)),extra=ef.revenge?5000:0;r.scores[q]+=base+bonus+extra;r.scores[p]-=base;finish(r,{method:'ロン',winner:q,winnerName:r.players[q].name,loser:p,loserName:r.players[p].name,yaku:y.name,points:base+bonus+extra,basePoints:base,ownBonus:bonus,hand,groups:resultGroups(r,hand,y)});return}}if(!r.wall.length){finish(r,{method:'流局'});return}r.turn=(p+1)%4;schedule(r);broadcast(r)}
+function cpuAct(r){if(r.phase!=='playing')return;const p=r.players[r.turn];if(!p||!p.cpu)return;if(r.drawn){const h=r.hands[r.turn];const counts={};h.forEach(x=>counts[x]=(counts[x]||0)+1);const idx=r.items?.effects[r.turn]?.shock?h.length-1:r.riichi[r.turn]?h.length-1:h.map((x,i)=>({x,i,c:counts[x]})).sort((a,b)=>a.c-b.c)[0].i;discard(r,r.turn,idx)}else draw(r,r.turn)}
 
 function makeCode(){let c;do{c=String(crypto.randomInt(100000,1000000))}while(rooms.has(c));return c}
-function join(s,r,name,token){let seat=r.players.findIndex(p=>p&&p.token===token);if(seat<0){if(r.phase!=='lobby')return s.emit('errorMessage','対戦開始後は新規参加できません');seat=r.players.findIndex(p=>!p);if(seat<0)return s.emit('errorMessage','満員です');token=crypto.randomUUID();r.players[seat]={name:safe(name)||`プレイヤー${seat+1}`,token,socket:s.id,cpu:false}}else{r.players[seat].socket=s.id;r.players[seat].cpu=false} s.data.room=r.code;s.data.seat=seat;s.data.token=token;s.emit('joined',{code:r.code,seat,token});broadcast(r)}
+function join(s,r,name,token){let seat=r.players.findIndex(p=>p&&p.token===token);if(seat<0){if(r.phase!=='lobby')return s.emit('errorMessage','対戦開始後は新規参加できません');seat=r.players.findIndex(p=>!p);if(seat<0)return s.emit('errorMessage','満員です');token=crypto.randomUUID();r.players[seat]={name:safe(name)||`プレイヤー${seat+1}`,token,socket:s.id,cpu:false}}else{r.players[seat].socket=s.id;r.players[seat].cpu=false} s.join(r.code);s.data.room=r.code;s.data.seat=seat;s.data.token=token;s.emit('joined',{code:r.code,seat,token});broadcast(r)}
 io.on('connection',s=>{
- s.on('create',({name,config,maxRounds}={})=>{const code=makeCode(),token=crypto.randomUUID();const r={code,host:token,players:[{name:safe(name)||'あなた',token,socket:s.id,cpu:false},null,null,null],config:configFrom(sharedConfig||config),maxRounds:[1,2,4,8,12,16,20].includes(+maxRounds)?+maxRounds:4,phase:'lobby',round:1,scores:[10000,10000,10000,10000],hands:null,discards:[[],[],[],[]],discardHistory:[],riichi:[false,false,false,false],logs:[],deadline:0};rooms.set(code,r);s.data={room:code,seat:0,token};s.emit('joined',{code,seat:0,token});broadcast(r)});
+ s.on('create',({name,config,maxRounds,itemMode,itemLimit}={})=>{const code=makeCode(),token=crypto.randomUUID();const r={code,host:token,players:[{name:safe(name)||'あなた',token,socket:s.id,cpu:false},null,null,null],config:configFrom(sharedConfig||config),maxRounds:[1,2,4,8,12,16,20].includes(+maxRounds)?+maxRounds:4,phase:'lobby',itemMode:['both','last','paid','off'].includes(itemMode)?itemMode:'both',itemLimit:[1,2,3].includes(+itemLimit)?+itemLimit:1,round:1,scores:[10000,10000,10000,10000],hands:null,discards:[[],[],[],[]],discardHistory:[],riichi:[false,false,false,false],logs:[],deadline:0};zjInitItems(r);rooms.set(code,r);s.join(code);s.data={room:code,seat:0,token};s.emit('joined',{code,seat:0,token});broadcast(r)});
  s.on('join',({code,name,token}={})=>{const r=rooms.get(String(code));if(!r)return s.emit('errorMessage','ルームが見つかりません');join(s,r,name,token)});
  s.on('start',()=>{const r=rooms.get(s.data.room);if(!r||r.host!==s.data.token||r.phase!=='lobby')return;for(let i=0;i<4;i++)if(!r.players[i])r.players[i]={name:randomCpuName(r.players.filter(Boolean).map(p=>p.name)),cpu:true,socket:null,token:null};const err=roundStart(r);if(err)s.emit('errorMessage',err)});
+ s.on('itemUse',data=>{const r=rooms.get(s.data.room);const p=s.data.seat;if(!r||!Number.isInteger(p)||r.players[p]?.token!==s.data.token||r.players[p]?.cpu)return;zjUse(r,p,data,s)});
+ s.on('itemOptions',({id}={})=>{const r=rooms.get(s.data.room),p=s.data.seat;if(!r||!zjAllowed(r,p,id))return; if(id==='last')s.emit('itemOptions',{id,wall:r.wall.slice(-3).map((v,i)=>({index:i,name:r.config.tiles[v-1]?.name||String(v)})),hand:r.hands[p].map((v,i)=>({index:i,name:r.config.tiles[v-1]?.name||String(v)}))})});
+ s.on('itemDrawChoice',choice=>{const r=rooms.get(s.data.room),p=s.data.seat;if(!r||r.turn!==p||!r.pendingDouble||r.pendingDouble.seat!==p)return;const d=r.pendingDouble;r.pendingDouble=null;clearTimeout(d.timer);const c=choice===1?1:0;r.wall.push(d.tiles[1-c]);shuffle(r.wall);zjFinishDraw(r,p,d.tiles[c])});
  s.on('draw',()=>{const r=rooms.get(s.data.room);if(r&&r.players[r.turn]?.token===s.data.token&&!r.riichi[r.turn])draw(r,r.turn)});
  s.on('discard',i=>{const r=rooms.get(s.data.room);if(r&&r.players[r.turn]?.token===s.data.token&&!r.riichi[r.turn])discard(r,r.turn,i)});
  // One-click tile action: if the 0.2-second automatic draw is still pending,
  // draw first and then discard this selected tile. Server remains authoritative.
  s.on('playTile',i=>{
   const r=rooms.get(s.data.room);
-  if(!r||r.phase!=='playing'||r.players[r.turn]?.token!==s.data.token||r.riichi[r.turn])return;
+  if(!r||r.phase!=='playing'||r.pendingDouble||r.players[r.turn]?.token!==s.data.token||r.riichi[r.turn])return;
   if(!Number.isInteger(i)||i<0||i>=r.hands[r.turn].length+(r.drawn?0:1))return;
   const p=r.turn;
   if(!r.drawn)draw(r,p);
