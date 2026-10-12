@@ -798,13 +798,7 @@ function zjDockTargetIcon(){
  const badge=document.getElementById('zjTargetTrigger');
  const dock=document.getElementById('zjBoardItemControls');if(dock&&badge&&badge.parentElement!==dock)dock.appendChild(badge);
 }
-function show(s){if(!session)return;
- // Server omits image-heavy configuration on subsequent state messages.
- if(!s.config){if(state?.code===s.code&&state.config)s.config=state.config;
- else if(window.zjConfigCache?.code===s.code&&window.zjConfigCache.config)s.config=window.zjConfigCache.config;
- else{socket.emit('requestState');return}}
- if(s.config?.tiles?.length)window.zjConfigCache={code:s.code,config:s.config};
- zjDockTargetIcon();
+function show(s){if(!session)return;zjDockTargetIcon();
  const old=state;
  if(s.phase==='playing'&&old?.code===s.code&&old?.round===s.round&&Array.isArray(old.riichi)&&Array.isArray(s.riichi)){
   const newly=s.riichi.findIndex((v,i)=>v&&!old.riichi[i]);
@@ -816,13 +810,7 @@ setInterval(tick,200);const nicknameKey='zamajan-online-nickname-v1';
 $('nickname').value=localStorage.getItem(nicknameKey)||$('nickname').value;
 $('nickname').addEventListener('input',()=>localStorage.setItem(nicknameKey,$('nickname').value));
 function rememberNickname(){localStorage.setItem(nicknameKey,$('nickname').value.trim())}
-$('create').onclick=async()=>{try{const cfg=await prepareConfig(importedConfig||await loadSettings());if(cfg){importedConfig=cfg;await saveSettings(cfg)}rememberNickname();socket.emit('create',{name:$('nickname').value,maxRounds:+$('rounds').value,itemMode:$('onlineItemMode').value,itemLimit:+$('onlineItemLimit').value,config:cfg})}catch(e){alert('牌画像の送信準備に失敗しました：'+e.message)}};$('join').onclick=()=>{rememberNickname();socket.emit('join',{code:$('roomCode').value,name:$('nickname').value})};$('start').onclick=()=>socket.emit('start');$('next').onclick=()=>socket.emit('next');$('copy').onclick=()=>navigator.clipboard?.writeText(state.code);function leaveRoom(){if(!confirm('この部屋から退出してタイトルに戻りますか？\n対戦中は手牌・点数をそのままCPUが引き継ぎます。待機中に部屋主が退出すると部屋が終了します。'))return;localStorage.removeItem(key);socket.emit('leave');resetToLobby()}function resetToLobby(){$('globalExit').classList.add('hidden');state=null;window.zjConfigCache=null;session=null;seenRound=0;seenResult='';$('overlay').classList.add('hidden');$('room').classList.add('hidden');$('play').classList.add('hidden');$('lobby').classList.remove('hidden');$('timer').textContent=''}document.querySelectorAll('.leave-room').forEach(b=>b.onclick=leaveRoom);$('globalExit').onclick=leaveRoom;$('home').onclick=leaveRoom;socket.on('joined',x=>{session=x;localStorage.setItem(key,JSON.stringify(x))});let zjRecovering=false;
-socket.on('state',s=>{try{show(s);zjRecovering=false}catch(err){
- console.error('[Zamajan] render error:',err);
- const msg=$('message');if(msg)msg.textContent='画面の更新に失敗しました。再取得しています…';
- const board=$('play');if(board&&session){board.classList.remove('hidden');$('lobby').classList.add('hidden')}
- if(!zjRecovering){zjRecovering=true;socket.emit('requestState');setTimeout(()=>{zjRecovering=false},2000)}
-}});socket.on('roomClosed',message=>{localStorage.removeItem(key);resetToLobby();alert(message||'部屋が終了しました')});socket.on('errorMessage',m=>{if(m==='ルームが見つかりません'){localStorage.removeItem(key);resetToLobby()}alert(m)});socket.on('disconnect',()=>{const m=$('message');if(m&&session)m.textContent='サーバーとの接続が切れました。再接続しています…'});socket.on('connect',()=>{try{const s=JSON.parse(localStorage.getItem(key));if(s?.code&&s?.token)socket.emit('join',{code:s.code,token:s.token,name:$('nickname').value})}catch{}});
+$('create').onclick=async()=>{try{const cfg=await prepareConfig(importedConfig||await loadSettings());if(cfg){importedConfig=cfg;await saveSettings(cfg)}rememberNickname();socket.emit('create',{name:$('nickname').value,maxRounds:+$('rounds').value,itemMode:$('onlineItemMode').value,itemLimit:+$('onlineItemLimit').value,config:cfg})}catch(e){alert('牌画像の送信準備に失敗しました：'+e.message)}};$('join').onclick=()=>{rememberNickname();socket.emit('join',{code:$('roomCode').value,name:$('nickname').value})};$('start').onclick=()=>socket.emit('start');$('next').onclick=()=>socket.emit('next');$('copy').onclick=()=>navigator.clipboard?.writeText(state.code);function leaveRoom(){if(!confirm('この部屋から退出してタイトルに戻りますか？\n対戦中は手牌・点数をそのままCPUが引き継ぎます。待機中に部屋主が退出すると部屋が終了します。'))return;localStorage.removeItem(key);socket.emit('leave');resetToLobby()}function resetToLobby(){$('globalExit').classList.add('hidden');state=null;session=null;seenRound=0;seenResult='';$('overlay').classList.add('hidden');$('room').classList.add('hidden');$('play').classList.add('hidden');$('lobby').classList.remove('hidden');$('timer').textContent=''}document.querySelectorAll('.leave-room').forEach(b=>b.onclick=leaveRoom);$('globalExit').onclick=leaveRoom;$('home').onclick=leaveRoom;socket.on('joined',x=>{session=x;localStorage.setItem(key,JSON.stringify(x))});socket.on('state',show);socket.on('roomClosed',message=>{localStorage.removeItem(key);resetToLobby();alert(message||'部屋が終了しました')});socket.on('errorMessage',m=>{if(m==='ルームが見つかりません'){localStorage.removeItem(key);resetToLobby()}alert(m)});socket.on('connect',()=>{try{const s=JSON.parse(localStorage.getItem(key));if(s?.code&&s?.token)socket.emit('join',{code:s.code,token:s.token,name:$('nickname').value})}catch{}});
 
 
 // 役一覧は常に部屋主の共有設定を優先。タイトル画面では読み込んだ設定を表示。
