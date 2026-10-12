@@ -1,0 +1,13 @@
+ZAMAJAN ONLINE - bandwidth reduction patch (2026-10-12)
+
+UPDATE BOTH FILES on GitHub:
+  zamajan-online/server.js
+  zamajan-online/public/online.html
+
+1. Server sends tile config (including base64 images) only once per connection, instead of every state event.
+2. Client reuses previous config on lightweight state events and requests a fresh copy if needed.
+3. Static images/audio/video use 30-day browser cache. HTML is revalidated.
+4. No changes to scoring, item behavior, or mobile layout.
+
+Note: Render bandwidth is NOT capped by this patch; inspect Billing usage after resuming.
+The first connection still transfers full config; future turns should be much smaller.
