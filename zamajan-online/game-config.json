@@ -2,7 +2,7 @@
   "format": "zamajan-config",
   "schemaVersion": 1,
   "app": "zamajan",
-  "updatedAt": "2026-10-12T13:22:52.913Z",
+  "updatedAt": "2026-10-12T13:23:57.517Z",
   "tiles": [
     {
       "id": 1,
@@ -602,7 +602,7 @@
     },
     {
       "name": "長老",
-      "points": 4000,
+      "points": 10000,
       "pattern": [
         21,
         21,
