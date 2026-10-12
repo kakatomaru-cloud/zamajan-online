@@ -1,13 +1,7 @@
 'use strict';
 const express=require('express'),http=require('http'),{Server}=require('socket.io'),crypto=require('crypto');
 const app=express(),server=http.createServer(app),io=new Server(server,{maxHttpBufferSize:24e6});
-// Cache large static assets on each device; HTML remains revalidated on deploy.
-app.use(express.static('public',{
-  setHeaders(res,path){
-    if(/\.(?:png|jpe?g|webp|gif|mp3|mp4|ogg|wav|svg)$/i.test(path))res.setHeader('Cache-Control','public, max-age=2592000');
-    else res.setHeader('Cache-Control','no-cache');
-  }
-}));app.get('/',(req,res)=>res.redirect('/online.html'));
+app.use(express.static('public'));app.get('/',(req,res)=>res.redirect('/online.html'));
 // GitHub 共通設定。トークンと管理者パスワードはサーバー環境変数のみで管理。
 const GH_OWNER=process.env.GITHUB_OWNER||'kakatomaru-cloud';
 const GH_REPO=process.env.GITHUB_REPO||'zamajan-online';
@@ -244,16 +238,7 @@ function zjUse(r,p,data,s){
  const i=a.bags[p].indexOf(id);if(i>=0)a.bags[p].splice(i,1);else r.scores[p]-=x[2];a.used[p]++;zjEffect(r,p,id,ZJ_TARGETED.has(id)?target:null,detail);broadcast(r);
 }
 
-// Tile configuration can contain megabytes of base64 images. Send it once per
-// connection/room/configuration, never on every discard, draw or timer update.
-function broadcast(r){for(let i=0;i<4;i++){
- const p=r.players[i];if(!p?.socket)continue;
- const s=io.sockets.sockets.get(p.socket);if(!s)continue;
- const payload=state(r,i);
- if(s.data.lastConfigRoom===r.code&&s.data.lastConfigObject===r.config&&((s.data.configBroadcastCount=(s.data.configBroadcastCount||0)+1)%120)!==0){delete payload.config}
- else{s.data.lastConfigRoom=r.code;s.data.lastConfigObject=r.config}
- s.emit('state',payload);
-}}
+function broadcast(r){for(let i=0;i<4;i++){const p=r.players[i];if(p?.socket){const s=io.sockets.sockets.get(p.socket);if(s)s.emit('state',state(r,i))}}}
 function state(r,seat){
  const h=r.hands?.[seat]||[];
  const readyDiscards=r.phase==='playing'&&r.turn===seat&&r.drawn&&!r.riichi[seat]&&h.length===9
@@ -291,13 +276,12 @@ function discard(r,p,index){if(r.phase!=='playing'||r.turn!==p||!r.drawn||!Numbe
 function cpuAct(r){if(r.phase!=='playing')return;const p=r.players[r.turn];if(!p||!p.cpu)return;if(r.drawn){const h=r.hands[r.turn];const counts={};h.forEach(x=>counts[x]=(counts[x]||0)+1);const idx=r.items?.effects[r.turn]?.shock?h.length-1:r.riichi[r.turn]?h.length-1:h.map((x,i)=>({x,i,c:counts[x]})).sort((a,b)=>a.c-b.c)[0].i;discard(r,r.turn,idx)}else draw(r,r.turn)}
 
 function makeCode(){let c;do{c=String(crypto.randomInt(100000,1000000))}while(rooms.has(c));return c}
-function join(s,r,name,token){let seat=r.players.findIndex(p=>p&&p.token===token);if(seat<0){if(r.phase!=='lobby')return s.emit('errorMessage','対戦開始後は新規参加できません');seat=r.players.findIndex(p=>!p);if(seat<0)return s.emit('errorMessage','満員です');token=crypto.randomUUID();r.players[seat]={name:safe(name)||`プレイヤー${seat+1}`,token,socket:s.id,cpu:false}}else{r.players[seat].socket=s.id;r.players[seat].cpu=false} s.data.lastConfigRoom=null;s.data.lastConfigObject=null;s.join(r.code);s.data.room=r.code;s.data.seat=seat;s.data.token=token;s.emit('joined',{code:r.code,seat,token});broadcast(r)}
+function join(s,r,name,token){let seat=r.players.findIndex(p=>p&&p.token===token);if(seat<0){if(r.phase!=='lobby')return s.emit('errorMessage','対戦開始後は新規参加できません');seat=r.players.findIndex(p=>!p);if(seat<0)return s.emit('errorMessage','満員です');token=crypto.randomUUID();r.players[seat]={name:safe(name)||`プレイヤー${seat+1}`,token,socket:s.id,cpu:false}}else{r.players[seat].socket=s.id;r.players[seat].cpu=false} s.join(r.code);s.data.room=r.code;s.data.seat=seat;s.data.token=token;s.emit('joined',{code:r.code,seat,token});broadcast(r)}
 io.on('connection',s=>{
  s.on('create',({name,config,maxRounds,itemMode,itemLimit}={})=>{const code=makeCode(),token=crypto.randomUUID();const r={code,host:token,players:[{name:safe(name)||'あなた',token,socket:s.id,cpu:false},null,null,null],config:configFrom(sharedConfig||config),maxRounds:[1,2,4,8,12,16,20].includes(+maxRounds)?+maxRounds:4,phase:'lobby',itemMode:['both','last','paid','off'].includes(itemMode)?itemMode:'both',itemLimit:[1,2,3].includes(+itemLimit)?+itemLimit:1,round:1,scores:[10000,10000,10000,10000],hands:null,discards:[[],[],[],[]],discardHistory:[],riichi:[false,false,false,false],logs:[],deadline:0};zjInitItems(r);rooms.set(code,r);s.join(code);s.data={room:code,seat:0,token};s.emit('joined',{code,seat:0,token});broadcast(r)});
  s.on('join',({code,name,token}={})=>{const r=rooms.get(String(code));if(!r)return s.emit('errorMessage','ルームが見つかりません');join(s,r,name,token)});
  s.on('start',()=>{const r=rooms.get(s.data.room);if(!r||r.host!==s.data.token||r.phase!=='lobby')return;for(let i=0;i<4;i++)if(!r.players[i])r.players[i]={name:randomCpuName(r.players.filter(Boolean).map(p=>p.name)),cpu:true,socket:null,token:null};const err=roundStart(r);if(err)s.emit('errorMessage',err)});
  s.on('itemUse',data=>{const r=rooms.get(s.data.room);const p=s.data.seat;if(!r||!Number.isInteger(p)||r.players[p]?.token!==s.data.token||r.players[p]?.cpu)return;zjUse(r,p,data,s)});
- s.on('requestState',()=>{const r=rooms.get(s.data.room),p=s.data.seat;if(!r||!Number.isInteger(p)||r.players[p]?.socket!==s.id)return;s.data.lastConfigRoom=null;s.data.lastConfigObject=null;broadcast(r)});
  s.on('itemOptions',({id}={})=>{const r=rooms.get(s.data.room),p=s.data.seat;if(!r||!zjAllowed(r,p,id))return; if(id==='last')s.emit('itemOptions',{id,wall:r.wall.slice(-3).map((v,i)=>({index:i,name:r.config.tiles[v-1]?.name||String(v)})),hand:r.hands[p].map((v,i)=>({index:i,name:r.config.tiles[v-1]?.name||String(v)}))})});
  s.on('itemDrawChoice',choice=>{const r=rooms.get(s.data.room),p=s.data.seat;if(!r||r.turn!==p||!r.pendingDouble||r.pendingDouble.seat!==p)return;const d=r.pendingDouble;r.pendingDouble=null;clearTimeout(d.timer);const c=choice===1?1:0;r.wall.push(d.tiles[1-c]);shuffle(r.wall);zjFinishDraw(r,p,d.tiles[c])});
  s.on('draw',()=>{const r=rooms.get(s.data.room);if(r&&r.players[r.turn]?.token===s.data.token&&!r.riichi[r.turn])draw(r,r.turn)});
