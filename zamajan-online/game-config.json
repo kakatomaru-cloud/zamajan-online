@@ -2,7 +2,7 @@
   "format": "zamajan-config",
   "schemaVersion": 1,
   "app": "zamajan",
-  "updatedAt": "2026-10-13T13:40:19.962Z",
+  "updatedAt": "2026-10-13T13:45:16.402Z",
   "tiles": [
     {
       "id": 1,
@@ -374,7 +374,7 @@
     },
     {
       "name": "菊武ビジネス専門学校",
-      "points": 4000,
+      "points": 2000,
       "pattern": [
         6,
         6,
@@ -954,7 +954,10 @@
         6,
         20,
         20,
-        20
+        20,
+        19,
+        19,
+        19
       ]
     },
     {
