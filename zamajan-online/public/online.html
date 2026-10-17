@@ -567,7 +567,7 @@ window.zjOpenScoreSheet=function(config,context,hero,provided){
 };
 })();
 
-</script><header><h1>ザマじゃん <small>ONLINE</small></h1><div class="row"><button id="globalExit" type="button" class="hidden" style="border:3px solid #ffe099;background:#9c2720;color:white;font-weight:900;box-shadow:0 0 16px #ffae4488">🚪 部屋から退出・タイトルへ</button><button type="button" id="zscoreTop" class="zscore-open">🏆 ザマじゃん得点表</button><a href="zamajan.html" style="color:#e5c78a">オフライン版</a><button id="bgmToggle" type="button" style="position:fixed;right:14px;bottom:14px;z-index:10000;background:#16120b;color:#f6d18c;border:2px solid #bd9153;border-radius:9px;padding:12px 17px;cursor:pointer;font-weight:bold;box-shadow:0 3px 14px #000b" aria-label="BGMの再生・停止">♪ BGMを再生</button><label class="zj-bgm-volume">音量 <input id="onlineBgmVolume" type="range" min="0" max="100" step="1" value="3" aria-label="BGMの音量"><span id="onlineBgmVolumeValue">3%</span></label></div></header><main><section class="panel" id="lobby"><h2>インターネット対戦</h2><div class="zj-title-bgm" role="group" aria-label="タイトル画面のBGM音量設定"><label for="titleBgmVolume">♪ BGM 音量</label><input id="titleBgmVolume" type="range" min="0" max="100" step="1" value="3" aria-label="タイトル画面のBGM音量"><output id="titleBgmVolumeValue" for="titleBgmVolume">3%</output></div><p>友達と同じ6桁のルーム番号で参加できます。部屋を作る人の牌設定・役設定を使用します。</p><div class="row"><label>名前 <input id="nickname" maxlength="20" value="あなた"></label><label>対戦局数 <select id="rounds"><option>1</option><option>2</option><option selected>4</option><option>8</option><option>12</option><option>16</option><option>20</option></select></label></div><div class="row" style="margin-top:12px"><label>🎁 アイテム配布・購入条件 <select id="onlineItemMode"><option value="both" selected>4位に好きなアイテム1回無料＋全員購入可能</option><option value="last">4位に好きなアイテム1回無料のみ</option><option value="paid">全員購入可能のみ</option><option value="off">アイテムなし</option></select></label><label>1局の使用上限 <select id="onlineItemLimit"><option value="1" selected>1回</option><option value="2">2回</option><option value="3">3回</option></select></label></div><div class="row zj-theme-choice"><label for="onlineTableTheme">🀄 対戦卓の壁紙（初期値：ランダム） <select id="onlineTableTheme"><option value="random" selected>🎲 ランダム（部屋を作るたびに抽選）</option><option value="1">🐉 漆黒・金龍</option><option value="2">🌿 深緑・金彩雲波</option><option value="3">🌊 藍色・月夜の波</option><option value="4">🔥 紅蓮・鳳凰</option><option value="5">⚫ 漆黒・金彩和柄</option><option value="6">🌊 北斎風・金彩富士と怒涛</option><option value="7">🌙 北斎風・月下の荒波</option></select></label><span style="color:#dbc79d;font-size:12px">全参加者に同じ卓背景を表示し、局が変わっても維持します。</span></div><div class="row" style="margin-top:15px"><button id="create">部屋を作る</button><input id="roomCode" inputmode="numeric" maxlength="6" placeholder="6桁のルーム番号"><button id="join">部屋に参加</button></div><div class="panel" style="margin:16px 0 0;max-width:850px;background:#090807d9"><b>以前のザマじゃんの牌画像・役設定を反映</b><p class="muted">オフライン版の「設定を書き出す」で保存したJSONファイルを選ぶと、部屋主の牌画像・名前・役をオンライン対戦に適用できます。</p><div class="row" style="margin:10px 0"><button type="button" id="configExport">現在の牌・役設定をバックアップ（JSON保存）</button><button type="button" id="configClear">保存設定を初期化</button></div><label>設定JSONを読み込む <input id="configImport" type="file" accept=".json,application/json"></label><div id="imageNotice">未読み込み：標準の絵文字牌を使用します</div><div class="zj-github-panel"><h3>🔐 GitHub共通設定（管理者専用）</h3><p class="muted">管理者パスワードを入力して保存すると、GitHubの game-config.json を上書きします。新しい部屋から共通設定が使用されます。</p><label>管理者パスワード <input id="zjAdminPassword" type="password" autocomplete="off" placeholder="Renderで設定したパスワード"></label><button id="zjSaveGitHub" type="button">☁ GitHubに共通設定を保存</button><button id="zjLoadGitHub" type="button">↻ GitHub共通設定を再読み込み</button><button id="zjDownloadGitHub" type="button" style="background:linear-gradient(135deg,#1c7a68,#104f50);color:#fff;border-color:#7ad5bb">⬇ GitHubの設定JSONを書き出す</button><p class="muted" style="font-size:13px">別のPCのオフライン版で「設定 → JSONを読み込む」を選ぶと、GitHubに保存した牌画像・役設定を再現できます。現在のブラウザーに保存した設定ではなく、GitHubのファイルを直接取得します。</p><p id="zjGitHubStatus" class="muted" role="status">共通設定を確認しています…</p></div></div><p class="muted">サーバーに公開後、友達にこのページのURLとルーム番号を伝えてください。</p></section><section id="room" class="panel hidden"><div class="row"><h2>ルーム <span id="code" class="copy"></span></h2><button id="copy">番号をコピー</button><button class="leave-room">部屋から退出してタイトルに戻る</button></div><div id="members"></div><p id="roomHelp" class="muted"></p><button id="start" class="hidden">対戦開始（空席はCPU）</button></section><section id="play" class="hidden"><div class="bar"><div class="status" id="message"></div><div class="timer" id="timer"></div><button type="button" id="zscorePlay" class="zscore-open">🏆 得点表を見る</button><button class="leave-room">部屋から退出してタイトルに戻る</button></div><div class="board"><div class="zj-item-controls" id="zjBoardItemControls"><button type="button" class="zj-item-launch" id="zjItemOpen">🎁 アイテム</button><span id="zjItemStatus"></span></div><div class="center-mark">龍</div><div id="players"></div><div id="discards" class="discard-area"></div><div id="hand" class="myhand"></div></div><div class="panel"><span id="guide"></span><div id="logs" class="muted"></div></div></section></main><div id="zjWinCutscene" class="zj-win-cutscene hidden" aria-live="polite"><video id="zjWinVideo" playsinline muted preload="auto"></video><div class="zj-win-cutscene-info" id="zjWinCutsceneInfo"></div></div><div id="zjItemModalRoot"></div><div id="zjItemEffectRoot"></div><div id="overlay" class="overlay hidden"><div class="modal"><div id="outcome"></div><div class="actions"><button id="next" class="hidden">次の局へ</button><button id="home">部屋から退出してタイトルに戻る</button></div></div></div><div id="zscoreMask" class="zscore-mask hidden" role="dialog" aria-modal="true" aria-labelledby="zscoreHeading"><div class="zscore-dialog"><button id="zscoreClose" class="zscore-close" type="button">✕ 閉じる</button><div class="zscore-banner"><h2 id="zscoreHeading">ザマじゃん得点表</h2></div><div class="zscore-body"><p class="zscore-sub" id="zscoreContext"></p><div id="zscoreList"></div></div></div></div><script src="/socket.io/socket.io.js"></script><script>
+</script><header><h1>ザマじゃん <small>ONLINE</small></h1><div class="row"><button id="globalExit" type="button" class="hidden" style="border:3px solid #ffe099;background:#9c2720;color:white;font-weight:900;box-shadow:0 0 16px #ffae4488">🚪 部屋から退出・タイトルへ</button><button type="button" id="zscoreTop" class="zscore-open">🏆 ザマじゃん得点表</button><a href="zamajan.html" style="color:#e5c78a">オフライン版</a><button id="bgmToggle" type="button" style="position:fixed;right:14px;bottom:14px;z-index:10000;background:#16120b;color:#f6d18c;border:2px solid #bd9153;border-radius:9px;padding:12px 17px;cursor:pointer;font-weight:bold;box-shadow:0 3px 14px #000b" aria-label="BGMの再生・停止">♪ BGMを再生</button><label class="zj-bgm-volume">音量 <input id="onlineBgmVolume" type="range" min="0" max="100" step="1" value="3" aria-label="BGMの音量"><span id="onlineBgmVolumeValue">3%</span></label></div></header><main><section class="panel" id="lobby"><h2>インターネット対戦</h2><div class="zj-title-bgm" role="group" aria-label="タイトル画面のBGM音量設定"><label for="titleBgmVolume">♪ BGM 音量</label><input id="titleBgmVolume" type="range" min="0" max="100" step="1" value="3" aria-label="タイトル画面のBGM音量"><output id="titleBgmVolumeValue" for="titleBgmVolume">3%</output></div><p>友達と同じ6桁のルーム番号で参加できます。部屋を作る人の牌設定・役設定を使用します。</p><div class="row"><label>名前 <input id="nickname" maxlength="20" value="あなた"></label><label>対戦局数 <select id="rounds"><option>1</option><option>2</option><option selected>4</option><option>8</option><option>12</option><option>16</option><option>20</option></select></label></div><div class="row" style="margin-top:12px"><label>🎁 アイテム配布・購入条件 <select id="onlineItemMode"><option value="both" selected>4位に好きなアイテム1回無料＋全員購入可能</option><option value="last">4位に好きなアイテム1回無料のみ</option><option value="paid">全員購入可能のみ</option><option value="off">アイテムなし</option></select></label><label>1局の使用上限 <select id="onlineItemLimit"><option value="1" selected>1回</option><option value="2">2回</option><option value="3">3回</option></select></label></div><div class="row zj-theme-choice"><label for="onlineTableTheme">🀄 対戦卓の壁紙（初期値：ランダム） <select id="onlineTableTheme"><option value="random" selected>🎲 ランダム（部屋を作るたびに抽選）</option><option value="1">🐉 漆黒・金龍</option><option value="2">🌿 深緑・金彩雲波</option><option value="3">🌊 藍色・月夜の波</option><option value="4">🔥 紅蓮・鳳凰</option><option value="5">⚫ 漆黒・金彩和柄</option><option value="6">🎨 名画・ヴィーナスの誕生風</option></select></label><span style="color:#dbc79d;font-size:12px">全参加者に同じ卓背景を表示し、局が変わっても維持します。</span></div><div class="row" style="margin-top:15px"><button id="create">部屋を作る</button><input id="roomCode" inputmode="numeric" maxlength="6" placeholder="6桁のルーム番号"><button id="join">部屋に参加</button></div><div class="panel" style="margin:16px 0 0;max-width:850px;background:#090807d9"><b>以前のザマじゃんの牌画像・役設定を反映</b><p class="muted">オフライン版の「設定を書き出す」で保存したJSONファイルを選ぶと、部屋主の牌画像・名前・役をオンライン対戦に適用できます。</p><div class="row" style="margin:10px 0"><button type="button" id="configExport">現在の牌・役設定をバックアップ（JSON保存）</button><button type="button" id="configClear">保存設定を初期化</button></div><label>設定JSONを読み込む <input id="configImport" type="file" accept=".json,application/json"></label><div id="imageNotice">未読み込み：標準の絵文字牌を使用します</div><div class="zj-github-panel"><h3>🔐 GitHub共通設定（管理者専用）</h3><p class="muted">管理者パスワードを入力して保存すると、GitHubの game-config.json を上書きします。新しい部屋から共通設定が使用されます。</p><label>管理者パスワード <input id="zjAdminPassword" type="password" autocomplete="off" placeholder="Renderで設定したパスワード"></label><button id="zjSaveGitHub" type="button">☁ GitHubに共通設定を保存</button><button id="zjLoadGitHub" type="button">↻ GitHub共通設定を再読み込み</button><button id="zjDownloadGitHub" type="button" style="background:linear-gradient(135deg,#1c7a68,#104f50);color:#fff;border-color:#7ad5bb">⬇ GitHubの設定JSONを書き出す</button><p class="muted" style="font-size:13px">別のPCのオフライン版で「設定 → JSONを読み込む」を選ぶと、GitHubに保存した牌画像・役設定を再現できます。現在のブラウザーに保存した設定ではなく、GitHubのファイルを直接取得します。</p><p id="zjGitHubStatus" class="muted" role="status">共通設定を確認しています…</p></div></div><p class="muted">サーバーに公開後、友達にこのページのURLとルーム番号を伝えてください。</p></section><section id="room" class="panel hidden"><div class="row"><h2>ルーム <span id="code" class="copy"></span></h2><button id="copy">番号をコピー</button><button class="leave-room">部屋から退出してタイトルに戻る</button></div><div id="members"></div><p id="roomHelp" class="muted"></p><button id="start" class="hidden">対戦開始（空席はCPU）</button></section><section id="play" class="hidden"><div class="bar"><div class="status" id="message"></div><div class="timer" id="timer"></div><button type="button" id="zscorePlay" class="zscore-open">🏆 得点表を見る</button><button class="leave-room">部屋から退出してタイトルに戻る</button></div><div class="board"><div class="zj-item-controls" id="zjBoardItemControls"><button type="button" class="zj-item-launch" id="zjItemOpen">🎁 アイテム</button><span id="zjItemStatus"></span></div><div class="center-mark">龍</div><div id="players"></div><div id="discards" class="discard-area"></div><div id="hand" class="myhand"></div></div><div class="panel"><span id="guide"></span><div id="logs" class="muted"></div></div></section></main><div id="zjWinCutscene" class="zj-win-cutscene hidden" aria-live="polite"><video id="zjWinVideo" playsinline muted preload="auto"></video><div class="zj-win-cutscene-info" id="zjWinCutsceneInfo"></div></div><div id="zjItemModalRoot"></div><div id="zjItemEffectRoot"></div><div id="overlay" class="overlay hidden"><div class="modal"><div id="outcome"></div><div class="actions"><button id="next" class="hidden">次の局へ</button><button id="home">部屋から退出してタイトルに戻る</button></div></div></div><div id="zscoreMask" class="zscore-mask hidden" role="dialog" aria-modal="true" aria-labelledby="zscoreHeading"><div class="zscore-dialog"><button id="zscoreClose" class="zscore-close" type="button">✕ 閉じる</button><div class="zscore-banner"><h2 id="zscoreHeading">ザマじゃん得点表</h2></div><div class="zscore-body"><p class="zscore-sub" id="zscoreContext"></p><div id="zscoreList"></div></div></div></div><script src="/socket.io/socket.io.js"></script><script>
 'use strict';const $=id=>document.getElementById(id),socket=io(),key='zamajan-online-reconnect',localKey='zamajan-set-v01';let state=null,session=null,seenRound=0,seenResult='',clock=null,importedConfig=null,cinematicResultKey='',cinematicTimer=null;const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));function tile(id,button=false,index=0){const t=state.config.tiles[id-1]||{name:"不明な牌",emoji:"🀄"};const inner=t.image?`<img src="${escape(t.image)}" alt="${escape(t.name)}">`:`<span class="symbol">${t.emoji}</span>`;return button?`<button class="tile" data-idx="${index}">${inner}${t.imageOnly?'':`<small>${escape(t.name)}</small>`}</button>`:`<span class="tile">${inner}${t.imageOnly?'':`<small>${escape(t.name)}</small>`}</span>`}
 function voice(word,male=false){try{const u=new SpeechSynthesisUtterance(word);u.lang='ja-JP';u.rate=male?.72:.92;u.pitch=male?.6:1.35;const vs=speechSynthesis.getVoices().filter(v=>v.lang.startsWith('ja'));const preferred=vs.find(v=>male?/male|ichiro|otoya|takumi/i.test(v.name):/female|nanami|haruka|kyoko/i.test(v.name));if(preferred)u.voice=preferred;speechSynthesis.speak(u)}catch{}}
 // 画像を含む牌設定は IndexedDB に保存。対戦情報とは別管理する。
@@ -764,37 +764,54 @@ function showWinCutscene(s){
  return true;
 }
 
-function zjRoleTargets(hand,cfg){
+function zjRoleTargets(hand,cfg,wallCounts={}){
  const tiles=cfg?.tiles||[],roles=cfg?.yaku||[];
  if(!Array.isArray(hand)||!hand.length)return [];
- const active=new Set(tiles.filter(t=>Number(t.count)>0).map(t=>t.id));
- const wild=tiles.find(t=>t.wild)?.id??(tiles[20]?.id===21?21:0);
- const owned=new Map();for(const id of hand)if(id!==wild)owned.set(id,(owned.get(id)||0)+1);
+ const owned=new Map();for(const id of hand)owned.set(id,(owned.get(id)||0)+1);
+ const wild=tiles.find(t=>t.wild)?.id||0;
+ const natural=id=>(owned.get(id)||0)+(Number(wallCounts?.[id])||0);
+ const wildAvailable=wild?natural(wild):0;
  const result=[];
  for(const role of roles){
+  if(!Number.isFinite(Number(role.points))||Number(role.points)<=0)continue;
   const original=Array.isArray(role.pattern)?role.pattern:[];
-  const p=original.filter(id=>active.has(id)&&id!==wild);
-  // A role consisting only of exhausted tiles is not achievable.
-  if(!p.length)continue;
-  if(!p.length)continue;
-  const needs=new Map();for(const id of p)needs.set(id,(needs.get(id)||0)+1);
-  const counts=[...needs.values()];
-  const singles=counts.every(n=>n===1);
-  const triples=counts.every(n=>n===3);
-  let matched=0,groups=0;
+  if(!original.length)continue;
+  const needs=new Map();for(const id of original)if(id!==wild)needs.set(id,(needs.get(id)||0)+1);
+  if(!needs.size)continue;
+  const counts=[...needs.values()],singles=counts.every(n=>n===1),triples=counts.every(n=>n===3);
+  let matched=0,groups=0,canFinish=false;
   if(singles){
-   matched=[...needs.keys()].filter(id=>owned.has(id)).length;
+   matched=[...needs.keys()].filter(id=>(owned.get(id)||0)>0).length;
    if(matched<5)continue;
+   if(original.length<=9){
+    const missing=[...needs].reduce((v,[id,n])=>v+Math.max(0,n-natural(id)),0);
+    canFinish=missing<=wildAvailable;
+   }else{
+    // Candidate-list roles need nine distinct obtainable tile types.
+    const distinct=[...needs.keys()].filter(id=>natural(id)>0).length;
+    canFinish=distinct+wildAvailable>=9;
+   }
   }else if(triples){
    groups=[...needs.keys()].filter(id=>(owned.get(id)||0)>=2).length;
    if(groups<2)continue;
-   matched=[...needs.keys()].reduce((a,id)=>a+Math.min(owned.get(id)||0,3),0);
+   matched=[...needs].reduce((a,[id,n])=>a+Math.min(owned.get(id)||0,n),0);
+   if(original.length>9){
+    const deficits=[...needs.keys()].map(id=>Math.max(0,3-natural(id))).sort((a,b)=>a-b);
+    canFinish=deficits.length>=3&&deficits.slice(0,3).reduce((a,b)=>a+b,0)<=wildAvailable;
+   }else{
+    const deficit=[...needs.keys()].reduce((v,id)=>v+Math.max(0,3-natural(id)),0);
+    canFinish=deficit<=wildAvailable;
+   }
   }else{
-   // Mixed registration: only recommend when at least five required tiles match.
    matched=[...needs].reduce((a,[id,n])=>a+Math.min(owned.get(id)||0,n),0);
    if(matched<5)continue;
+   const deficit=[...needs].reduce((v,[id,n])=>v+Math.max(0,n-natural(id)),0);
+   canFinish=deficit<=wildAvailable;
   }
-  result.push({...role,zjPattern:p,zjMatched:matched,zjGroups:groups,zjKind:singles?'single':triples?'triple':'mixed'});
+  if(!canFinish)continue;
+  // The original registered pattern remains intact; never manufacture a new role by removing exhausted tiles.
+  const pattern=original.filter(id=>id!==wild);
+  result.push({...role,zjPattern:pattern,zjMatched:matched,zjGroups:groups,zjKind:singles?'single':triples?'triple':'mixed'});
  }
  return result.sort((a,b)=>Number(b.points||0)-Number(a.points||0)||String(a.name).localeCompare(String(b.name),'ja'));
 }
@@ -818,11 +835,11 @@ function zjTargetsPage(cfg,roles,hand){
 }
 function zjShowTargetButton(hand,cfg,visible){
  const btn=document.getElementById('zjTargetTrigger');if(!btn)return;
- btn.classList.toggle('hidden',!visible);
+ btn.classList.toggle('hidden',!visible||!zjRoleTargets(hand,cfg,state?.wallCounts||{}).length);
 }
 function zjOpenTargets(){
  const source=window.zjTargetSource?.();if(!source)return;
- const roles=zjRoleTargets(source.hand,source.cfg);
+ const roles=zjRoleTargets(source.hand,source.cfg,source.wallCounts);
  const page=zjTargetsPage(source.cfg,roles,source.hand);
  if(window.matchMedia('(max-width:700px)').matches){
   let mask=document.getElementById('zjTargetsMobileMask');
@@ -839,7 +856,7 @@ function zjOpenTargets(){
 }
 
 
-window.zjTargetSource=()=>state?{hand:state.hand||[],cfg:state.config}:null;
+window.zjTargetSource=()=>state?{hand:state.hand||[],cfg:state.config,wallCounts:state.wallCounts||{}}:null;
 function zjDockTargetIcon(){
  const board=document.querySelector('#play .board');
  const badge=document.getElementById('zjTargetTrigger');
@@ -847,10 +864,10 @@ function zjDockTargetIcon(){
 }
 function show(s){if(!session)return;zjDockTargetIcon();
  const table=document.querySelector('#play .board');
- if(table){const theme=Math.max(1,Math.min(7,Number(s.tableTheme)||1));
+ if(table){const theme=Math.max(1,Math.min(6,Number(s.tableTheme)||1));
   if(table.dataset.theme!==String(theme)){
    table.dataset.theme=String(theme);
-   table.style.setProperty('--zj-table-art',`url('/assets/tables/zamajan-table-${theme}.jpg')`);
+   table.style.setProperty('--zj-table-art',`url('/assets/tables/zamajan-table-${theme}.${theme===6?'webp':'jpg'}')`);
    table.setAttribute('aria-label',`対戦卓 背景テーマ${theme}`);
   }
  }
@@ -866,7 +883,14 @@ setInterval(tick,200);const nicknameKey='zamajan-online-nickname-v1';
 $('nickname').value=localStorage.getItem(nicknameKey)||$('nickname').value;
 $('nickname').addEventListener('input',()=>localStorage.setItem(nicknameKey,$('nickname').value));
 function rememberNickname(){localStorage.setItem(nicknameKey,$('nickname').value.trim())}
-$('create').onclick=async()=>{try{const cfg=await prepareConfig(importedConfig||await loadSettings());if(cfg){importedConfig=cfg;await saveSettings(cfg)}rememberNickname();socket.emit('create',{name:$('nickname').value,maxRounds:+$('rounds').value,itemMode:$('onlineItemMode').value,itemLimit:+$('onlineItemLimit').value,tableThemeChoice:$('onlineTableTheme').value,config:cfg})}catch(e){alert('牌画像の送信準備に失敗しました：'+e.message)}};$('join').onclick=()=>{rememberNickname();socket.emit('join',{code:$('roomCode').value,name:$('nickname').value})};$('start').onclick=()=>socket.emit('start');$('next').onclick=()=>socket.emit('next');$('copy').onclick=()=>navigator.clipboard?.writeText(state.code);function leaveRoom(){if(!confirm('この部屋から退出してタイトルに戻りますか？\n対戦中は手牌・点数をそのままCPUが引き継ぎます。待機中に部屋主が退出すると部屋が終了します。'))return;localStorage.removeItem(key);socket.emit('leave');resetToLobby()}function resetToLobby(){$('zjItemModalRoot').replaceChildren();$('zjItemEffectRoot').replaceChildren();$('globalExit').classList.add('hidden');state=null;session=null;seenRound=0;seenResult='';$('overlay').classList.add('hidden');$('room').classList.add('hidden');$('play').classList.add('hidden');$('lobby').classList.remove('hidden');$('timer').textContent=''}document.querySelectorAll('.leave-room').forEach(b=>b.onclick=leaveRoom);$('globalExit').onclick=leaveRoom;$('home').onclick=leaveRoom;socket.on('joined',x=>{session=x;localStorage.setItem(key,JSON.stringify(x))});socket.on('state',show);socket.on('roomClosed',message=>{localStorage.removeItem(key);resetToLobby();alert(message||'部屋が終了しました')});socket.on('errorMessage',m=>{if(m==='ルームが見つかりません'){localStorage.removeItem(key);resetToLobby()}alert(m)});socket.on('connect',()=>{try{const s=JSON.parse(localStorage.getItem(key));if(s?.code&&s?.token)socket.emit('join',{code:s.code,token:s.token,name:$('nickname').value})}catch{}});
+const zjRoomCodeSessionKey='zamajan-room-code-session-v1';
+const zjRoomLeaseSessionKey='zamajan-room-lease-session-v1';
+function zjSessionLease(){
+ try{let value=sessionStorage.getItem(zjRoomLeaseSessionKey);if(!value){value=crypto.randomUUID();sessionStorage.setItem(zjRoomLeaseSessionKey,value)}return value}catch{return crypto.randomUUID()}
+}
+function zjSessionCode(){try{return sessionStorage.getItem(zjRoomCodeSessionKey)||''}catch{return ''}}
+function zjSaveSessionCode(code){try{if(/^\d{6}$/.test(String(code)))sessionStorage.setItem(zjRoomCodeSessionKey,String(code))}catch{}}
+$('create').onclick=async()=>{try{const cfg=await prepareConfig(importedConfig||await loadSettings());if(cfg){importedConfig=cfg;await saveSettings(cfg)}rememberNickname();socket.emit('create',{preferredCode:zjSessionCode(),browserLease:zjSessionLease(),name:$('nickname').value,maxRounds:+$('rounds').value,itemMode:$('onlineItemMode').value,itemLimit:+$('onlineItemLimit').value,tableThemeChoice:$('onlineTableTheme').value,config:cfg})}catch(e){alert('牌画像の送信準備に失敗しました：'+e.message)}};$('join').onclick=()=>{rememberNickname();socket.emit('join',{code:$('roomCode').value,name:$('nickname').value})};$('start').onclick=()=>socket.emit('start');$('next').onclick=()=>socket.emit('next');$('copy').onclick=()=>navigator.clipboard?.writeText(state.code);function leaveRoom(){if(!confirm('この部屋から退出してタイトルに戻りますか？\n対戦中は手牌・点数をそのままCPUが引き継ぎます。待機中に部屋主が退出すると部屋が終了します。'))return;localStorage.removeItem(key);socket.emit('leave');resetToLobby()}function resetToLobby(){$('zjItemModalRoot').replaceChildren();$('zjItemEffectRoot').replaceChildren();$('globalExit').classList.add('hidden');state=null;session=null;seenRound=0;seenResult='';$('overlay').classList.add('hidden');$('room').classList.add('hidden');$('play').classList.add('hidden');$('lobby').classList.remove('hidden');$('timer').textContent=''}document.querySelectorAll('.leave-room').forEach(b=>b.onclick=leaveRoom);$('globalExit').onclick=leaveRoom;$('home').onclick=leaveRoom;socket.on('joined',x=>{session=x;if(x.created)zjSaveSessionCode(x.code);localStorage.setItem(key,JSON.stringify(x))});socket.on('state',show);socket.on('roomClosed',message=>{localStorage.removeItem(key);resetToLobby();alert(message||'部屋が終了しました')});socket.on('errorMessage',m=>{if(m==='ルームが見つかりません'){localStorage.removeItem(key);resetToLobby()}alert(m)});socket.on('connect',()=>{try{const s=JSON.parse(localStorage.getItem(key));if(s?.code&&s?.token)socket.emit('join',{code:s.code,token:s.token,name:$('nickname').value})}catch{}});
 
 
 // 役一覧は常に部屋主の共有設定を優先。タイトル画面では読み込んだ設定を表示。
@@ -969,8 +993,6 @@ function zjOnlineStatusHTML(p){const a=state?.items,e=a?.allEffects?.[p]||{},lis
  const add=(label,desc,cls='')=>list.push('<span class="zj-active-effect '+cls+'" title="'+escape(desc)+'">'+escape(label)+'</span>');
  if(e.openall)add('👁️ 全面透視',state.players[p].name+'が他の全員の手牌を公開中');
  if(e.doublepoints)add('🔥 得点倍増',state.players[p].name+'のあがり役得点が2倍');
- if(e.oj)add('🎉 OJ万歳',state.players[p].name+'がOJ加点を秘密装備中','secret');
- if(e.mana2)add('😈 mana2だよ',state.players[p].name+'がmana2減点を秘密装備中','secret');
  const queues=e.freezeQueue||[];
  if(queues.length){for(const q of queues){const who=state.players[q.by]?.name||'不明',item=q.id==='timefreeze'?'時間停止':'金縛り';add('🧊 '+item+' '+q.remaining+'回 ← '+who,'使用者：'+who+'／残り'+q.remaining+'回','freeze')}}
  else if(e.frozen)add('🧊 金縛り '+e.frozen+'回','残り'+e.frozen+'回スキップ','freeze');
