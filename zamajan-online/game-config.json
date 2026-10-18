@@ -2,7 +2,7 @@
   "format": "zamajan-config",
   "schemaVersion": 1,
   "app": "zamajan",
-  "updatedAt": "2026-10-18T00:31:29.230Z",
+  "updatedAt": "2026-10-18T00:34:50.105Z",
   "tiles": [
     {
       "id": 1,
@@ -913,6 +913,24 @@
         22,
         22,
         22
+      ]
+    },
+    {
+      "name": "納豆食えない",
+      "points": 5000,
+      "pattern": [
+        2,
+        2,
+        2,
+        9,
+        9,
+        9,
+        12,
+        12,
+        12,
+        10,
+        10,
+        10
       ]
     }
   ],
