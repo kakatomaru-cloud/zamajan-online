@@ -207,26 +207,26 @@ function tenpai(r,hand){
 
 // ZAMA-JAN CHAOS ITEMS v2 — online, authoritative server implementation.
 const ZJ_ITEMS=[
- ['steal','💰 スコアスティール',6000,'相手から3,000点を自分へ移動する。'],
- ['openall','👁️ 全面透視',5500,'この局の終了まで他の3人の手牌を公開する。'],
- ['riichiswap','🔴 リーチ強奪',6000,'リーチ中の相手と8枚の手牌を交換し、自分がリーチになる。'],
- ['hightriple','🌟 伝説の三牌',6000,'最大3枚を高得点役につながる山の牌と交換する。'],
- ['revolution','🌋 大革命',6000,'全員の手牌を配り直し、全員のリーチを解除する。'],
- ['freeze','🧊 金縛り',5500,'ランダムな相手1人の手番を5回スキップさせる。'],
- ['oj','🎉 OJ万歳',4500,'秘密装備：自分のあがり時にOJ1枚につき5,000点加算。'],
- ['mana2','😈 mana2 だよ',4500,'秘密装備：他人のあがり時にmana2 1枚につき3,000点減点。'],
- ['festival','🎊 ザマン祭',5000,'全員の手牌のmana2とOJがザマンに変わる。'],
- ['scoreflip','🔃 順位大逆転',6000,'自分と1位の得点をすべて交換する。'],
- ['mirror','🌀 手牌大移動',5000,'全員の手牌8枚を右隣へ回しリーチを解除する。'],
- ['jackpot','🎰 山の秘宝',4000,'山の上5枚から欲しい牌と、自分が返す牌を選択して交換。'],
- ['triplefactory','🏭 暗刻製造機',5500,'山に3枚ある同一牌で自分の手牌3枚を交換し暗刻を作る。'],
- ['leaderfall','👑 王者転落',5000,'1位が6,000点失い、他の3人が各2,000点獲得する。'],
- ['riichicancel','🚫 全リーチ崩壊',4500,'全員のリーチを解除する。'],
- ['doublepoints','🔥 得点倍増',5500,'この局で自分があがった際、役の基本点が2倍になる。'],
- ['handraid','🧤 手牌略奪',5000,'相手と手牌3枚ずつをランダム交換する。'],
- ['selfreset','♻️ 生まれ変わり',4000,'自分の手牌を最大5枚交換しリーチを解除する。'],
- ['timefreeze','⏳ 時間停止',6000,'他の3人の次の手番を1回ずつスキップ。'],
- ['wildhunt','🃏 万能牌強奪',5500,'山に残る特別牌と自分の牌1枚を交換する。']
+ ['steal','💰 スコアスティール',8000,'相手から3,000点を自分へ移動する。'],
+ ['openall','👁️ 全面透視',18000,'この局の終了まで他の3人の手牌を公開する。'],
+ ['riichiswap','🔴 リーチ強奪',22000,'リーチ中の相手と8枚の手牌を交換し、自分がリーチになる。'],
+ ['hightriple','🌟 伝説の三牌',24000,'最大3枚を高得点役につながる山の牌と交換する。'],
+ ['revolution','🌋 大革命',30000,'全員の手牌を配り直し、全員のリーチを解除する。'],
+ ['freeze','🧊 金縛り',18000,'ランダムな相手1人の手番を5回スキップさせる。'],
+ ['oj','🎉 OJ万歳',16000,'秘密装備：自分のあがり時にOJ1枚につき5,000点加算。'],
+ ['mana2','😈 mana2 だよ',16000,'秘密装備：他人のあがり時にmana2 1枚につき3,000点減点。'],
+ ['festival','🎊 ザマン祭',22000,'全員の手牌のmana2とOJがザマンに変わる。'],
+ ['scoreflip','🔃 順位大逆転',28000,'自分と1位の得点をすべて交換する。'],
+ ['mirror','🌀 手牌大移動',22000,'全員の手牌8枚を右隣へ回しリーチを解除する。'],
+ ['jackpot','🎰 山の秘宝',18000,'山の上5枚から欲しい牌と、自分が返す牌を選択して交換。'],
+ ['triplefactory','🏭 暗刻製造機',22000,'山に3枚ある同一牌で自分の手牌3枚を交換し暗刻を作る。'],
+ ['leaderfall','👑 王者転落',18000,'1位が6,000点失い、他の3人が各2,000点獲得する。'],
+ ['riichicancel','🚫 全リーチ崩壊',20000,'全員のリーチを解除する。'],
+ ['doublepoints','🔥 得点倍増',22000,'この局で自分があがった際、役の基本点が2倍になる。'],
+ ['handraid','🧤 手牌略奪',20000,'相手と手牌3枚ずつをランダム交換する。'],
+ ['selfreset','♻️ 生まれ変わり',20000,'自分の手牌を最大5枚交換しリーチを解除する。'],
+ ['timefreeze','⏳ 時間停止',26000,'他の3人の次の手番を1回ずつスキップ。'],
+ ['wildhunt','🃏 万能牌強奪',24000,'山に残る特別牌と自分の牌1枚を交換する。']
 ];
 const ZJ_TARGETED=new Set(['steal','riichiswap','handraid']);
 const ZJ_PASSIVE=new Set(['oj','mana2']);
@@ -236,7 +236,7 @@ const zjItemById=id=>ZJ_ITEMS.find(x=>x[0]===id);
 function zjInitItems(r){r.items={version:2,mode:r.itemMode||'both',limit:r.itemLimit||1,used:[0,0,0,0],tickets:[0,0,0,0],bags:[[],[],[],[]],effects:[{},{},{},{}]}}
 function zjBottomSeats(r){const min=Math.min(...r.scores),seats=r.scores.flatMap((v,i)=>v===min?[i]:[]);return seats.length<=2?seats:[]}
 function zjRoundItems(r){const a=r.items;if(!a)return;a.used=[0,0,0,0];a.tickets=[0,0,0,0];a.bags=[[],[],[],[]];a.effects=[{},{},{},{}];if(r.round<2||!['both','last'].includes(a.mode))return;const seats=zjBottomSeats(r);if(!seats.length){log(r,'🎟️ 同率最下位が3人以上のため無料使用権はありません');return}for(const p of seats){a.tickets[p]=1;log(r,'🎟️ '+r.players[p].name+'に好きなアイテムの無料使用権を1回付与！')}}
-function zjPublicEffects(r){return r.items?.effects.map(e=>({openall:!!e.openall,doublepoints:!!e.doublepoints,frozen:e.frozen||0,freezeQueue:Array.isArray(e.freezeQueue)?e.freezeQueue.filter(v=>v.remaining>0).map(v=>({by:v.by,id:v.id,remaining:v.remaining})):[]}))||[{},{},{},{}]}
+function zjPublicEffects(r){return r.items?.effects.map(e=>({openall:!!e.openall,oj:!!e.oj,mana2:!!e.mana2,doublepoints:!!e.doublepoints,frozen:e.frozen||0,freezeQueue:Array.isArray(e.freezeQueue)?e.freezeQueue.filter(v=>v.remaining>0).map(v=>({by:v.by,id:v.id,remaining:v.remaining})):[]}))||[{},{},{},{}]}
 function zjPublicItems(r,seat){const a=r.items;return a?{mode:a.mode,limit:a.limit,used:a.used,tickets:a.tickets,bags:a.bags[seat]||[],effects:a.effects[seat]||{},allEffects:zjPublicEffects(r),catalog:ZJ_ITEMS,version:2}:null}
 function zjEffect(r,who,id,target,description){if(ZJ_PASSIVE.has(id))return;const x=zjItemById(id);const payload={id,name:x?.[1]||id,actor:who,actorName:r.players[who].name,target,targetName:target==null?null:r.players[target].name,description,at:Date.now()};log(r,'🎁 '+payload.actorName+'：'+payload.name+(target==null?'':' → '+payload.targetName)+' / '+description);io.to(r.code).emit('itemEffect',payload)}
 function zjRandomIndices(n,len){return shuffle(Array.from({length:len},(_,i)=>i)).slice(0,n)}
@@ -313,13 +313,12 @@ function zjUse(r,p,data,s){
  broadcast(r);
 }
 
-function zjWallCounts(r){const counts={};for(const id of r.wall||[])counts[id]=(counts[id]||0)+1;return counts}
 function broadcast(r){for(let i=0;i<4;i++){const p=r.players[i];if(p?.socket){const s=io.sockets.sockets.get(p.socket);if(s)s.emit('state',state(r,i))}}}
 function state(r,seat){
  const h=r.hands?.[seat]||[];
  const readyDiscards=r.phase==='playing'&&r.turn===seat&&r.drawn&&!r.riichi[seat]&&h.length===9
   ?h.flatMap((_,i)=>tenpai(r,h.filter((__,j)=>i!==j))?[i]:[]):[];
- return {readyDiscards,code:r.code,seat,host:r.host===r.players[seat]?.token,phase:r.phase,round:r.round,maxRounds:r.maxRounds,turn:r.turn,firstDice:r.firstDice||null,startSeat:r.startSeat??0,drawn:r.drawn,wallCount:r.wall?.length||0,wallCounts:zjWallCounts(r),scores:r.scores,riichi:r.riichi,discards:r.discards,discardHistory:r.discardHistory||[],hand:r.hands?.[seat]||[],handCounts:r.hands?.map(h=>h.length)||[0,0,0,0],players:r.players.map(p=>p?{name:p.name,cpu:!!p.cpu,connected:!!p.socket}:null),result:r.result,config:r.config,tableTheme:r.tableTheme||1,logs:r.logs.slice(-12),items:zjPublicItems(r,seat),visibleHands:r.items?.effects[seat]?.openall?r.hands.map(h=>h.slice()):null,deadline:r.deadline||0}}
+ return {readyDiscards,code:r.code,seat,host:r.host===r.players[seat]?.token,phase:r.phase,round:r.round,maxRounds:r.maxRounds,turn:r.turn,firstDice:r.firstDice||null,startSeat:r.startSeat??0,drawn:r.drawn,wallCount:r.wall?.length||0,scores:r.scores,riichi:r.riichi,discards:r.discards,discardHistory:r.discardHistory||[],hand:r.hands?.[seat]||[],handCounts:r.hands?.map(h=>h.length)||[0,0,0,0],players:r.players.map(p=>p?{name:p.name,cpu:!!p.cpu,connected:!!p.socket}:null),result:r.result,config:r.config,tableTheme:r.tableTheme||1,logs:r.logs.slice(-12),items:zjPublicItems(r,seat),visibleHands:r.items?.effects[seat]?.openall?r.hands.map(h=>h.slice()):null,deadline:r.deadline||0}}
 function log(r,s){r.logs.push(s);if(r.logs.length>100)r.logs.shift()}
 function schedule(r){
  clearTimeout(r.timer);
@@ -353,16 +352,16 @@ if(r.round===1&&!r.firstDice){
 if(r.round>1)r.startSeat=((r.startSeat??0)+1)%4;
 r.turn=r.startSeat??0;r.drawn=false;r.result=null;r.phase='playing';for(let k=0;k<8;k++)for(let i=0;i<4;i++)r.hands[i].push(r.wall.pop());r.hands.forEach(h=>h.sort((a,b)=>a-b));log(r,r.round===1?`🎲 サイコロ ${r.firstDice}！部屋主から右回りで${r.firstDice}人目：${r.players[r.startSeat].name}がスタート！`:`第${r.round}局 はじめ！`);schedule(r);broadcast(r);return null}
 function finish(r,result){clearTimeout(r.timer);r.deadline=0;r.phase='result';r.result=result;log(r,result.method==='流局'?'流局':result.method==='ロン'?`${result.winnerName}が${result.loserName||r.players[result.loser]?.name||'相手'}からロン！`:`${result.winnerName}が${result.method}！`);broadcast(r)}
-function zjScoreWin(r,p,hand,y,method,loser=null){
+function zjScoreWin(r,p,hand,y,method,loser=null,winningTile=null){
  const b=zjWinBonuses(r,p,hand),rolePoints=Math.round(y.points*b.multiplier),bonus=ownBonus(r,p,hand)?1000:0;
  for(let i=0;i<4;i++)if(i!==p){if(method==='ロン'&&loser!==i)continue;const payment=method==='ロン'?rolePoints*3:rolePoints;r.scores[i]-=payment;r.scores[p]+=payment}
  r.scores[p]+=b.ojBonus-b.manaPenalty+bonus;
  const actual=method==='ロン'?rolePoints*3:rolePoints*3;
- finish(r,{method,winner:p,winnerName:r.players[p].name,...(loser!==null?{loser,loserName:r.players[loser].name}:{}),yaku:y.name,points:actual+b.ojBonus-b.manaPenalty+bonus,rolePoints,basePoints:actual,ojBonus:b.ojBonus,manaPenalty:b.manaPenalty,ownBonus:bonus,hand:hand.slice(),groups:resultGroups(r,hand,y)});
+ finish(r,{method,winner:p,winnerName:r.players[p].name,...(loser!==null?{loser,loserName:r.players[loser].name}:{}),yaku:y.name,points:actual+b.ojBonus-b.manaPenalty+bonus,rolePoints,basePoints:actual,ojBonus:b.ojBonus,manaPenalty:b.manaPenalty,ownBonus:bonus,hand:hand.slice(),winningTile:winningTile??hand.at(-1),groups:resultGroups(r,hand,y)});
 }
-function zjFinishDraw(r,p,t){r.hands[p].push(t);r.drawn=true;const y=win(r,r.hands[p]);if(y){zjScoreWin(r,p,r.hands[p],y,'ツモ');return}schedule(r);broadcast(r)}
+function zjFinishDraw(r,p,t){r.hands[p].push(t);r.drawn=true;const y=win(r,r.hands[p]);if(y){zjScoreWin(r,p,r.hands[p],y,'ツモ',null,t);return}schedule(r);broadcast(r)}
 function draw(r,p){if(r.phase!=='playing'||r.turn!==p||r.drawn)return;if(!r.wall.length){finish(r,{method:'流局'});return}zjFinishDraw(r,p,r.wall.pop())}
-function discard(r,p,index){if(r.phase!=='playing'||r.turn!==p||!r.drawn||!Number.isInteger(index)||index<0||index>=r.hands[p].length)return;const t=r.hands[p].splice(index,1)[0];r.discards[p].push(t);r.discardHistory.push({seat:p,id:t});r.hands[p].sort((a,b)=>a-b);r.drawn=false;log(r,`${r.players[p].name}が${r.config.tiles[t-1].name}を捨てた`);if(!r.riichi[p]&&tenpai(r,r.hands[p])){r.riichi[p]=true;r.discardHistory[r.discardHistory.length-1].riichi=true;log(r,`${r.players[p].name} リーチ！（供託なし・宣言牌：${r.config.tiles[t-1].name}）`)}for(let k=1;k<4;k++){const q=(p+k)%4;if(!r.riichi[q])continue;const hand=[...r.hands[q],t],y=win(r,hand);if(y){zjScoreWin(r,q,hand,y,'ロン',p);return}}if(!r.wall.length){finish(r,{method:'流局'});return}r.turn=(p+1)%4;schedule(r);broadcast(r)}
+function discard(r,p,index){if(r.phase!=='playing'||r.turn!==p||!r.drawn||!Number.isInteger(index)||index<0||index>=r.hands[p].length)return;const t=r.hands[p].splice(index,1)[0];r.discards[p].push(t);r.discardHistory.push({seat:p,id:t});r.hands[p].sort((a,b)=>a-b);r.drawn=false;log(r,`${r.players[p].name}が${r.config.tiles[t-1].name}を捨てた`);if(!r.riichi[p]&&tenpai(r,r.hands[p])){r.riichi[p]=true;r.discardHistory[r.discardHistory.length-1].riichi=true;log(r,`${r.players[p].name} リーチ！（供託なし・宣言牌：${r.config.tiles[t-1].name}）`)}for(let k=1;k<4;k++){const q=(p+k)%4;if(!r.riichi[q])continue;const hand=[...r.hands[q],t],y=win(r,hand);if(y){zjScoreWin(r,q,hand,y,'ロン',p,t);return}}if(!r.wall.length){finish(r,{method:'流局'});return}r.turn=(p+1)%4;schedule(r);broadcast(r)}
 function cpuAct(r){if(r.phase!=='playing')return;const p=r.players[r.turn];if(!p||!p.cpu)return;
  const seat=r.turn;
  if(!r.drawn&&r.items?.tickets[seat]>0&&r.items.used[seat]<r.items.limit){
@@ -371,24 +370,10 @@ function cpuAct(r){if(r.phase!=='playing')return;const p=r.players[r.turn];if(!p
  }
  if(r.drawn){const h=r.hands[r.turn];const counts={};h.forEach(x=>counts[x]=(counts[x]||0)+1);const idx=r.riichi[r.turn]?h.length-1:h.map((x,i)=>({x,i,c:counts[x]})).sort((a,b)=>a.c-b.c)[0].i;discard(r,r.turn,idx)}else draw(r,r.turn)}
 
-function makeCode(preferred,lease){
- const code=String(preferred||'');
- if(typeof lease==='string'&&/^[a-f0-9-]{36}$/i.test(lease)&&/^\d{6}$/.test(code)&&!rooms.has(code))return code;
- let c;do{c=String(crypto.randomInt(100000,1000000))}while(rooms.has(c));return c;
-}
+function makeCode(){let c;do{c=String(crypto.randomInt(100000,1000000))}while(rooms.has(c));return c}
 function join(s,r,name,token){let seat=r.players.findIndex(p=>p&&p.token===token);if(seat<0){if(r.phase!=='lobby')return s.emit('errorMessage','対戦開始後は新規参加できません');seat=r.players.findIndex(p=>!p);if(seat<0)return s.emit('errorMessage','満員です');token=crypto.randomUUID();r.players[seat]={name:safe(name)||`プレイヤー${seat+1}`,token,socket:s.id,cpu:false}}else{r.players[seat].socket=s.id;r.players[seat].cpu=false} s.join(r.code);s.data.room=r.code;s.data.seat=seat;s.data.token=token;s.emit('joined',{code:r.code,seat,token});broadcast(r)}
 io.on('connection',s=>{
- s.on('create',({name,config,maxRounds,itemMode,itemLimit,tableThemeChoice,preferredCode,browserLease}={})=>{
-  const wanted=String(preferredCode||''),lease=(typeof browserLease==='string'&&/^[a-f0-9-]{36}$/i.test(browserLease))?browserLease:'';
-  if(/^\d{6}$/.test(wanted)&&rooms.has(wanted)){
-   const previous=rooms.get(wanted);
-   if(!lease||previous.browserLease!==lease)return s.emit('errorMessage','指定された部屋番号は現在使用中です。');
-   // A room with participants is never reset by another Create click.
-   const participants=previous.players.some(p=>p?.socket&&io.sockets.sockets.has(p.socket));
-   if(participants)return s.emit('errorMessage','同じ部屋番号がまだ使用中です。以前の部屋を退出してから作成してください。');
-   clearTimeout(previous.timer);rooms.delete(wanted);
-  }
-  const code=makeCode(wanted,lease),token=crypto.randomUUID();const r={code,browserLease:lease,host:token,players:[{name:safe(name)||'あなた',token,socket:s.id,cpu:false},null,null,null],config:configFrom(sharedConfig||config),maxRounds:[1,2,4,8,12,16,20].includes(+maxRounds)?+maxRounds:4,phase:'lobby',itemMode:['both','last','paid','off'].includes(itemMode)?itemMode:'both',itemLimit:[1,2,3].includes(+itemLimit)?+itemLimit:1,round:1,tableTheme:/^[1-6]$/.test(String(tableThemeChoice||''))?Number(tableThemeChoice):crypto.randomInt(1,7),scores:[10000,10000,10000,10000],hands:null,discards:[[],[],[],[]],discardHistory:[],riichi:[false,false,false,false],logs:[],deadline:0};zjInitItems(r);if(s.data.room)s.leave(s.data.room);rooms.set(code,r);s.join(code);s.data={room:code,seat:0,token};s.emit('joined',{code,seat:0,token,created:true});broadcast(r)});
+ s.on('create',({name,config,maxRounds,itemMode,itemLimit,tableThemeChoice}={})=>{const code=makeCode(),token=crypto.randomUUID();const r={code,host:token,players:[{name:safe(name)||'あなた',token,socket:s.id,cpu:false},null,null,null],config:configFrom(sharedConfig||config),maxRounds:[1,2,4,8,12,16,20].includes(+maxRounds)?+maxRounds:4,phase:'lobby',itemMode:['both','last','paid','off'].includes(itemMode)?itemMode:'both',itemLimit:[1,2,3].includes(+itemLimit)?+itemLimit:1,round:1,tableTheme:/^[1-7]$/.test(String(tableThemeChoice||''))?Number(tableThemeChoice):crypto.randomInt(1,8),scores:[10000,10000,10000,10000],hands:null,discards:[[],[],[],[]],discardHistory:[],riichi:[false,false,false,false],logs:[],deadline:0};zjInitItems(r);rooms.set(code,r);s.join(code);s.data={room:code,seat:0,token};s.emit('joined',{code,seat:0,token});broadcast(r)});
  s.on('join',({code,name,token}={})=>{const r=rooms.get(String(code));if(!r)return s.emit('errorMessage','ルームが見つかりません');join(s,r,name,token)});
  s.on('start',()=>{const r=rooms.get(s.data.room);if(!r||r.host!==s.data.token||r.phase!=='lobby')return;for(let i=0;i<4;i++)if(!r.players[i])r.players[i]={name:randomCpuName(r.players.filter(Boolean).map(p=>p.name)),cpu:true,socket:null,token:null};const err=roundStart(r);if(err)s.emit('errorMessage',err)});
  s.on('itemUse',data=>{const r=rooms.get(s.data.room);const p=s.data.seat;if(!r||!Number.isInteger(p)||r.players[p]?.token!==s.data.token||r.players[p]?.cpu)return;zjUse(r,p,data,s)});
