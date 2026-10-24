@@ -571,7 +571,7 @@ main{max-width:1120px;margin:auto;padding:22px 16px 65px}.section-title{font-siz
 <header><p>ZAMA-JAN · OFFICIAL SCORE SHEET</p><h1>ザマじゃん得点表</h1><p>${esc(context)}</p></header>
 <main><h2 class="section-title">🏆 役一覧 · 高得点順</h2><p class="description">山0枚の牌を含む役は原則非表示です。ただし、9枚以上の異なる牌を各1枚集める役は表示します。山0枚の牌自体は表示・集計しません。</p>${rows||'<p>登録された役はありません。</p>'}
 <h2 class="section-title">🀄 牌ごとの役使用数</h2><p class="description">役に登録された枚数を合計しています。「登録 ○役」はその牌が登場する役の種類数です。山の枚数が0の牌は表示せず、集計もしません。</p>
-<div class="usage-grid">${usage||'<p>山に入っている牌がありません。</p>'}</div><p class="description">基本役：三組そろえ（1,000点）。基本役は上の登録枚数には含みません。</p></main></body></html>`;
+<div class="usage-grid">${usage||'<p>山に入っている牌がありません。</p>'}</div><p class="description">基本役：三組そろえ（1,000点）。基本役は上の登録枚数には含みません。</p></main><style>body:has(#zjTableThemePreference option[value="8"]:checked) #board{background-image:linear-gradient(#100a2180,#100a2160),url('/assets/tables/zamajan-table-8.jpg')!important;background-size:cover!important;background-position:center!important}</style></body></html>`;
 }
 window.zjOpenScoreSheet=function(config,context,hero,provided){
  const popup=provided||window.open('','zamajan-score-sheet','width=1110,height=800,resizable=yes,scrollbars=yes');
@@ -585,13 +585,13 @@ window.zjOpenScoreSheet=function(config,context,hero,provided){
 <h2>🀄 卓の壁紙設定</h2>
 <label for="zjTableThemePreference">対戦開始時に使用する卓の壁紙</label>
 <select id="zjTableThemePreference">
-<option value="random" selected>🎲 ランダム（おすすめ・初期設定）</option>
+<option value="random">🎲 ランダム（おすすめ・初期設定）</option>
 <option value="0">🐉 漆黒・金龍</option>
 <option value="1">🌿 深緑・金彩雲波</option>
 <option value="2">🌊 藍色・月夜の波</option>
 <option value="3">🔥 紅蓮・鳳凰</option>
 <option value="4">⚫ 漆黒・金彩和柄</option><option value="5">🌊 北斎・金彩富士と波</option><option value="6">🌙 北斎・紅月と荒波</option>
-</select>
+<option value="8" selected>🌸 アフロディーテ・女神の宮殿</option></select>
 <div class="zj-theme-preview" id="zjSettingsThemePreview" data-zj-table-theme="0" aria-label="選択した壁紙の見本"></div>
 <div id="zjSettingsThemeCaption" class="zj-theme-caption">ランダム：新しい対戦ごとに7種類から抽選します。</div>
 <p class="hint">変更は次の「新しい対戦」で反映します。同じ対戦の第2局以降は同じ壁紙を使います。</p>
@@ -682,26 +682,26 @@ let humanDiscardTimer=null,discardDeadline=0;function stopDiscardTimer(){if(huma
 // ZAMA-JAN CHAOS ITEMS v2 — local single-file build.
 // Each tuple: id, display name, point cost, precise gameplay effect.
 const ZJ_ITEMS=[
- ['steal','💰 スコアスティール',8000,'相手を選び、相手から3,000点を自分へ移動する。'],
- ['openall','👁️ 全面透視',18000,'発動した局が終わるまで、自分以外の3人の手牌をすべて公開する。'],
- ['riichiswap','🔴 リーチ強奪',22000,'リーチ中の相手を選び、その8枚の手牌と自分の手牌8枚を交換。相手のリーチを奪って自分がリーチになる。'],
- ['hightriple','🌟 伝説の三牌',24000,'自分の手牌から最大3枚を、山にある高得点役につながる牌へ交換する。'],
- ['revolution','🌋 大革命',30000,'全員の手牌を回収して配り直す。全員のリーチも解除。捨て牌と得点は残る。'],
- ['freeze','🧊 金縛り',18000,'自分以外のランダム1人を5回の手番にわたり行動不能にする。'],
- ['oj','🎉 OJ万歳',16000,'【秘密アイテム】この局で自分があがると、あがり手のOJ 1枚につき5,000点を加算。宣言演出なし。'],
- ['mana2','😈 mana2 だよ',16000,'【秘密アイテム】この局で他人があがると、その人のあがり手のmana2 1枚につき3,000点減点。宣言演出なし。'],
- ['festival','🎊 ザマン祭',22000,'全員の手牌にあるmana2とOJをすべてザマンに変化させる。'],
- ['scoreflip','🔃 順位大逆転',28000,'自分と現在トップの得点をまるごと交換する。'],
- ['mirror','🌀 手牌大移動',22000,'全員の手牌8枚を右隣に回し、全員のリーチを解除する。現在のツモ牌だけは手元に残る。'],
- ['jackpot','🎰 山の秘宝',18000,'山の上から5枚を見て1枚選び、自分の好きな手牌1枚と交換する。'],
- ['triplefactory','🏭 暗刻製造機',22000,'山に3枚以上ある同一牌を探し、自分の手牌3枚と交換して暗刻を作る。'],
- ['leaderfall','👑 王者転落',18000,'トップの得点を6,000点減らし、他の3人に2,000点ずつ配る。'],
- ['riichicancel','🚫 全リーチ崩壊',20000,'全員のリーチを強制解除。リーチ済みの人も次の手番から通常操作に戻る。'],
- ['doublepoints','🔥 得点倍増',22000,'この局で自分があがったとき、役の基本点を2倍にする。'],
- ['handraid','🧤 手牌略奪',20000,'相手を選び、互いの手牌3枚をランダムで交換する。'],
- ['selfreset','♻️ 生まれ変わり',20000,'自分の手牌最大5枚を山と交換し、リーチしていたら解除する。'],
- ['timefreeze','⏳ 時間停止',26000,'自分以外の3人の次の手番をそれぞれ1回スキップさせる。'],
- ['wildhunt','🃏 万能牌強奪',24000,'山に残る特別牌（万能牌）を、自分の手牌1枚と交換して手に入れる。']
+ ['steal','💰 スコアスティール',5000,'相手を選び、相手から3,000点を自分へ移動する。'],
+ ['openall','👁️ 全面透視',6000,'発動した局が終わるまで、自分以外の3人の手牌をすべて公開する。'],
+ ['riichiswap','🔴 リーチ強奪',7000,'リーチ中の相手を選び、その8枚の手牌と自分の手牌8枚を交換。相手のリーチを奪って自分がリーチになる。'],
+ ['hightriple','🌟 伝説の三牌',5000,'自分の手牌から最大3枚を、山にある高得点役につながる牌へ交換する。'],
+ ['revolution','🌋 大革命',6000,'全員の手牌を回収して配り直す。全員のリーチも解除。捨て牌と得点は残る。'],
+ ['freeze','🧊 金縛り',7000,'自分以外のランダム1人を5回の手番にわたり行動不能にする。'],
+ ['oj','🎉 OJ万歳',5000,'【秘密アイテム】この局で自分があがると、あがり手のOJ 1枚につき5,000点を加算。宣言演出なし。'],
+ ['mana2','😈 mana2 だよ',6000,'【秘密アイテム】この局で他人があがると、その人のあがり手のmana2 1枚につき3,000点減点。宣言演出なし。'],
+ ['festival','🎊 ザマン祭',7000,'全員の手牌にあるmana2とOJをすべてザマンに変化させる。'],
+ ['scoreflip','🔃 順位大逆転',5000,'自分と現在トップの得点をまるごと交換する。'],
+ ['mirror','🌀 手牌大移動',6000,'全員の手牌8枚を右隣に回し、全員のリーチを解除する。現在のツモ牌だけは手元に残る。'],
+ ['jackpot','🎰 山の秘宝',7000,'山の上から5枚を見て1枚選び、自分の好きな手牌1枚と交換する。'],
+ ['triplefactory','🏭 暗刻製造機',5000,'山に3枚以上ある同一牌を探し、自分の手牌3枚と交換して暗刻を作る。'],
+ ['leaderfall','👑 王者転落',6000,'トップの得点を6,000点減らし、他の3人に2,000点ずつ配る。'],
+ ['riichicancel','🚫 全リーチ崩壊',7000,'全員のリーチを強制解除。リーチ済みの人も次の手番から通常操作に戻る。'],
+ ['doublepoints','🔥 得点倍増',5000,'この局で自分があがったとき、役の基本点を2倍にする。'],
+ ['handraid','🧤 手牌略奪',6000,'相手を選び、互いの手牌3枚をランダムで交換する。'],
+ ['selfreset','♻️ 生まれ変わり',7000,'自分の手牌最大5枚を山と交換し、リーチしていたら解除する。'],
+ ['timefreeze','⏳ 時間停止',5000,'自分以外の3人の次の手番をそれぞれ1回スキップさせる。'],
+ ['wildhunt','🃏 万能牌強奪',6000,'山に残る特別牌（万能牌）を、自分の手牌1枚と交換して手に入れる。']
 ];
 const ZJ_ITEM_VERSION=2;
 const ZJ_PASSIVE=new Set(['oj','mana2']);
@@ -894,7 +894,7 @@ function zjApplyOfflineTableTheme(){
     board.setAttribute('data-zj-table-theme',String(theme));
   }
 }
-function newGame(skipDice=false){stopAutoDrawTimer();stopDiscardTimer();const deck=shuffle(config.tiles.flatMap(t=>Array(tileLimit(t.id)).fill(t.id)));if(deck.length<33){alert('牌の合計は33枚以上必要です。設定画面で枚数を増やしてください。');return}game={hands:[[],[],[],[]],discards:[[],[],[],[]],discardHistory:[],wall:deck,turn:0,drawn:false,round:1,firstDice:Math.floor(Math.random()*6)+1,startSeat:0,scores:[10000,10000,10000,10000],humans:+$('humans').value,difficulty:$('difficulty').value,maxRounds:+$('maxRounds').value,riichi:[false,false,false,false],ended:false,pendingRon:null,lastResult:null,logs:[],cpuNames:makeCpuNames(+$('humans').value),tableTheme:zjNewTheme(),tableThemeChoice:document.getElementById('zjTableThemePreference')?.value||'random'};zjItemInit();for(let j=0;j<8;j++)for(let i=0;i<4;i++)game.hands[i].push(game.wall.pop());for(const h of game.hands)h.sort((a,b)=>a-b);game.startSeat=(game.firstDice-1)%4;game.turn=game.startSeat;log('🎲 '+game.firstDice+'：'+name(game.startSeat)+'がスタート！');selected=-1;render();save();if(!skipDice)showOpeningDice();callStartVoice();setTimeout(()=>{if(game&&!game.ended)autoCPU()},skipDice?450:1900)}function save(){if(!game)return;try{localStorage.setItem(SAVE,JSON.stringify(game))}catch(e){console.warn(e)}}function resume(){try{const x=JSON.parse(localStorage.getItem(SAVE));if(!x||!Array.isArray(x.hands)||x.hands.length!==4)throw Error();game=x;if(!Number.isInteger(game.tableTheme))game.tableTheme=0;if(!game.tableThemeChoice)game.tableThemeChoice='random';if(!game.items)zjItemMigrate();if(!Array.isArray(game.cpuNames))game.cpuNames=makeCpuNames(game.humans);if(!game.maxRounds)game.maxRounds=4;if(!Array.isArray(game.riichi))game.riichi=[false,false,false,false];selected=-1;render();if(game.pendingRon&&game.riichi[game.pendingRon.winner]){ron();return}if(game.drawn)startDiscardTimer();autoCPU()}catch{alert('再開できる対戦データがありません。')}}function chronologicalDiscards(){
+function newGame(skipDice=false){stopAutoDrawTimer();stopDiscardTimer();const deck=shuffle(config.tiles.flatMap(t=>Array(tileLimit(t.id)).fill(t.id)));if(deck.length<33){alert('牌の合計は33枚以上必要です。設定画面で枚数を増やしてください。');return}game={hands:[[],[],[],[]],discards:[[],[],[],[]],discardHistory:[],wall:deck,turn:0,drawn:false,round:1,firstDice:Math.floor(Math.random()*6)+1,startSeat:0,scores:[30000,30000,30000,30000],humans:+$('humans').value,difficulty:$('difficulty').value,maxRounds:+$('maxRounds').value,riichi:[false,false,false,false],ended:false,pendingRon:null,lastResult:null,logs:[],cpuNames:makeCpuNames(+$('humans').value),tableTheme:zjNewTheme(),tableThemeChoice:document.getElementById('zjTableThemePreference')?.value||'random'};zjItemInit();for(let j=0;j<8;j++)for(let i=0;i<4;i++)game.hands[i].push(game.wall.pop());for(const h of game.hands)h.sort((a,b)=>a-b);game.startSeat=(game.firstDice-1)%4;game.turn=game.startSeat;log('🎲 '+game.firstDice+'：'+name(game.startSeat)+'がスタート！');selected=-1;render();save();if(!skipDice)showOpeningDice();callStartVoice();setTimeout(()=>{if(game&&!game.ended)autoCPU()},skipDice?450:1900)}function save(){if(!game)return;try{localStorage.setItem(SAVE,JSON.stringify(game))}catch(e){console.warn(e)}}function resume(){try{const x=JSON.parse(localStorage.getItem(SAVE));if(!x||!Array.isArray(x.hands)||x.hands.length!==4)throw Error();game=x;if(!Number.isInteger(game.tableTheme))game.tableTheme=0;if(!game.tableThemeChoice)game.tableThemeChoice='random';if(!game.items)zjItemMigrate();if(!Array.isArray(game.cpuNames))game.cpuNames=makeCpuNames(game.humans);if(!game.maxRounds)game.maxRounds=4;if(!Array.isArray(game.riichi))game.riichi=[false,false,false,false];selected=-1;render();if(game.pendingRon&&game.riichi[game.pendingRon.winner]){ron();return}if(game.drawn)startDiscardTimer();autoCPU()}catch{alert('再開できる対戦データがありません。')}}function chronologicalDiscards(){
  if(!game)return [];
  const piles=Array.isArray(game.discards)?game.discards:[[],[],[],[]];
  const expected=piles.reduce((sum,a)=>sum+(Array.isArray(a)?a.length:0),0);

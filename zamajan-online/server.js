@@ -207,27 +207,27 @@ function tenpai(r,hand){
 
 // ZAMA-JAN CHAOS ITEMS v2 — online, authoritative server implementation.
 const ZJ_ITEMS=[
- ['dogtakeover','🐕 わんこ画面ジャック',20000,'全員の画面を実写犬が45秒間占領する。'],
- ['steal','💰 スコアスティール',8000,'相手から3,000点を自分へ移動する。'],
- ['openall','👁️ 全面透視',18000,'この局の終了まで他の3人の手牌を公開する。'],
- ['riichiswap','🔴 リーチ強奪',22000,'リーチ中の相手と8枚の手牌を交換し、自分がリーチになる。'],
- ['hightriple','🌟 伝説の三牌',24000,'最大3枚を高得点役につながる山の牌と交換する。'],
- ['revolution','🌋 大革命',30000,'全員の手牌を配り直し、全員のリーチを解除する。'],
- ['freeze','🧊 金縛り',18000,'ランダムな相手1人の手番を5回スキップさせる。'],
- ['oj','🎉 OJ万歳',16000,'秘密装備：自分のあがり時にOJ1枚につき5,000点加算。'],
- ['mana2','😈 mana2 だよ',16000,'秘密装備：他人のあがり時にmana2 1枚につき3,000点減点。'],
- ['festival','🎊 ザマン祭',22000,'全員の手牌のmana2とOJがザマンに変わる。'],
- ['scoreflip','🔃 順位大逆転',28000,'自分と1位の得点をすべて交換する。'],
- ['mirror','🌀 手牌大移動',22000,'全員の手牌8枚を右隣へ回しリーチを解除する。'],
- ['jackpot','🎰 山の秘宝',18000,'山の上5枚から欲しい牌と、自分が返す牌を選択して交換。'],
- ['triplefactory','🏭 暗刻製造機',22000,'山に3枚ある同一牌で自分の手牌3枚を交換し暗刻を作る。'],
- ['leaderfall','👑 王者転落',18000,'1位が6,000点失い、他の3人が各2,000点獲得する。'],
- ['riichicancel','🚫 全リーチ崩壊',20000,'全員のリーチを解除する。'],
- ['doublepoints','🔥 得点倍増',22000,'この局で自分があがった際、役の基本点が2倍になる。'],
- ['handraid','🧤 手牌略奪',20000,'相手と手牌3枚ずつをランダム交換する。'],
- ['selfreset','♻️ 生まれ変わり',20000,'自分の手牌を最大5枚交換しリーチを解除する。'],
- ['timefreeze','⏳ 時間停止',26000,'他の3人の次の手番を1回ずつスキップ。'],
- ['wildhunt','🃏 万能牌強奪',24000,'山に残る特別牌と自分の牌1枚を交換する。']
+ ['dogtakeover','🐕 わんこ画面ジャック',7000,'全員の画面を実写犬が45秒間占領する。'],
+ ['steal','💰 スコアスティール',6000,'相手から3,000点を自分へ移動する。'],
+ ['openall','👁️ 全面透視',7000,'この局の終了まで他の3人の手牌を公開する。'],
+ ['riichiswap','🔴 リーチ強奪',5000,'リーチ中の相手と8枚の手牌を交換し、自分がリーチになる。'],
+ ['hightriple','🌟 伝説の三牌',6000,'最大3枚を高得点役につながる山の牌と交換する。'],
+ ['revolution','🌋 大革命',7000,'全員の手牌を配り直し、全員のリーチを解除する。'],
+ ['freeze','🧊 金縛り',5000,'ランダムな相手1人の手番を5回スキップさせる。'],
+ ['oj','🎉 OJ万歳',6000,'秘密装備：自分のあがり時にOJ1枚につき5,000点加算。'],
+ ['mana2','😈 mana2 だよ',7000,'秘密装備：他人のあがり時にmana2 1枚につき3,000点減点。'],
+ ['festival','🎊 ザマン祭',5000,'全員の手牌のmana2とOJがザマンに変わる。'],
+ ['scoreflip','🔃 順位大逆転',6000,'自分と1位の得点をすべて交換する。'],
+ ['mirror','🌀 手牌大移動',7000,'全員の手牌8枚を右隣へ回しリーチを解除する。'],
+ ['jackpot','🎰 山の秘宝',5000,'山の上5枚から欲しい牌と、自分が返す牌を選択して交換。'],
+ ['triplefactory','🏭 暗刻製造機',6000,'山に3枚ある同一牌で自分の手牌3枚を交換し暗刻を作る。'],
+ ['leaderfall','👑 王者転落',7000,'1位が6,000点失い、他の3人が各2,000点獲得する。'],
+ ['riichicancel','🚫 全リーチ崩壊',5000,'全員のリーチを解除する。'],
+ ['doublepoints','🔥 得点倍増',6000,'この局で自分があがった際、役の基本点が2倍になる。'],
+ ['handraid','🧤 手牌略奪',7000,'相手と手牌3枚ずつをランダム交換する。'],
+ ['selfreset','♻️ 生まれ変わり',5000,'自分の手牌を最大5枚交換しリーチを解除する。'],
+ ['timefreeze','⏳ 時間停止',6000,'他の3人の次の手番を1回ずつスキップ。'],
+ ['wildhunt','🃏 万能牌強奪',7000,'山に残る特別牌と自分の牌1枚を交換する。']
 ];
 const ZJ_TARGETED=new Set(['steal','riichiswap','handraid']);
 const ZJ_PASSIVE=new Set(['oj','mana2']);
@@ -375,7 +375,7 @@ function cpuAct(r){if(r.phase!=='playing')return;const p=r.players[r.turn];if(!p
 function makeCode(){let c;do{c=String(crypto.randomInt(100000,1000000))}while(rooms.has(c));return c}
 function join(s,r,name,token){let seat=r.players.findIndex(p=>p&&p.token===token);if(seat<0){if(r.phase!=='lobby')return s.emit('errorMessage','対戦開始後は新規参加できません');seat=r.players.findIndex(p=>!p);if(seat<0)return s.emit('errorMessage','満員です');token=crypto.randomUUID();r.players[seat]={name:safe(name)||`プレイヤー${seat+1}`,token,socket:s.id,cpu:false}}else{r.players[seat].socket=s.id;r.players[seat].cpu=false} s.join(r.code);s.data.room=r.code;s.data.seat=seat;s.data.token=token;s.emit('joined',{code:r.code,seat,token});broadcast(r)}
 io.on('connection',s=>{
- s.on('create',({name,config,maxRounds,itemMode,itemLimit,tableThemeChoice}={})=>{const code=makeCode(),token=crypto.randomUUID();const r={code,host:token,players:[{name:safe(name)||'あなた',token,socket:s.id,cpu:false},null,null,null],config:configFrom(sharedConfig||config),maxRounds:[1,2,4,8,12,16,20].includes(+maxRounds)?+maxRounds:4,phase:'lobby',itemMode:['both','last','paid','off'].includes(itemMode)?itemMode:'both',itemLimit:[1,2,3].includes(+itemLimit)?+itemLimit:1,round:1,tableTheme:/^[1-7]$/.test(String(tableThemeChoice||''))?Number(tableThemeChoice):crypto.randomInt(1,8),scores:[10000,10000,10000,10000],hands:null,discards:[[],[],[],[]],discardHistory:[],riichi:[false,false,false,false],logs:[],deadline:0};zjInitItems(r);rooms.set(code,r);s.join(code);s.data={room:code,seat:0,token};s.emit('joined',{code,seat:0,token});broadcast(r)});
+ s.on('create',({name,config,maxRounds,itemMode,itemLimit,tableThemeChoice}={})=>{const code=makeCode(),token=crypto.randomUUID();const r={code,host:token,players:[{name:safe(name)||'あなた',token,socket:s.id,cpu:false},null,null,null],config:configFrom(sharedConfig||config),maxRounds:[1,2,4,8,12,16,20].includes(+maxRounds)?+maxRounds:4,phase:'lobby',itemMode:['both','last','paid','off'].includes(itemMode)?itemMode:'both',itemLimit:[1,2,3].includes(+itemLimit)?+itemLimit:1,round:1,tableTheme:/^[1-8]$/.test(String(tableThemeChoice||''))?Number(tableThemeChoice):crypto.randomInt(1,9),scores:[30000,30000,30000,30000],hands:null,discards:[[],[],[],[]],discardHistory:[],riichi:[false,false,false,false],logs:[],deadline:0};zjInitItems(r);rooms.set(code,r);s.join(code);s.data={room:code,seat:0,token};s.emit('joined',{code,seat:0,token});broadcast(r)});
  s.on('join',({code,name,token}={})=>{const r=rooms.get(String(code));if(!r)return s.emit('errorMessage','ルームが見つかりません');join(s,r,name,token)});
  s.on('start',()=>{const r=rooms.get(s.data.room);if(!r||r.host!==s.data.token||r.phase!=='lobby')return;for(let i=0;i<4;i++)if(!r.players[i])r.players[i]={name:randomCpuName(r.players.filter(Boolean).map(p=>p.name)),cpu:true,socket:null,token:null};const err=roundStart(r);if(err)s.emit('errorMessage',err)});
  s.on('itemUse',data=>{const r=rooms.get(s.data.room);const p=s.data.seat;if(!r||!Number.isInteger(p)||r.players[p]?.token!==s.data.token||r.players[p]?.cpu)return;zjUse(r,p,data,s)});
