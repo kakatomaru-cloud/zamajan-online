@@ -1195,12 +1195,12 @@ function finishWin(p,y,hand,method,from=null){
  // Keep normal payments for the basic role. OJ/mana2 grant/penalty is applied only once,
  // so a 5,000-point bonus does not silently become 15,000 in a four-player tsumo.
  for(let i=0;i<4;i++)if(i!==p){if(method==='ロン'&&from!==null&&i!==from)continue;
-  const payment=method==='ロン'?rolePoints*3:rolePoints;game.scores[i]-=payment;game.scores[p]+=payment;
+  const payment=rolePoints;game.scores[i]-=payment;game.scores[p]+=payment;
  }
  const zjWinningTile=method==='ロン'?(game.pendingRon?.tile??hand.at(-1)):(game.justDrawnTile??hand.at(-1));
  game.scores[p]+=b.ojBonus-b.manaPenalty;game.pendingRon=null;game.ended=true;
  callWinVoice(method);
- game.lastResult={winner:name(p),yaku:y.name,points:rolePoints+b.ojBonus-b.manaPenalty,
+ game.lastResult={winner:name(p),yaku:y.name,points:(method==='ロン'?rolePoints:rolePoints*3)+b.ojBonus-b.manaPenalty,
   rolePoints,ojBonus:b.ojBonus,manaPenalty:b.manaPenalty,hand:hand.slice(),winningTile:zjWinningTile,method,from:from===null?null:name(from)};
  log(`🎉 ${name(p)}が「${y.name}」で${method}あがり！${method==='ロン'?'（'+name(from)+'から）':''}`);
  if(b.ojBonus)log('🎉 OJ万歳：'+b.ojBonus.toLocaleString()+'点加算');

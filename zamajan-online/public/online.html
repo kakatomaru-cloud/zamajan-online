@@ -915,7 +915,7 @@ function zjDockTargetIcon(){
 }
 function show(s){if(!session)return;zjDockTargetIcon();
  const table=document.querySelector('#play .board');
- if(table){const theme=Math.max(1,Math.min(7,Number(s.tableTheme)||1));
+ if(table){const theme=Math.max(1,Math.min(8,Number(s.tableTheme)||1));
   if(table.dataset.theme!==String(theme)){
    table.dataset.theme=String(theme);
    table.style.setProperty('--zj-table-art',`url('/assets/tables/zamajan-table-${theme}.${theme>5&&theme<8?'webp':'jpg'}')`);
@@ -1069,7 +1069,7 @@ function zjItemOpen(){try{const C=window.AudioContext||window.webkitAudioContext
 }
 function zjItemChoose(id){if(zjItemsTargeted.has(id)){const opts=state.players.map((p,i)=>p&&i!==state.seat&&(id!=='riichiswap'||state.riichi[i])?'<option value="'+i+'">'+escape(p.name)+(state.riichi[i]?'（リーチ中）':'')+'</option>':'').join('');if(!opts)return alert('対象のプレイヤーがいません');zjItemDialog('<p>対象を選択してください。</p><select id="zjTargetSeat">'+opts+'</select><p><button id="zjItemApply">この相手に使用する</button></p>');$('zjItemApply').onclick=()=>{socket.emit('itemUse',{id,target:+$('zjTargetSeat').value});zjItemClose()};return}if(id==='jackpot'){socket.emit('itemOptions',{id});return}socket.emit('itemUse',{id});zjItemClose()}
 $('zjItemOpen').onclick=zjItemOpen;
-socket.on('itemEffect',ev=>{if(ev.id==='dogtakeover')zjDogTakeover();else zjItemBurst(ev)});
+socket.on('itemEffect',ev=>{if(ev.id==='dogtakeover'){if(Number(ev.actor)!==Number(state?.seat))zjDogTakeover();else zjItemBurst({...ev,description:(ev.description||'')+'（使用者以外の3人に45秒表示）'});}else zjItemBurst(ev)});
 socket.on('itemOptions',data=>{if(data.id!=='jackpot')return;const options=arr=>arr.map(x=>'<option value="'+x.index+'">'+escape(x.name)+'</option>').join('');zjItemDialog('<p>🎰 山の上5枚から獲得する牌</p><select id="zjItemWall">'+options(data.wall)+'</select><p>自分が山へ返す牌</p><select id="zjItemHand">'+options(data.hand)+'</select><p><button id="zjItemApply">この牌で交換</button></p>');$('zjItemApply').onclick=()=>{socket.emit('itemUse',{id:'jackpot',choice:+$('zjItemWall').value,discard:+$('zjItemHand').value});zjItemClose()}});
 </script><style id="zj-global-riichi-css">
 #zjOnlineRiichiAnnouncement{position:fixed;inset:0;z-index:100000;display:none;align-items:center;justify-content:center;flex-direction:column;pointer-events:none;background:radial-gradient(ellipse,#9a520b99,#080603d9);color:#ffdb70;text-align:center}

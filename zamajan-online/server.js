@@ -207,7 +207,7 @@ function tenpai(r,hand){
 
 // ZAMA-JAN CHAOS ITEMS v2 — online, authoritative server implementation.
 const ZJ_ITEMS=[
- ['dogtakeover','🐕 わんこ画面ジャック',7000,'全員の画面を実写犬が45秒間占領する。'],
+ ['dogtakeover','🐕 わんこ画面ジャック',7000,'使用者以外の3人の画面を実写犬が45秒間占領する。'],
  ['steal','💰 スコアスティール',6000,'相手から3,000点を自分へ移動する。'],
  ['openall','👁️ 全面透視',7000,'この局の終了まで他の3人の手牌を公開する。'],
  ['riichiswap','🔴 リーチ強奪',5000,'リーチ中の相手と8枚の手牌を交換し、自分がリーチになる。'],
@@ -287,7 +287,7 @@ function zjUse(r,p,data,s){
  if(!zjAllowed(r,p,id))return s?.emit('errorMessage','アイテムの使用条件を満たしていません');
  if(ZJ_TARGETED.has(id)&&(!Number.isInteger(target)||target===p||target<0||target>3||id==='riichiswap'&&!r.riichi[target]))return s?.emit('errorMessage','有効な対象を選んでください');
  const h=r.hands,w=r.wall,e=a.effects;let detail=x[3],victim=ZJ_TARGETED.has(id)?target:null;
- if(id==='dogtakeover'){detail='実写犬が全員の画面を45秒間占領！'}
+ if(id==='dogtakeover'){detail='使用者以外の3人の画面を実写犬が45秒間占領！'}
  else if(id==='steal'){r.scores[target]-=3000;r.scores[p]+=3000;detail='3,000点を移動'}
  else if(id==='openall')e[p].openall=true;
  else if(id==='riichiswap'){const mine=h[p].slice(0,8),theirs=h[target].slice(0,8),extra=h[p].slice(8);h[p]=theirs.concat(extra);h[target]=mine;r.riichi[target]=false;r.riichi[p]=true;detail='リーチと手牌8枚を強奪'}
@@ -356,9 +356,9 @@ r.turn=r.startSeat??0;r.drawn=false;r.result=null;r.phase='playing';for(let k=0;
 function finish(r,result){clearTimeout(r.timer);r.deadline=0;r.phase='result';r.result=result;log(r,result.method==='流局'?'流局':result.method==='ロン'?`${result.winnerName}が${result.loserName||r.players[result.loser]?.name||'相手'}からロン！`:`${result.winnerName}が${result.method}！`);broadcast(r)}
 function zjScoreWin(r,p,hand,y,method,loser=null,winningTile=null){
  const b=zjWinBonuses(r,p,hand),rolePoints=Math.round(y.points*b.multiplier),bonus=ownBonus(r,p,hand)?1000:0;
- for(let i=0;i<4;i++)if(i!==p){if(method==='ロン'&&loser!==i)continue;const payment=method==='ロン'?rolePoints*3:rolePoints;r.scores[i]-=payment;r.scores[p]+=payment}
+ for(let i=0;i<4;i++)if(i!==p){if(method==='ロン'&&loser!==i)continue;const payment=rolePoints;r.scores[i]-=payment;r.scores[p]+=payment}
  r.scores[p]+=b.ojBonus-b.manaPenalty+bonus;
- const actual=method==='ロン'?rolePoints*3:rolePoints*3;
+ const actual=method==='ロン'?rolePoints:rolePoints*3;
  finish(r,{method,winner:p,winnerName:r.players[p].name,...(loser!==null?{loser,loserName:r.players[loser].name}:{}),yaku:y.name,points:actual+b.ojBonus-b.manaPenalty+bonus,rolePoints,basePoints:actual,ojBonus:b.ojBonus,manaPenalty:b.manaPenalty,ownBonus:bonus,hand:hand.slice(),winningTile:winningTile??hand.at(-1),groups:resultGroups(r,hand,y)});
 }
 function zjFinishDraw(r,p,t){r.hands[p].push(t);r.drawn=true;const y=win(r,r.hands[p]);if(y){zjScoreWin(r,p,r.hands[p],y,'ツモ',null,t);return}schedule(r);broadcast(r)}
