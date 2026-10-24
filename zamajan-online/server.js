@@ -207,6 +207,7 @@ function tenpai(r,hand){
 
 // ZAMA-JAN CHAOS ITEMS v2 — online, authoritative server implementation.
 const ZJ_ITEMS=[
+ ['dogtakeover','🐕 わんこ画面ジャック',20000,'全員の画面を実写犬が45秒間占領する。'],
  ['steal','💰 スコアスティール',8000,'相手から3,000点を自分へ移動する。'],
  ['openall','👁️ 全面透視',18000,'この局の終了まで他の3人の手牌を公開する。'],
  ['riichiswap','🔴 リーチ強奪',22000,'リーチ中の相手と8枚の手牌を交換し、自分がリーチになる。'],
@@ -286,7 +287,8 @@ function zjUse(r,p,data,s){
  if(!zjAllowed(r,p,id))return s?.emit('errorMessage','アイテムの使用条件を満たしていません');
  if(ZJ_TARGETED.has(id)&&(!Number.isInteger(target)||target===p||target<0||target>3||id==='riichiswap'&&!r.riichi[target]))return s?.emit('errorMessage','有効な対象を選んでください');
  const h=r.hands,w=r.wall,e=a.effects;let detail=x[3],victim=ZJ_TARGETED.has(id)?target:null;
- if(id==='steal'){r.scores[target]-=3000;r.scores[p]+=3000;detail='3,000点を移動'}
+ if(id==='dogtakeover'){detail='実写犬が全員の画面を45秒間占領！'}
+ else if(id==='steal'){r.scores[target]-=3000;r.scores[p]+=3000;detail='3,000点を移動'}
  else if(id==='openall')e[p].openall=true;
  else if(id==='riichiswap'){const mine=h[p].slice(0,8),theirs=h[target].slice(0,8),extra=h[p].slice(8);h[p]=theirs.concat(extra);h[target]=mine;r.riichi[target]=false;r.riichi[p]=true;detail='リーチと手牌8枚を強奪'}
  else if(id==='hightriple'){const changed=zjReplaceHighThree(r,p);if(!changed)return s?.emit('errorMessage','交換できる高得点役の牌が山にありません');detail=changed+'枚を高得点役向けに交換'}
