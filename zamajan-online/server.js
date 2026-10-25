@@ -42,6 +42,27 @@ function validateSharedConfig(raw){
  if(raw.yaku.some(y=>!y||typeof y.name!=='string'||y.name.length>80||!Number.isInteger(y.points)||y.points<1||y.points>100000||!Array.isArray(y.pattern)||y.pattern.length<1||y.pattern.length>99||y.pattern.some(id=>!Number.isInteger(id)||id<1||id>raw.tiles.length)))throw Error('役設定が不正です');
  return configFrom(raw);
 }
+// GitHubのコミットとKAGOYAへの正常デプロイ履歴を比較する。秘密情報は返さない。
+const fs=require('fs');
+let zjDeployStatusCache=null,zjDeployStatusUntil=0;
+app.get('/api/deploy-status',async(req,res)=>{
+ res.set('Cache-Control','no-store');
+ if(zjDeployStatusCache&&Date.now()<zjDeployStatusUntil)return res.json(zjDeployStatusCache);
+ let deployedSha=null,deployedAt=null,githubSha=null,githubCommitAt=null;
+ try{
+  const file='/var/lib/zj-github-sync/deployed.sha';
+  deployedSha=fs.readFileSync(file,'utf8').trim()||null;
+  if(deployedSha)deployedAt=fs.statSync(file).mtime.toISOString();
+ }catch{};
+ try{
+  const endpoint='https://api.github.com/repos/'+encodeURIComponent(GH_OWNER)+'/'+encodeURIComponent(GH_REPO)+'/commits/'+encodeURIComponent(GH_BRANCH);
+  const response=await fetch(endpoint,{headers:{'Accept':'application/vnd.github+json','User-Agent':'zamajan-sync-status',...(GH_TOKEN?{'Authorization':'Bearer '+GH_TOKEN}:{})},signal:AbortSignal.timeout(5000)});
+  if(response.ok){const data=await response.json();githubSha=data.sha||null;githubCommitAt=data.commit?.committer?.date||null;}
+ }catch{};
+ const result={githubSha,githubCommitAt,deployedSha,deployedAt,synced:githubSha&&deployedSha?githubSha===deployedSha:null};
+ zjDeployStatusCache=result;zjDeployStatusUntil=Date.now()+60000;
+ res.json(result);
+});
 app.get('/api/shared-config',(req,res)=>{res.set('Cache-Control','no-store');res.json({available:!!sharedConfig,config:sharedConfig,updatedAt:sharedUpdatedAt})});
 
 // GitHubに保存済みのJSONをそのまま配布する。ブラウザーのローカル設定は混ぜない。
