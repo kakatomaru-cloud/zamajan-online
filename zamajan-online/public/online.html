@@ -364,7 +364,11 @@ body:has(#lobby:not(.hidden)) header .zj-bgm-volume{display:inline-flex!importan
 .zj-item-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0}
 .zj-item-launch{background:linear-gradient(120deg,#f9d982,#ad741b);color:#23180b;border:2px solid #ffe2a0;border-radius:10px;padding:9px 13px;font-weight:900;cursor:pointer}
 .zj-item-mask{position:fixed;inset:0;background:#000d;z-index:25000;display:flex;align-items:center;justify-content:center;padding:12px}
-.zj-item-dialog{width:min(920px,100%);max-height:92dvh;overflow:auto;background:linear-gradient(135deg,#173335,#11100e);color:#fff3d7;border:2px solid #e7b756;border-radius:18px;padding:16px}
+ .zj-item-dialog{position:relative;width:min(900px,100%);height:min(94dvh,920px);max-height:94dvh;overflow:auto;overscroll-behavior:contain;background:linear-gradient(135deg,#173335,#11100e);color:#fff3d7;border:2px solid #d7a54a;border-radius:12px;padding:18px}
+.zj-item-mask{z-index:2147483001!important;padding:env(safe-area-inset-top) 8px env(safe-area-inset-bottom)!important}
+.zj-item-dialog h2{margin:0;font-size:clamp(22px,3vw,34px)}
+@media(max-width:700px){.zj-item-dialog{height:94dvh;max-height:94dvh!important;padding:12px!important}}
+
 .zj-item-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
 .zj-item-card{border:1px solid #99743e;background:#132628;padding:10px;border-radius:10px;display:flex;flex-direction:column;gap:6px}
 .zj-item-card b{color:#f6ce76}.zj-item-card p{font-size:12px;flex:1;margin:0}.zj-item-card button{background:#d2a24e;color:#241809;border:0;padding:8px;border-radius:7px;font-weight:bold}
@@ -942,6 +946,7 @@ function show(s){if(!session)return;zjDockTargetIcon();
   const newly=s.riichi.findIndex((v,i)=>v&&!old.riichi[i]);
   if(newly>=0)zjAnnounceRiichi(s.players[newly]?.name||('プレイヤー'+(newly+1)));
  }
+ if(s.phase==='playing'&&(old?.code!==s.code||old?.round!==s.round||old?.phase!=='playing'))zjSelectRoundBgm(s.code,s.round,s.bgmTrack);
  state=s;zjRefreshItemStatus();zjShowTargetButton(s.hand||[],s.config,s.phase==='playing');if(s.config?.tiles){const count=s.config.tiles.filter(t=>t.image).length;const note=$('roomHelp');if(note)note.dataset.imageCount=String(count)}$('globalExit').classList.remove('hidden');$('lobby').classList.add('hidden');$('room').classList.toggle('hidden',s.phase!=='lobby');$('play').classList.toggle('hidden',s.phase==='lobby');$('code').textContent=s.code;$('members').innerHTML=s.players.map((p,i)=>`<p>${i+1}番：${p?escape(p.name)+(p.cpu?'（CPU）':p.connected?'（接続中）':'（切断）'):'空席'}</p>`).join('');$('roomHelp').textContent=(s.host?'参加者がそろったら対戦開始を押してください。空席はCPUになります。':'部屋主の開始を待っています。')+` 共有中の牌画像：${s.config.tiles.filter(t=>t.image).length}種類（全端末共通）`; $('start').classList.toggle('hidden',!s.host||s.phase!=='lobby');if(s.phase==='lobby'){$('zjWinCutscene').classList.add('hidden');return;}const current=s.players[s.turn];$('message').textContent=`第${s.round}局 ／ 山の残り ${s.wallCount}枚 ／ ${current?.name||''}の番${s.round===1&&s.firstDice?' ／ 🎲 '+s.firstDice+'：'+s.players[s.startSeat]?.name+'スタート':''}`;$('players').innerHTML=s.players.map((p,i)=>`<div class="player p${(i-s.seat+4)%4} ${i===s.turn&&s.phase==='playing'?'active':''}"><b>${escape(p.name)}</b>　${s.scores[i].toLocaleString()}点${i===s.startSeat?'<span class="zj-start-marker">スタート</span>':''}<br>${s.riichi[i]?'<span style="color:#ffcf75">リーチ ━●━</span><br>':''}${zjOnlineStatusHTML(i)}${i===s.seat?'あなた':`<div class="opponent-tiles ${s.visibleHands?.[i]?'zj-open-hands':''}">${s.visibleHands?.[i]?s.visibleHands[i].map(id=>'<span class="zj-open-opponent-tile">'+tile(id)+'</span>').join(''):Array.from({length:s.handCounts[i]},()=>'<span class="tile-back"></span>').join('')}</div>`}${i===s.turn&&s.phase==='playing'&&i!==s.seat?'<br>💭 思考中…':''}</div>`).join('');$('discards').innerHTML=onlineDiscardHTML(s);scrollOnlineDiscards(s);const drawnId=s.drawn&&s.turn===s.seat?s.hand[s.hand.length-1]:null;$('hand').innerHTML=s.hand.map((id,i)=>tile(id,true,i)).join('');$('hand').querySelectorAll('button').forEach((b,i)=>{if(s.readyDiscards?.includes(i))b.classList.add('riichi-ready-discard')});if(drawnId!==null){$('hand').querySelectorAll('button').forEach((b,i)=>{if(s.hand[i]===drawnId)b.classList.add('matching-drawn');if(i===s.hand.length-1)b.classList.add('just-drawn')})}$('hand').querySelectorAll('button').forEach(b=>{b.disabled=s.phase!=='playing'||s.turn!==s.seat||!!s.riichi[s.seat];b.onclick=()=>playTileOnce(+b.dataset.idx)});$('guide').textContent=s.phase==='playing'?(s.turn===s.seat?(s.riichi[s.seat]?'🔒 リーチ中：自動ツモ・自動ツモ切り（操作不要。あがりは自動判定）':s.drawn?'牌を1回クリックで捨てられます（15秒）':'牌は1回クリックで捨てられます（ツモ待ち中も可）'):'相手の手番です'):'局の終了';$('logs').innerHTML=s.logs.slice(-4).map(x=>`<div>${escape(x)}</div>`).join('');if(s.phase==='playing'&&s.round!==seenRound){seenRound=s.round;voice('はじめ！',true)}if(s.phase==='result'||s.phase==='final'){const resultKey=s.round+'-'+s.phase;if(seenResult!==resultKey){seenResult=resultKey;if(s.phase==='result')voice(s.result.method==='流局'?'りゅうきょく':s.result.method,s.result.method==='流局')}const ranks=s.scores.map((score,i)=>({i,score,name:s.players[i].name})).sort((a,b)=>b.score-a.score);$('overlay').classList.toggle('zj-one-screen-win',s.phase==='result'&&!!s.result?.winnerName);$('outcome').innerHTML=s.phase==='final'?`<h2>最終順位</h2>${ranks.map((p,i)=>`<div class="rank"><b>${['🥇','🥈','🥉','4位'][i]} ${escape(p.name)}</b><b>${p.score.toLocaleString()}点</b></div>`).join('')}`:`<div class="zj-result-heading"><h2>${escape(s.result.method)}</h2>${s.result.winnerName?`<b>🏆 ${escape(s.result.winnerName)} のあがり</b>`:''}</div>${s.result.winnerName?`${s.result.method==='ロン'?`<p class="zj-ron-target">🎯 ${escape(s.result.loserName||s.players[s.result.loser]?.name||'相手')} からロン！</p>`:''}<div class="zj-result-role-label">成立した役</div><div class="zj-result-role">${escape(s.result.yaku)}</div><div class="zj-result-points">${Number(s.result.points).toLocaleString()}<small>点</small></div><div class="zj-result-bonus-line">${s.result.ownBonus?'<span>🎉 自分ボーナス ＋1,000点</span>':''}${s.result.ojBonus?'<span>🎉 OJ万歳 ＋'+Number(s.result.ojBonus).toLocaleString()+'点</span>':''}${s.result.manaPenalty?'<span>😈 mana2だよ −'+Number(s.result.manaPenalty).toLocaleString()+'点</span>':''}</div>`:'<p>山の牌がなくなりました</p>'}${s.result.hand?`<div class="zj-result-combined">${zjLargeWinningTile(s.result)}<div class="zj-result-nine">${resultTiles(s.result)}</div></div>`:''}`;if(!showWinCutscene(s)&&$('zjWinCutscene').classList.contains('hidden'))$('overlay').classList.remove('hidden');$('next').classList.toggle('hidden',!s.host||s.phase==='final');$('next').textContent=s.round>=s.maxRounds?'最終ランキングを見る':'次の局へ'}else $('overlay').classList.add('hidden')}
 function tick(){if(!state||state.phase!=='playing'){$('timer').textContent='';return}const remaining=Math.max(0,Math.ceil((state.deadline-Date.now())/1000));$('timer').textContent=(state.riichi[state.turn]?'リーチ・自動ツモ'+(state.drawn?'切り中':'待機中'):(state.drawn?'捨て牌まで':'ツモまで'))+` ${remaining}秒`}
 setInterval(tick,200);const nicknameKey='zamajan-online-nickname-v1';
@@ -1002,6 +1007,18 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeZscore()});
 
 // オフライン版と同じユーザー提供BGM。ブラウザの自動再生制限に対応。
 const onlineBgm=new Audio('/zamajan-bgm.mp3');
+// Five tracks, shuffle at every new round; never repeat previous track.
+const zjBgmTracks=['/zamajan-bgm.mp3','/zamajan-bgm-2.mp3','/zamajan-bgm-3.mp3','/zamajan-bgm-4.mp3','/zamajan-bgm-5.mp3'];
+let zjBgmRoundKey='';
+function zjSelectRoundBgm(code,round,track){
+ const key=String(code)+'/'+String(round);
+ if(zjBgmRoundKey===key)return;
+ // Do not locally randomize: the server chooses one index for the entire room.
+ if(!Number.isInteger(track)||track<0||track>=zjBgmTracks.length)return;
+ zjBgmRoundKey=key;
+ onlineBgm.pause();onlineBgm.src=zjBgmTracks[track];onlineBgm.load();playOnlineBgm();
+}
+
 onlineBgm.loop=true;onlineBgm.preload='auto';
 const onlineBgmVolumeKey='zamajan-bgm-volume-v1';
 // iOS Safari ignores HTMLMediaElement.volume. Route BGM through Web Audio GainNode.
@@ -1074,7 +1091,13 @@ function zjOnlineStatusHTML(p){const a=state?.items,e=a?.allEffects?.[p]||{},lis
  return list.length?'<div class="zj-active-effects" aria-label="継続アイテム">'+list.join('')+'</div>':'';
 }
 function zjRefreshItemStatus(){const el=$('zjItemStatus'),btn=$('zjItemOpen'),a=state?.items;if(!el||!btn)return;btn.disabled=!a||state.phase!=='playing'||a.mode==='off';btn.style.display=a?.mode==='off'?'none':'inline-block';el.textContent=a?'🎟️'+(a.tickets?.[state.seat]||0)+'回 ／ 使用 '+a.used[state.seat]+'/'+a.limit+'回':''}
-function zjItemDialog(html){const root=$('zjItemModalRoot');root.innerHTML='<div class="zj-item-mask"><div class="zj-item-dialog"><div style="display:flex;justify-content:space-between;align-items:center"><h2>💥 カオスアイテム</h2><button id="zjItemClose" type="button">閉じる ✕</button></div><div id="zjItemBody">'+html+'</div></div></div>';$('zjItemClose').onclick=()=>root.replaceChildren()}
+function zjItemDialog(html){
+ const root=$('zjItemModalRoot');
+ root.innerHTML='<div class="zj-item-mask" role="presentation"><section class="zj-item-dialog" role="dialog" aria-modal="true" aria-label="カオスアイテム"><div style="position:sticky;top:-18px;z-index:3;background:#142124;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #9b824c"><h2>💥 カオスアイテム</h2><button id="zjItemClose" type="button">✕ 閉じる</button></div><div id="zjItemBody">'+html+'</div></section></div>';
+ $('zjItemClose').onclick=zjItemClose;
+ root.querySelector('.zj-item-mask').addEventListener('click',ev=>{if(ev.target===ev.currentTarget)zjItemClose()});
+ root.querySelector('#zjItemClose').focus();
+}
 function zjItemClose(){$('zjItemModalRoot').replaceChildren()}
 function zjClientAvailable(id){if(!state||!state.items)return false;const p=state.seat,a=state.items,e=a.effects||{},w=state.wallCount;switch(id){
  case 'riichiswap':return !state.riichi[p]&&state.riichi.some((v,i)=>i!==p&&v);

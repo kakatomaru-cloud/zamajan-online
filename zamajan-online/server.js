@@ -357,7 +357,7 @@ function state(r,seat){
  const h=r.hands?.[seat]||[];
  const readyDiscards=r.phase==='playing'&&r.turn===seat&&r.drawn&&!r.riichi[seat]&&h.length===9
   ?h.flatMap((_,i)=>tenpai(r,h.filter((__,j)=>i!==j))?[i]:[]):[];
- return {readyDiscards,code:r.code,seat,host:r.host===r.players[seat]?.token,phase:r.phase,round:r.round,maxRounds:r.maxRounds,turn:r.turn,firstDice:r.firstDice||null,startSeat:r.startSeat??0,drawn:r.drawn,wallCount:r.wall?.length||0,scores:r.scores,riichi:r.riichi,discards:r.discards,discardHistory:r.discardHistory||[],hand:r.hands?.[seat]||[],handCounts:r.hands?.map(h=>h.length)||[0,0,0,0],players:r.players.map(p=>p?{name:p.name,cpu:!!p.cpu,connected:!!p.socket}:null),result:r.result,config:r.config,tableTheme:r.tableTheme||1,logs:r.logs.slice(-12),items:zjPublicItems(r,seat),visibleHands:r.items?.effects[seat]?.openall?r.hands.map(h=>h.slice()):null,deadline:r.deadline||0}}
+ return {readyDiscards,bgmTrack:r.bgmTrack??0,code:r.code,seat,host:r.host===r.players[seat]?.token,phase:r.phase,round:r.round,maxRounds:r.maxRounds,turn:r.turn,firstDice:r.firstDice||null,startSeat:r.startSeat??0,drawn:r.drawn,wallCount:r.wall?.length||0,scores:r.scores,riichi:r.riichi,discards:r.discards,discardHistory:r.discardHistory||[],hand:r.hands?.[seat]||[],handCounts:r.hands?.map(h=>h.length)||[0,0,0,0],players:r.players.map(p=>p?{name:p.name,cpu:!!p.cpu,connected:!!p.socket}:null),result:r.result,config:r.config,tableTheme:r.tableTheme||1,logs:r.logs.slice(-12),items:zjPublicItems(r,seat),visibleHands:r.items?.effects[seat]?.openall?r.hands.map(h=>h.slice()):null,deadline:r.deadline||0}}
 function log(r,s){r.logs.push(s);if(r.logs.length>100)r.logs.shift()}
 function schedule(r){
  clearTimeout(r.timer);
@@ -389,7 +389,12 @@ if(r.round===1&&!r.firstDice){
  r.startSeat=(r.firstDice-1)%4;
 }
 if(r.round>1)r.startSeat=((r.startSeat??0)+1)%4;
-r.turn=r.startSeat??0;r.drawn=false;r.result=null;r.phase='playing';for(let k=0;k<8;k++)for(let i=0;i<4;i++)r.hands[i].push(r.wall.pop());r.hands.forEach(h=>h.sort((a,b)=>a-b));log(r,r.round===1?`🎲 サイコロ ${r.firstDice}！部屋主から右回りで${r.firstDice}人目：${r.players[r.startSeat].name}がスタート！`:`第${r.round}局 はじめ！`);schedule(r);broadcast(r);return null}
+r.turn=r.startSeat??0;r.drawn=false;r.result=null;r.phase='playing';
+// Select once per round on server, share the selected track to every player.
+const previous=r.bgmTrack;
+r.bgmTrack=crypto.randomInt(5);
+if(Number.isInteger(previous)&&r.bgmTrack===previous)r.bgmTrack=(previous+1+crypto.randomInt(4))%5;
+for(let k=0;k<8;k++)for(let i=0;i<4;i++)r.hands[i].push(r.wall.pop());r.hands.forEach(h=>h.sort((a,b)=>a-b));log(r,r.round===1?`🎲 サイコロ ${r.firstDice}！部屋主から右回りで${r.firstDice}人目：${r.players[r.startSeat].name}がスタート！`:`第${r.round}局 はじめ！`);schedule(r);broadcast(r);return null}
 function finish(r,result){clearTimeout(r.timer);r.deadline=0;r.phase='result';r.result=result;log(r,result.method==='流局'?'流局':result.method==='ロン'?`${result.winnerName}が${result.loserName||r.players[result.loser]?.name||'相手'}からロン！`:`${result.winnerName}が${result.method}！`);broadcast(r)}
 function zjScoreWin(r,p,hand,y,method,loser=null,winningTile=null){
  const b=zjWinBonuses(r,p,hand),rolePoints=Math.round(y.points*b.multiplier),bonus=ownBonus(r,p,hand)?1000:0;
