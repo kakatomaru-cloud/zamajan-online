@@ -48,18 +48,34 @@ let zjDeployStatusCache=null,zjDeployStatusUntil=0;
 app.get('/api/deploy-status',async(req,res)=>{
  res.set('Cache-Control','no-store');
  if(zjDeployStatusCache&&Date.now()<zjDeployStatusUntil)return res.json(zjDeployStatusCache);
- let deployedSha=null,deployedAt=null,githubSha=null,githubCommitAt=null;
+ let deployedSha=null,deployedAt=null,githubSha=null,githubCommitAt=null,deployedAtKind="deployment";
  try{
   const file='/var/lib/zj-github-sync/deployed.sha';
   deployedSha=fs.readFileSync(file,'utf8').trim()||null;
   if(deployedSha)deployedAt=fs.statSync(file).mtime.toISOString();
  }catch{};
+ // The deployment marker is root-owned (0600) on KAGOYA. Read the currently checked-out
+ // Git commit instead, which is accessible to the unprivileged Node application.
+ // This also works when the sync utility's state directory is inaccessible.
+ if(!deployedSha){
+  try{
+   const {execFileSync}=require('child_process');
+   const repositoryDir='/home/zamajan/zamajan-online';
+   const sha=execFileSync('git',['-C',repositoryDir,'rev-parse','HEAD'],{encoding:'utf8',timeout:2000}).trim();
+   if(/^[0-9a-f]{40}$/i.test(sha)){
+    deployedSha=sha;
+    // This is the server-process start time, not GitHub push or the git commit time.
+    deployedAt=new Date(Date.now()-process.uptime()*1000).toISOString();
+    deployedAtKind="server-start";
+   }
+  }catch(error){console.warn('Git revision status unavailable:',error.message)}
+ }
  try{
   const endpoint='https://api.github.com/repos/'+encodeURIComponent(GH_OWNER)+'/'+encodeURIComponent(GH_REPO)+'/commits/'+encodeURIComponent(GH_BRANCH);
   const response=await fetch(endpoint,{headers:{'Accept':'application/vnd.github+json','User-Agent':'zamajan-sync-status',...(GH_TOKEN?{'Authorization':'Bearer '+GH_TOKEN}:{})},signal:AbortSignal.timeout(5000)});
   if(response.ok){const data=await response.json();githubSha=data.sha||null;githubCommitAt=data.commit?.committer?.date||null;}
  }catch{};
- const result={githubSha,githubCommitAt,deployedSha,deployedAt,synced:githubSha&&deployedSha?githubSha===deployedSha:null};
+ const result={githubSha,githubCommitAt,deployedSha,deployedAt,deployedAtKind,synced:githubSha&&deployedSha?githubSha===deployedSha:null};
  zjDeployStatusCache=result;zjDeployStatusUntil=Date.now()+60000;
  res.json(result);
 });
