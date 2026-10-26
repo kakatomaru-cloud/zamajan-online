@@ -619,7 +619,9 @@ main{max-width:1120px;margin:auto;padding:22px 16px 65px}.section-title{font-siz
 <header><p>ZAMA-JAN · OFFICIAL SCORE SHEET</p><h1>ザマじゃん得点表</h1><p>${esc(context)}</p></header>
 <main><h2 class="section-title">🏆 役一覧 · 高得点順</h2><p class="description">山0枚の牌を含む役は原則非表示です。ただし、9枚以上の異なる牌を各1枚集める役は表示します。山0枚の牌自体は表示・集計しません。</p>${rows||'<p>登録された役はありません。</p>'}
 <h2 class="section-title">🀄 牌ごとの役使用数</h2><p class="description">役に登録された枚数を合計しています。「登録 ○役」はその牌が登場する役の種類数です。山の枚数が0の牌は表示せず、集計もしません。</p>
-<div class="usage-grid">${usage||'<p>山に入っている牌がありません。</p>'}</div><p class="description">基本役：三組そろえ（1,000点）。基本役は上の登録枚数には含みません。</p></main></body></html>`;
+<div class="usage-grid">${usage||'<p>山に入っている牌がありません。</p>'}</div><p class="description">基本役：三組そろえ（1,000点）。基本役は上の登録枚数には含みません。</p></main>
+
+</body></html>`;
 }
 window.zjOpenScoreSheet=function(config,context,hero,provided){
  const popup=provided||window.open('','zamajan-score-sheet','width=1110,height=800,resizable=yes,scrollbars=yes');
@@ -629,7 +631,7 @@ window.zjOpenScoreSheet=function(config,context,hero,provided){
 };
 })();
 
-</script><header><h1>ザマじゃん <small>ONLINE</small></h1><div class="row"><button id="globalExit" type="button" class="hidden" style="border:3px solid #ffe099;background:#9c2720;color:white;font-weight:900;box-shadow:0 0 16px #ffae4488">🚪 部屋から退出・タイトルへ</button><button type="button" id="zscoreTop" class="zscore-open">🏆 ザマじゃん得点表</button><a href="zamajan.html" style="color:#e5c78a">オフライン版</a><button id="bgmToggle" type="button" style="position:fixed;right:14px;bottom:14px;z-index:10000;background:#16120b;color:#f6d18c;border:2px solid #bd9153;border-radius:9px;padding:12px 17px;cursor:pointer;font-weight:bold;box-shadow:0 3px 14px #000b" aria-label="BGMの再生・停止">♪ BGMを再生</button><label class="zj-bgm-volume">音量 <input id="onlineBgmVolume" type="range" min="0" max="100" step="1" value="3" aria-label="BGMの音量"><span id="onlineBgmVolumeValue">3%</span></label></div></header><main><section class="panel" id="lobby"><h2>インターネット対戦</h2><div class="zj-title-bgm" role="group" aria-label="タイトル画面のBGM音量設定"><label for="titleBgmVolume">♪ BGM 音量</label><input id="titleBgmVolume" type="range" min="0" max="100" step="1" value="3" aria-label="タイトル画面のBGM音量"><output id="titleBgmVolumeValue" for="titleBgmVolume">3%</output></div><p>友達と同じ6桁のルーム番号で参加できます。部屋を作る人の牌設定・役設定を使用します。</p><div class="row"><label>名前 <input id="nickname" maxlength="20" value="あなた"></label><label>対戦局数 <select id="rounds"><option>1</option><option>2</option><option selected>4</option><option>8</option><option>12</option><option>16</option><option>20</option></select></label></div><div class="row" style="margin-top:12px"><label>🎁 アイテム配布・購入条件 <select id="onlineItemMode"><option value="both" selected>4位に好きなアイテム1回無料＋全員購入可能</option><option value="last">4位に好きなアイテム1回無料のみ</option><option value="paid">全員購入可能のみ</option><option value="off">アイテムなし</option></select></label><label>1局の使用上限 <select id="onlineItemLimit"><option value="1" selected>1回</option><option value="2">2回</option><option value="3">3回</option></select></label></div><div class="row zj-theme-choice"><label for="onlineTableTheme">🀄 対戦卓の壁紙（初期値：ピカソ風） <select id="onlineTableTheme"><option value="random">🎲 ランダム（部屋を作るたびに抽選）</option><option value="1">🐉 漆黒・金龍</option><option value="2">🌿 深緑・金彩雲波</option><option value="3">🌊 藍色・月夜の波</option><option value="4">🔥 紅蓮・鳳凰</option><option value="5">⚫ 漆黒・金彩和柄</option><option value="6">🌊 北斎・金彩富士と波</option><option value="7">🌙 北斎・紅月と荒波</option><option value="8" selected>🎨 ピカソ風・キュビズム</option></select></label><span style="color:#dbc79d;font-size:12px">新しく作成した部屋に反映されます。既存の部屋には変更されません。</span><div id="zjTableThemePreviewWrap" style="margin-top:10px;width:min(100%,480px);border:1px solid #a58b5d;border-radius:9px;overflow:hidden;background:#1b1b1b"><img id="zjTableThemePreview" alt="選択中の卓画像プレビュー" src="/assets/tables/zamajan-table-8.jpg" style="display:block;width:100%;aspect-ratio:16/9;object-fit:cover"><div id="zjTableThemePreviewText" style="padding:5px 9px;color:#e8d9b9;font-size:11px">🎨 ピカソ風・キュビズム（テーマ8）</div></div></div><div class="row" style="margin-top:15px"><button id="create">部屋を作る</button><input id="roomCode" inputmode="numeric" maxlength="6" placeholder="6桁のルーム番号"><button id="join">部屋に参加</button></div><div class="panel" style="margin:16px 0 0;max-width:850px;background:#090807d9"><b>以前のザマじゃんの牌画像・役設定を反映</b><p class="muted">オフライン版の「設定を書き出す」で保存したJSONファイルを選ぶと、部屋主の牌画像・名前・役をオンライン対戦に適用できます。</p><div class="row" style="margin:10px 0"><button type="button" id="configExport">現在の牌・役設定をバックアップ（JSON保存）</button><button type="button" id="configClear">保存設定を初期化</button></div><label>設定JSONを読み込む <input id="configImport" type="file" accept=".json,application/json"></label><div id="imageNotice">未読み込み：標準の絵文字牌を使用します</div><div class="zj-github-panel"><h3>🔐 GitHub共通設定（管理者専用）</h3><p class="muted">管理者パスワードを入力して保存すると、GitHubの game-config.json を上書きします。新しい部屋から共通設定が使用されます。</p><label>管理者パスワード <input id="zjAdminPassword" type="password" autocomplete="off" placeholder="Renderで設定したパスワード"></label><button id="zjSaveGitHub" type="button">☁ GitHubに共通設定を保存</button><button id="zjLoadGitHub" type="button">↻ GitHub共通設定を再読み込み</button><button id="zjDownloadGitHub" type="button" style="background:linear-gradient(135deg,#1c7a68,#104f50);color:#fff;border-color:#7ad5bb">⬇ GitHubの設定JSONを書き出す</button><p class="muted" style="font-size:13px">別のPCのオフライン版で「設定 → JSONを読み込む」を選ぶと、GitHubに保存した牌画像・役設定を再現できます。現在のブラウザーに保存した設定ではなく、GitHubのファイルを直接取得します。</p><p id="zjGitHubStatus" class="muted" role="status">共通設定を確認しています…</p><p id="zjDeployStatus" class="muted" style="font-size:11px;opacity:.7;margin:8px 0 0" role="status">GitHub・KAGOYA同期状態を確認中…</p></div></div><p class="muted">サーバーに公開後、友達にこのページのURLとルーム番号を伝えてください。</p></section><section id="room" class="panel hidden"><div class="row"><h2>ルーム <span id="code" class="copy"></span></h2><button id="copy">番号をコピー</button><button class="leave-room">部屋から退出してタイトルに戻る</button></div><div id="members"></div><p id="roomHelp" class="muted"></p><button id="start" class="hidden">対戦開始（空席はCPU）</button></section><section id="play" class="hidden"><div class="bar"><div class="status" id="message"></div><div class="timer" id="timer"></div><button type="button" id="zscorePlay" class="zscore-open">🏆 得点表を見る</button><button class="leave-room">部屋から退出してタイトルに戻る</button></div><div class="board"><div class="zj-item-controls" id="zjBoardItemControls"><button type="button" class="zj-item-launch" id="zjItemOpen">🎁 アイテム</button><span id="zjItemStatus"></span></div><div class="center-mark">龍</div><div id="players"></div><div id="discards" class="discard-area"></div><div id="hand" class="myhand"></div></div><div class="panel"><span id="guide"></span><div id="logs" class="muted"></div></div></section></main><div id="zjWinCutscene" class="zj-win-cutscene hidden" aria-live="polite"><video id="zjWinVideo" playsinline muted preload="auto"></video><div class="zj-win-cutscene-info" id="zjWinCutsceneInfo"></div></div><div id="zjItemModalRoot"></div><div id="zjItemEffectRoot"></div><div id="overlay" class="overlay hidden"><div class="modal"><div id="outcome"></div><div class="actions"><button id="next" class="hidden">次の局へ</button><button id="home">部屋から退出してタイトルに戻る</button></div></div></div><div id="zscoreMask" class="zscore-mask hidden" role="dialog" aria-modal="true" aria-labelledby="zscoreHeading"><div class="zscore-dialog"><button id="zscoreClose" class="zscore-close" type="button">✕ 閉じる</button><div class="zscore-banner"><h2 id="zscoreHeading">ザマじゃん得点表</h2></div><div class="zscore-body"><p class="zscore-sub" id="zscoreContext"></p><div id="zscoreList"></div></div></div></div><script src="/socket.io/socket.io.js"></script><script>
+</script><header><button id="zjAdminNav" type="button" aria-label="管理画面を開く">⚙ 管理画面</button><h1>ザマじゃん <small>ONLINE</small></h1><div class="row"><button id="globalExit" type="button" class="hidden" style="border:3px solid #ffe099;background:#9c2720;color:white;font-weight:900;box-shadow:0 0 16px #ffae4488">🚪 部屋から退出・タイトルへ</button><button type="button" id="zscoreTop" class="zscore-open">🏆 ザマじゃん得点表</button><a href="zamajan.html" style="color:#e5c78a">オフライン版</a><button id="bgmToggle" type="button" style="position:fixed;right:14px;bottom:14px;z-index:10000;background:#16120b;color:#f6d18c;border:2px solid #bd9153;border-radius:9px;padding:12px 17px;cursor:pointer;font-weight:bold;box-shadow:0 3px 14px #000b" aria-label="BGMの再生・停止">♪ BGMを再生</button><label class="zj-bgm-volume">音量 <input id="onlineBgmVolume" type="range" min="0" max="100" step="1" value="3" aria-label="BGMの音量"><span id="onlineBgmVolumeValue">3%</span></label></div></header><main><section class="panel" id="lobby"><h2>インターネット対戦</h2><div class="zj-title-bgm" role="group" aria-label="タイトル画面のBGM音量設定"><label for="titleBgmVolume">♪ BGM 音量</label><input id="titleBgmVolume" type="range" min="0" max="100" step="1" value="3" aria-label="タイトル画面のBGM音量"><output id="titleBgmVolumeValue" for="titleBgmVolume">3%</output></div><p>友達と同じ6桁のルーム番号で参加できます。部屋を作る人の牌設定・役設定を使用します。</p><div class="row"><label>名前 <input id="nickname" maxlength="20" value="あなた"></label><label>対戦局数 <select id="rounds"><option>1</option><option>2</option><option selected>4</option><option>8</option><option>12</option><option>16</option><option>20</option></select></label></div><div class="row" style="margin-top:12px"><label>🎁 アイテム配布・購入条件 <select id="onlineItemMode"><option value="both" selected>4位に好きなアイテム1回無料＋全員購入可能</option><option value="last">4位に好きなアイテム1回無料のみ</option><option value="paid">全員購入可能のみ</option><option value="off">アイテムなし</option></select></label><label>1局の使用上限 <select id="onlineItemLimit"><option value="1" selected>1回</option><option value="2">2回</option><option value="3">3回</option></select></label></div><div class="row zj-theme-choice"><label for="onlineTableTheme">🀄 対戦卓の壁紙（初期値：ランダム） <select id="onlineTableTheme"><option value="random" selected>🎲 ランダム（部屋を作るたびに抽選）</option><option value="1">🐉 漆黒・金龍</option><option value="2">🌿 深緑・金彩雲波</option><option value="3">🌊 藍色・月夜の波</option><option value="4">🔥 紅蓮・鳳凰</option><option value="5">⚫ 漆黒・金彩和柄</option><option value="6">🌊 北斎・金彩富士と波</option><option value="7">🌙 北斎・紅月と荒波</option><option value="8">🎨 ピカソ風・キュビズム</option></select></label><span style="color:#dbc79d;font-size:12px">新しく作成した部屋に反映されます。既存の部屋には変更されません。</span><div id="zjTableThemePreviewWrap" style="margin-top:10px;width:min(100%,480px);border:1px solid #a58b5d;border-radius:9px;overflow:hidden;background:#1b1b1b"><img id="zjTableThemePreview" alt="選択中の卓画像プレビュー" src="/assets/tables/zamajan-table-1.jpg" style="display:block;width:100%;aspect-ratio:16/9;object-fit:cover"><div id="zjTableThemePreviewText" style="padding:5px 9px;color:#e8d9b9;font-size:11px">🎲 ランダム（作成時に抽選）</div></div></div><div class="row" style="margin-top:15px"><button id="create">部屋を作る</button><input id="roomCode" inputmode="numeric" maxlength="6" placeholder="6桁のルーム番号"><button id="join">部屋に参加</button></div><p class="muted">サーバーに公開後、友達にこのページのURLとルーム番号を伝えてください。</p></section><section id="zjAdminScreen" class="panel hidden" aria-label="管理画面"><div class="row" style="justify-content:space-between;align-items:center"><h2>⚙ 管理画面</h2><button type="button" id="zjAdminBack">← トップへ戻る</button></div><div class="panel" style="margin:16px 0 0;max-width:850px;background:#090807d9"><b>牌画像・役設定をサーバーで一元管理</b><p class="muted">初期移行ではJSONを読み込めます。現在はKAGOYAに保存した共通設定が、全員の新しい部屋に自動適用されます。</p><div class="row" style="margin:10px 0"><button type="button" id="configExport">現在の牌・役設定をバックアップ（JSON保存）</button><button type="button" id="configClear">保存設定を初期化</button></div><label>設定JSONを読み込む <input id="configImport" type="file" accept=".json,application/json"></label><div id="imageNotice">未読み込み：標準の絵文字牌を使用します</div><div class="zj-github-panel" id="zjServerEditorPanel" style="margin:16px 0;padding:16px;border:1px solid #d7ad61;border-radius:12px;background:#101e21"><h3>🀄 KAGOYA共通設定・役編集（管理者専用）</h3><p class="muted">全員に適用する役を編集できます。保存すると、次に作成する部屋から反映されます。対戦中の部屋は変更しません。</p><p class="muted" id="zjServerEditorStatus">サーバーの設定を読み込んでいます…</p><div class="row"><button type="button" id="zjEditYakuOpen">役設定を編集</button><button type="button" id="zjServerSaveAll">牌・役の設定をサーバーへ保存</button><button type="button" id="zjServerRefresh">最新設定を再読み込み</button></div><label>管理者パスワード（サーバー保存用） <input id="zjServerPassword" type="password" autocomplete="off" placeholder="管理者パスワード"></label><p class="muted" style="font-size:12px">保存先はKAGOYAサーバー内です。GitHubにコミットされず、デプロイで再起動もしません。</p></div><div class="zj-github-panel"><h3>🔐 旧GitHub設定（移行・バックアップ用）</h3><p class="muted">普段の編集・保存は上の「KAGOYA共通設定」をお使いください。GitHubへ保存するとコードの自動デプロイが発生する場合があります。</p><label>管理者パスワード <input id="zjAdminPassword" type="password" autocomplete="off" placeholder="管理者パスワード"></label><button id="zjSaveGitHub" type="button">☁ GitHubに共通設定を保存</button><button id="zjLoadGitHub" type="button">↻ GitHub共通設定を再読み込み</button><button id="zjDownloadGitHub" type="button" style="background:linear-gradient(135deg,#1c7a68,#104f50);color:#fff;border-color:#7ad5bb">⬇ KAGOYAの設定JSONを書き出す</button><p class="muted" style="font-size:13px">サーバーに保存済みの設定JSONを書き出します。バックアップとして保管できます。</p><p id="zjGitHubStatus" class="muted" role="status">共通設定を確認しています…</p><p id="zjDeployStatus" class="muted" style="font-size:11px;opacity:.7;margin:8px 0 0" role="status">GitHub・KAGOYA同期状態を確認中…</p></div></div></section><section id="room" class="panel hidden"><div class="row"><h2>ルーム <span id="code" class="copy"></span></h2><button id="copy">番号をコピー</button><button class="leave-room">部屋から退出してタイトルに戻る</button></div><div id="members"></div><p id="roomHelp" class="muted"></p><button id="start" class="hidden">対戦開始（空席はCPU）</button></section><section id="play" class="hidden"><div class="bar"><div class="status" id="message"></div><div class="timer" id="timer"></div><button type="button" id="zscorePlay" class="zscore-open">🏆 得点表を見る</button><button class="leave-room">部屋から退出してタイトルに戻る</button></div><div class="board"><div class="zj-item-controls" id="zjBoardItemControls"><button type="button" class="zj-item-launch" id="zjItemOpen">🎁 アイテム</button><span id="zjItemStatus"></span></div><div class="center-mark">龍</div><div id="players"></div><div id="discards" class="discard-area"></div><div id="hand" class="myhand"></div></div><div class="panel"><span id="guide"></span><div id="logs" class="muted"></div></div></section></main><div id="zjWinCutscene" class="zj-win-cutscene hidden" aria-live="polite"><video id="zjWinVideo" playsinline muted preload="auto"></video><div class="zj-win-cutscene-info" id="zjWinCutsceneInfo"></div></div><div id="zjItemModalRoot"></div><div id="zjItemEffectRoot"></div><div id="overlay" class="overlay hidden"><div class="modal"><div id="outcome"></div><div class="actions"><button id="next" class="hidden">次の局へ</button><button id="home">部屋から退出してタイトルに戻る</button></div></div></div><div id="zscoreMask" class="zscore-mask hidden" role="dialog" aria-modal="true" aria-labelledby="zscoreHeading"><div class="zscore-dialog"><button id="zscoreClose" class="zscore-close" type="button">✕ 閉じる</button><div class="zscore-banner"><h2 id="zscoreHeading">ザマじゃん得点表</h2></div><div class="zscore-body"><p class="zscore-sub" id="zscoreContext"></p><div id="zscoreList"></div></div></div></div><script src="/socket.io/socket.io.js"></script><script>
 'use strict';const $=id=>document.getElementById(id),socket=io(),key='zamajan-online-reconnect',localKey='zamajan-set-v01';let state=null,session=null,seenRound=0,seenResult='',clock=null,importedConfig=null,cinematicResultKey='',cinematicTimer=null;const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));function tile(id,button=false,index=0){const t=state.config.tiles[id-1]||{name:"不明な牌",emoji:"🀄"};const inner=t.image?`<img src="${escape(t.image)}" alt="${escape(t.name)}">`:`<span class="symbol">${t.emoji}</span>`;return button?`<button class="tile" data-idx="${index}">${inner}${t.imageOnly?'':`<small>${escape(t.name)}</small>`}</button>`:`<span class="tile">${inner}${t.imageOnly?'':`<small>${escape(t.name)}</small>`}</span>`}
 function voice(word,male=false){try{const u=new SpeechSynthesisUtterance(word);u.lang='ja-JP';u.rate=male?.72:.92;u.pitch=male?.6:1.35;const vs=speechSynthesis.getVoices().filter(v=>v.lang.startsWith('ja'));const preferred=vs.find(v=>male?/male|ichiro|otoya|takumi/i.test(v.name):/female|nanami|haruka|kyoko/i.test(v.name));if(preferred)u.voice=preferred;speechSynthesis.speak(u)}catch{}}
 // 画像を含む牌設定は IndexedDB に保存。対戦情報とは別管理する。
@@ -705,9 +707,9 @@ let zjSharedConfig=null;
 async function zjFetchSharedConfig(useInBrowser=false){
  const status=$('zjGitHubStatus');
  try{const response=await fetch('/api/shared-config',{cache:'no-store'});if(!response.ok)throw Error('サーバー '+response.status);
-  const result=await response.json();zjSharedConfig=result.config||null;
-  if(!result.available){status.textContent='GitHub共通設定はまだありません。管理者が保存すると、以後すべての新しい部屋で使用されます。';return}
-  status.textContent=`GitHub共通設定あり：牌 ${result.config.tiles.length} 種類・役 ${result.config.yaku.length} 件。新しい部屋ではこちらが優先されます。`;
+  const result=await response.json();zjSharedConfig=result.config||null;const editorStatus=$('zjServerEditorStatus');if(editorStatus)editorStatus.textContent=result.available?'KAGOYA設定：牌 '+result.config.tiles.length+'種類・役 '+result.config.yaku.length+'件':'設定未取得';
+  if(!result.available){status.textContent='サーバー共通設定はまだありません。管理者が保存すると、以後すべての新しい部屋で使用されます。';return}
+  status.textContent=`サーバー共通設定あり：牌 ${result.config.tiles.length} 種類・役 ${result.config.yaku.length} 件。新しい部屋ではこちらが優先されます。`;
   if(useInBrowser){const saved=await saveSettings(result.config);if(!saved)throw Error('ブラウザへの保存に失敗しました');importedConfig=result.config;configSummary(result.config,'GitHub共通設定を読み込みました')}
  }catch(err){status.textContent='共通設定の取得失敗：'+err.message}
 }
@@ -715,16 +717,16 @@ $('zjLoadGitHub').onclick=()=>zjFetchSharedConfig(true);
 
 $('zjDownloadGitHub').onclick=async()=>{
  const button=$('zjDownloadGitHub'),status=$('zjGitHubStatus');
- button.disabled=true;status.textContent='GitHubの設定JSONを取得しています…';
+ button.disabled=true;status.textContent='KAGOYAの設定JSONを取得しています…';
  try{
   const response=await fetch('/api/shared-config/download',{cache:'no-store'});
   if(!response.ok){let message='サーバー '+response.status;try{const result=await response.json();message=result.error||message}catch{}throw Error(message)}
   const blob=await response.blob();
   if(!blob.size)throw Error('ダウンロードする設定が空です');
   const url=URL.createObjectURL(blob),a=document.createElement('a');
-  a.href=url;a.download='zamajan-github-settings.json';document.body.appendChild(a);a.click();a.remove();
+  a.href=url;a.download='zamajan-kagoya-settings.json';document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),60000);
-  status.textContent='GitHubに保存されている設定JSONを書き出しました。別PCのオフライン版で読み込んでください。';
+  status.textContent='KAGOYAの共通設定JSONを書き出しました。';
  }catch(err){status.textContent='JSON書き出し失敗：'+err.message;alert('GitHubの設定JSONを保存できませんでした。\n'+err.message)}
  finally{button.disabled=false}
 };
@@ -968,7 +970,7 @@ function zjPreviewTheme(){
 }
 $('onlineTableTheme').addEventListener('change',zjPreviewTheme);
 zjPreviewTheme();
-$('create').onclick=async()=>{try{const cfg=await prepareConfig(importedConfig||await loadSettings());if(cfg){importedConfig=cfg;await saveSettings(cfg)}rememberNickname();socket.emit('create',{name:$('nickname').value,maxRounds:+$('rounds').value,itemMode:$('onlineItemMode').value,itemLimit:+$('onlineItemLimit').value,tableThemeChoice:$('onlineTableTheme').value,config:cfg})}catch(e){alert('牌画像の送信準備に失敗しました：'+e.message)}};$('join').onclick=()=>{rememberNickname();socket.emit('join',{code:$('roomCode').value,name:$('nickname').value})};$('start').onclick=()=>socket.emit('start');$('next').onclick=()=>socket.emit('next');$('copy').onclick=()=>navigator.clipboard?.writeText(state.code);function leaveRoom(){if(!confirm('この部屋から退出してタイトルに戻りますか？\n対戦中は手牌・点数をそのままCPUが引き継ぎます。待機中に部屋主が退出すると部屋が終了します。'))return;localStorage.removeItem(key);socket.emit('leave');resetToLobby()}function resetToLobby(){$('zjItemModalRoot').replaceChildren();$('zjItemEffectRoot').replaceChildren();$('globalExit').classList.add('hidden');state=null;session=null;seenRound=0;seenResult='';$('overlay').classList.add('hidden');$('room').classList.add('hidden');$('play').classList.add('hidden');$('lobby').classList.remove('hidden');$('timer').textContent=''}document.querySelectorAll('.leave-room').forEach(b=>b.onclick=leaveRoom);$('globalExit').onclick=leaveRoom;$('home').onclick=leaveRoom;socket.on('joined',x=>{session=x;localStorage.setItem(key,JSON.stringify(x))});socket.on('state',show);socket.on('roomClosed',message=>{localStorage.removeItem(key);resetToLobby();alert(message||'部屋が終了しました')});socket.on('errorMessage',m=>{if(m==='ルームが見つかりません'){localStorage.removeItem(key);resetToLobby()}alert(m)});socket.on('connect',()=>{try{const s=JSON.parse(localStorage.getItem(key));if(s?.code&&s?.token)socket.emit('join',{code:s.code,token:s.token,name:$('nickname').value})}catch{}});
+$('create').onclick=async()=>{try{const cfg=null;rememberNickname();socket.emit('create',{name:$('nickname').value,maxRounds:+$('rounds').value,itemMode:$('onlineItemMode').value,itemLimit:+$('onlineItemLimit').value,tableThemeChoice:$('onlineTableTheme').value,config:cfg})}catch(e){alert('牌画像の送信準備に失敗しました：'+e.message)}};$('join').onclick=()=>{rememberNickname();socket.emit('join',{code:$('roomCode').value,name:$('nickname').value})};$('start').onclick=()=>socket.emit('start');$('next').onclick=()=>socket.emit('next');$('copy').onclick=()=>navigator.clipboard?.writeText(state.code);function leaveRoom(){if(!confirm('この部屋から退出してタイトルに戻りますか？\n対戦中は手牌・点数をそのままCPUが引き継ぎます。待機中に部屋主が退出すると部屋が終了します。'))return;localStorage.removeItem(key);socket.emit('leave');resetToLobby()}function resetToLobby(){$('zjItemModalRoot').replaceChildren();$('zjItemEffectRoot').replaceChildren();$('globalExit').classList.add('hidden');state=null;session=null;seenRound=0;seenResult='';$('overlay').classList.add('hidden');$('room').classList.add('hidden');$('play').classList.add('hidden');$('lobby').classList.remove('hidden');$('timer').textContent=''}document.querySelectorAll('.leave-room').forEach(b=>b.onclick=leaveRoom);$('globalExit').onclick=leaveRoom;$('home').onclick=leaveRoom;socket.on('joined',x=>{session=x;localStorage.setItem(key,JSON.stringify(x))});socket.on('state',show);socket.on('roomClosed',message=>{localStorage.removeItem(key);resetToLobby();alert(message||'部屋が終了しました')});socket.on('errorMessage',m=>{if(m==='ルームが見つかりません'){localStorage.removeItem(key);resetToLobby()}alert(m)});socket.on('connect',()=>{try{const s=JSON.parse(localStorage.getItem(key));if(s?.code&&s?.token)socket.emit('join',{code:s.code,token:s.token,name:$('nickname').value})}catch{}});
 
 
 // 役一覧は常に部屋主の共有設定を優先。タイトル画面では読み込んだ設定を表示。
@@ -1011,7 +1013,7 @@ const onlineBgm=new Audio('/zamajan-bgm.mp3');
 const zjBgmTracks=['/zamajan-bgm.mp3','/zamajan-bgm-2.mp3','/zamajan-bgm-3.mp3','/zamajan-bgm-4.mp3','/zamajan-bgm-5.mp3'];
 let zjBgmRoundKey='';
 function zjSelectRoundBgm(code,round,track){
- const key=String(code)+'/'+String(round);
+ const key=String(code);
  if(zjBgmRoundKey===key)return;
  // Do not locally randomize: the server chooses one index for the entire room.
  if(!Number.isInteger(track)||track<0||track>=zjBgmTracks.length)return;
@@ -1172,4 +1174,103 @@ function zjDogTakeover(){
   },200);
 }
 </script>
-</body></html>
+<style>
+#zjYakuEditorMask{position:fixed;inset:0;background:#000d;z-index:2147482000;display:none;justify-content:center;align-items:center;padding:12px}
+#zjYakuEditorMask.open{display:flex}
+#zjYakuEditorBox{width:min(1050px,100%);max-height:94dvh;overflow:auto;overscroll-behavior:contain;border:2px solid #d8af61;border-radius:15px;background:#142426;color:#f8e8bd;padding:14px}
+.zj-yaku-edit{border:1px solid #786b4a;background:#132024;padding:12px;margin:12px 0;border-radius:9px}
+.zj-yaku-edit-grid{display:grid;grid-template-columns:2fr 1fr;gap:8px}
+.zj-yaku-edit-grid input{min-width:0;width:100%;box-sizing:border-box}
+.zj-yaku-tile-choices{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}
+.zj-yaku-tile-choices select{max-width:145px;min-width:85px;flex:1 0 85px;background:#fff;color:#111;padding:7px 4px}
+@media(max-width:550px){.zj-yaku-edit-grid{grid-template-columns:1fr}}
+</style>
+<div id="zjYakuEditorMask"><section id="zjYakuEditorBox" role="dialog" aria-modal="true" aria-label="役設定編集"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;position:sticky;top:-14px;padding:10px 0;background:#142426;z-index:4"><h2>🀄 役設定の編集</h2><button type="button" id="zjYakuClose">✕ 閉じる</button></div><p>役名・点数・構成牌を変更できます。既存の役を編集または新しい役を追加してください。</p><div id="zjYakuEditRows"></div><div class="row"><button type="button" id="zjYakuAdd">＋ 役を追加</button><button type="button" id="zjYakuSave">💾 KAGOYAへ保存</button></div><p id="zjYakuSaveStatus" role="status"></p></section></div>
+<script>
+let zjEditingConfig=null;
+const zjEditorEsc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function zjRenderYakuEditor(){
+ const root=$('zjYakuEditRows');if(!zjEditingConfig)return;
+ const tiles=zjEditingConfig.tiles;
+ root.innerHTML=zjEditingConfig.yaku.map((y,i)=>{
+  const opts=id=>'<option value="0">牌を選択</option>'+tiles.map(t=>'<option value="'+t.id+'" '+(t.id===id?'selected':'')+'>'+t.id+': '+zjEditorEsc(t.name)+'</option>').join('');
+  return '<article class="zj-yaku-edit" data-yaku-index="'+i+'"><div class="zj-yaku-edit-grid"><label>役名<input class="zj-yn" maxlength="80" value="'+zjEditorEsc(y.name)+'"></label><label>得点<input class="zj-yp" type="number" min="1" max="100000" step="1" value="'+y.points+'"></label></div><p>構成牌（牌ごとに選択）</p><div class="zj-yaku-tile-choices">'+y.pattern.map(id=>'<select class="zj-yt">'+opts(id)+'</select>').join('')+'</div><div class="row"><button type="button" class="zj-addtile">＋牌</button><button type="button" class="zj-removetile">－牌</button><button type="button" class="zj-deleteyaku">この役を削除</button></div></article>';
+ }).join('');
+}
+function zjReadYakuRows(){
+ return [...document.querySelectorAll('#zjYakuEditRows .zj-yaku-edit')].map(row=>({
+ name:row.querySelector('.zj-yn').value.trim(),points:Number(row.querySelector('.zj-yp').value),
+ pattern:[...row.querySelectorAll('.zj-yt')].map(el=>Number(el.value))}));
+}
+function zjEnsureYakuValid(roles,tileCount){
+ if(roles.length>100)throw Error('役は100件まで');
+ roles.forEach((y,i)=>{if(!y.name||y.name.length>80||!Number.isInteger(y.points)||y.points<1||y.points>100000||!y.pattern.length||y.pattern.length>99||y.pattern.some(n=>!Number.isInteger(n)||n<1||n>tileCount))throw Error((i+1)+'番目の役に、役名・点数・構成牌の未設定または不正値があります')});
+}
+function zjOpenYakuEditor(){
+ const cfg=zjSharedConfig;
+ if(!cfg){alert('サーバー設定を取得できません。再読み込みしてください。');return}
+ zjEditingConfig=JSON.parse(JSON.stringify(cfg));zjRenderYakuEditor();$('zjYakuEditorMask').classList.add('open');
+}
+$('zjEditYakuOpen').onclick=zjOpenYakuEditor;
+$('zjYakuClose').onclick=()=>{$('zjYakuEditorMask').classList.remove('open');zjEditingConfig=null};
+$('zjYakuEditorMask').addEventListener('click',e=>{if(e.target.id==='zjYakuEditorMask')$('zjYakuClose').click()});
+$('zjYakuEditRows').addEventListener('click',e=>{
+ const row=e.target.closest('.zj-yaku-edit');if(!row)return;
+ const index=Number(row.dataset.yakuIndex),old=zjReadYakuRows();zjEditingConfig.yaku=old;
+ if(e.target.closest('.zj-deleteyaku'))zjEditingConfig.yaku.splice(index,1);
+ else if(e.target.closest('.zj-addtile'))zjEditingConfig.yaku[index].pattern.push(0);
+ else if(e.target.closest('.zj-removetile')&&zjEditingConfig.yaku[index].pattern.length>1)zjEditingConfig.yaku[index].pattern.pop();
+ else return;
+ zjRenderYakuEditor();
+});
+$('zjYakuAdd').onclick=()=>{zjEditingConfig.yaku=zjReadYakuRows();zjEditingConfig.yaku.push({name:'新しい役',points:1000,pattern:Array(9).fill(0)});zjRenderYakuEditor();$('zjYakuEditRows').lastElementChild?.scrollIntoView({block:'nearest'})};
+$('zjYakuSave').onclick=async()=>{
+ const button=$('zjYakuSave'),status=$('zjYakuSaveStatus');
+ try{
+  const password=$('zjServerPassword').value;if(!password)throw Error('管理者パスワードを入力してください');
+  zjEditingConfig.yaku=zjReadYakuRows();zjEnsureYakuValid(zjEditingConfig.yaku,zjEditingConfig.tiles.length);
+  if(!confirm('役 '+zjEditingConfig.yaku.length+' 件をKAGOYAへ保存しますか？（新しい部屋から反映）'))return;
+  button.disabled=true;status.textContent='サーバーに保存中…';
+  const response=await fetch('/api/admin/save-server-config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password,config:portableBackup(zjEditingConfig)})});
+  const result=await response.json();if(!response.ok)throw Error(result.error||'保存失敗');
+  $('zjServerPassword').value='';status.textContent='保存完了：'+result.yaku+'件の役をKAGOYAに保存しました';
+  await zjFetchSharedConfig(true);$('zjYakuClose').click();$('zjServerEditorStatus').textContent='保存成功：役 '+result.yaku+'件／'+new Date(result.updatedAt).toLocaleString('ja-JP');
+ }catch(err){status.textContent='保存失敗：'+err.message;alert(status.textContent)}finally{button.disabled=false}
+};
+$('zjServerSaveAll').onclick=async()=>{
+ const button=$('zjServerSaveAll'),status=$('zjServerEditorStatus');
+ try{
+  const password=$('zjServerPassword').value;if(!password)throw Error('管理者パスワードを入力してください');
+  const cfg=await prepareConfig(importedConfig||await loadSettings()||zjSharedConfig);
+  if(!cfg)throw Error('設定JSONを読み込んでください');
+  if(!confirm('牌 '+cfg.tiles.length+' 種類・役 '+cfg.yaku.length+' 件をKAGOYAに保存しますか？'))return;
+  button.disabled=true;status.textContent='KAGOYAに保存しています…';
+  const response=await fetch('/api/admin/save-server-config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password,config:portableBackup(cfg)})});
+  const result=await response.json();if(!response.ok)throw Error(result.error||'保存失敗');
+  $('zjServerPassword').value='';await zjFetchSharedConfig(true);status.textContent='保存成功：牌 '+result.tiles+'種類、役 '+result.yaku+'件。新しい部屋から適用されます';
+ }catch(e){status.textContent='保存失敗：'+e.message;alert(status.textContent)}finally{button.disabled=false}
+};
+$('zjServerRefresh').onclick=async()=>{await zjFetchSharedConfig(true);$('zjServerEditorStatus').textContent='KAGOYAの設定を再読み込みしました'};
+</script>
+<style id="zj-admin-layout-v2">
+#zjAdminNav{position:fixed;top:12px;right:14px;z-index:1200;background:#171d20ed;color:#ffe2a2;border:1px solid #c99b49;border-radius:9px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer}
+#zjAdminScreen{max-width:1040px;margin:28px auto;background:#131719f5;border:1px solid #a98950}
+#zjAdminScreen>.panel{max-width:100%}
+#lobby{background:linear-gradient(180deg,#05060818,#06060870 85%,#060608be),url('/title-art.jpg') center center/contain no-repeat,#100f0e!important;justify-content:flex-end!important;min-height:min(83vh,850px)!important;}
+#lobby>h2,#lobby>.row,#lobby>.zj-title-bgm,#lobby>p,#lobby>.zj-theme-choice{width:fit-content;max-width:min(100%,830px);background:#1013169c;backdrop-filter:blur(4px);border-radius:8px;padding:7px 10px}
+#lobby .zj-theme-choice{display:flex!important}
+#lobby:has(#create) {gap:6px!important}
+#zjAdminScreen.hidden{display:none!important}
+@media(max-width:700px){#zjAdminNav{right:8px;top:7px;padding:7px 9px;font-size:12px}#lobby{padding:18px!important;min-height:78vh!important}#lobby>.row{flex-wrap:wrap}}
+</style>
+<script id="zj-admin-layout-control">
+(()=>{
+ const nav=document.getElementById('zjAdminNav'),screen=document.getElementById('zjAdminScreen'),lobby=document.getElementById('lobby'),back=document.getElementById('zjAdminBack');
+ function open(){if(lobby.classList.contains('hidden')){alert('管理画面はトップページから開いてください。');return}lobby.classList.add('hidden');screen.classList.remove('hidden');nav.classList.add('hidden');window.scrollTo({top:0,behavior:'instant'})}
+ function close(){screen.classList.add('hidden');lobby.classList.remove('hidden');nav.classList.remove('hidden');window.scrollTo({top:0,behavior:'instant'})}
+ nav.addEventListener('click',open);back.addEventListener('click',close);
+ // Ensure the admin screen never becomes visible during online match even if state changes.
+ const observer=new MutationObserver(()=>{if(!lobby.classList.contains('hidden')&&!screen.classList.contains('hidden'))lobby.classList.add('hidden');});
+ observer.observe(screen,{attributes:true,attributeFilter:['class']});
+})();
+</script></body></html>

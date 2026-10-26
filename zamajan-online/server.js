@@ -11,6 +11,39 @@ const GH_TOKEN=process.env.GITHUB_TOKEN||'';
 const ADMIN_PASSWORD=process.env.ZAMAJAN_ADMIN_PASSWORD||'';
 let sharedConfig=null, sharedUpdatedAt=null;
 const failures=new Map();
+// Persist configuration outside the Git checkout, so auto-deploy never overwrites it.
+const path=require('path');
+const SERVER_CONFIG_FILE=process.env.ZAMAJAN_DATA_FILE||'/home/zamajan/zamajan-data/game-config.json';
+function saveServerConfig(cfg){
+ const dir=path.dirname(SERVER_CONFIG_FILE);fs.mkdirSync(dir,{recursive:true,mode:0o700});
+ const bytes=JSON.stringify({format:'zamajan-config',schemaVersion:1,app:'zamajan',updatedAt:new Date().toISOString(),...cfg},null,2);
+ // Snapshot the existing configuration before overwriting it.
+ if(fs.existsSync(SERVER_CONFIG_FILE)){
+  const backupDir=path.join(dir,'backups');fs.mkdirSync(backupDir,{recursive:true,mode:0o700});
+  const stamp=new Date().toISOString().replace(/[:.]/g,'-');
+  fs.copyFileSync(SERVER_CONFIG_FILE,path.join(backupDir,'game-config-'+stamp+'.json'));
+  const old=fs.readdirSync(backupDir).filter(x=>/^game-config-.*\.json$/.test(x)).sort();
+  old.slice(0,-20).forEach(x=>fs.unlinkSync(path.join(backupDir,x)));
+ }
+ const tmp=SERVER_CONFIG_FILE+'.tmp-'+process.pid+'-'+crypto.randomBytes(4).toString('hex');
+ try{fs.writeFileSync(tmp,bytes,{mode:0o600,flag:'wx'});fs.renameSync(tmp,SERVER_CONFIG_FILE)}
+ finally{try{fs.unlinkSync(tmp)}catch{}}
+}
+function loadServerConfig(){
+ try{const raw=JSON.parse(fs.readFileSync(SERVER_CONFIG_FILE,'utf8'));sharedConfig=validateSharedConfig(raw);sharedUpdatedAt=raw.updatedAt||new Date().toISOString();console.log('KAGOYA保存設定読み込み',sharedConfig.tiles.length,'牌',sharedConfig.yaku.length,'役');return true}
+ catch(e){if(e.code!=='ENOENT')console.error('サーバー設定読み込み失敗:',e.message);return false}
+}
+function adminAuth(req,res){
+ if(!ADMIN_PASSWORD){res.status(503).json({error:'管理者パスワードがサーバーに設定されていません'});return false}
+ const ip=req.ip||'unknown',r=failures.get(ip)||{count:0,until:0};
+ if(r.until>Date.now()){res.status(429).json({error:'認証失敗が続いたため15分後に再試行してください'});return false}
+ if(typeof req.body?.password!=='string'||!secureEqual(req.body.password,ADMIN_PASSWORD)){
+  r.count++;if(r.count>=5){r.until=Date.now()+15*60*1000;r.count=0}failures.set(ip,r);
+  res.status(401).json({error:'管理者パスワードが違います'});return false
+ }
+ failures.delete(ip);return true
+}
+
 function secureEqual(a,b){const x=crypto.createHash('sha256').update(String(a)).digest();const y=crypto.createHash('sha256').update(String(b)).digest();return crypto.timingSafeEqual(x,y)}
 function ghEndpoint(){return 'https://api.github.com/repos/'+encodeURIComponent(GH_OWNER)+'/'+encodeURIComponent(GH_REPO)+'/contents/'+GH_PATH.split('/').map(encodeURIComponent).join('/')}
 async function ghRequest(method,payload){
@@ -20,6 +53,7 @@ async function ghRequest(method,payload){
  return data;
 }
 async function fetchGitHubConfig(){
+ if(loadServerConfig())return sharedConfig;
  try{let result=await ghRequest('GET');
   // GitHub Contents API omits content for files over 1MB; fetch the blob by SHA.
   if(!result.content&&result.sha){
@@ -30,8 +64,15 @@ async function fetchGitHubConfig(){
   if(!result.content)throw Error('JSON内容がありません');
   const raw=JSON.parse(Buffer.from(result.content.replace(/\s/g,''),'base64').toString('utf8'));
   const cfg=validateSharedConfig(raw);sharedConfig=cfg;sharedUpdatedAt=new Date().toISOString();
+  // One-time migration: seed local KAGOYA file only if no local file exists.
+  if(!fs.existsSync(SERVER_CONFIG_FILE)){try{saveServerConfig(cfg);console.log('KAGOYA共通設定へ初期移行完了')}catch(e){console.error('初期移行の保存に失敗:',e.message)}}
   console.log('GitHub共通設定読み込み成功',cfg.tiles.length,'牌',cfg.yaku.length,'役');return cfg;
- }catch(err){if(err.status!==404)console.error('GitHub共通設定の読み込み失敗:',err.message);return null}
+ }catch(err){
+  if(err.status!==404)console.error('GitHub共通設定の読み込み失敗:',err.message);
+  // A fresh deployment without access to GitHub can still use the bundled baseline.
+  try{const base=JSON.parse(fs.readFileSync(path.join(__dirname,'game-config.json'),'utf8'));const cfg=validateSharedConfig(base);saveServerConfig(cfg);sharedConfig=cfg;sharedUpdatedAt=new Date().toISOString();console.log('バンドル設定をKAGOYAに初期登録');return cfg}
+  catch(e){console.error('初期設定が読み込めません:',e.message);return null}
+ }
 }
 function validateSharedConfig(raw){
  if(!raw||typeof raw!=='object'||!Array.isArray(raw.tiles)||!Array.isArray(raw.yaku))throw Error('牌・役を含むJSONが必要です');
@@ -79,34 +120,23 @@ app.get('/api/deploy-status',async(req,res)=>{
  zjDeployStatusCache=result;zjDeployStatusUntil=Date.now()+60000;
  res.json(result);
 });
-app.get('/api/shared-config',(req,res)=>{res.set('Cache-Control','no-store');res.json({available:!!sharedConfig,config:sharedConfig,updatedAt:sharedUpdatedAt})});
+app.get('/api/shared-config',(req,res)=>{res.set('Cache-Control','no-store');res.json({available:!!sharedConfig,config:sharedConfig,updatedAt:sharedUpdatedAt,source:'KAGOYA'} )});
+app.post('/api/admin/save-server-config',express.json({limit:'14mb'}),(req,res)=>{
+ res.set('Cache-Control','no-store');if(!adminAuth(req,res))return;
+ try{const cfg=validateSharedConfig(req.body.config);saveServerConfig(cfg);sharedConfig=cfg;sharedUpdatedAt=new Date().toISOString();res.json({ok:true,tiles:cfg.tiles.length,yaku:cfg.yaku.length,updatedAt:sharedUpdatedAt})}
+ catch(e){console.error('KAGOYA設定保存エラー:',e.message);res.status(400).json({error:'保存できませんでした: '+e.message})}
+});
+
 
 // GitHubに保存済みのJSONをそのまま配布する。ブラウザーのローカル設定は混ぜない。
 // GitHub Contents APIは1MBを超えるファイルでcontentを省略するためBlob APIも扱う。
-app.get('/api/shared-config/download',async(req,res)=>{
- res.set('Cache-Control','no-store, no-cache, must-revalidate');
+app.get('/api/shared-config/download',(req,res)=>{
+ res.set('Cache-Control','no-store');
  try{
-  let file=await ghRequest('GET');
-  if(!file.content&&file.sha){
-   const url='https://api.github.com/repos/'+encodeURIComponent(GH_OWNER)+'/'+encodeURIComponent(GH_REPO)+'/git/blobs/'+encodeURIComponent(file.sha);
-   const response=await fetch(url,{headers:{'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28',...(GH_TOKEN?{'Authorization':'Bearer '+GH_TOKEN}:{})}});
-   if(!response.ok)throw Error('GitHub Blob API '+response.status);
-   file=await response.json();
-  }
-  if(file.encoding&&file.encoding!=='base64')throw Error('未対応のGitHubファイル形式です');
-  if(!file.content)throw Error('GitHubに設定JSONがありません');
-  const content=Buffer.from(file.content.replace(/\s/g,''),'base64');
-  if(!content.length||content.length>20*1024*1024)throw Error('設定JSONの容量が対応範囲外です');
-  // オフライン版と互換のある牌・役設定かチェックする（保存内容は書き換えない）。
-  validateSharedConfig(JSON.parse(content.toString('utf8')));
-  res.type('application/json; charset=utf-8');
-  res.attachment('zamajan-github-settings.json');
-  res.send(content);
- }catch(err){
-  console.error('GitHub設定JSONのダウンロード失敗:',err.message);
-  const code=err.status===404?404:502;
-  res.status(code).json({error:err.status===404?'GitHubに共通設定JSONがありません':'GitHubから設定JSONを取得できませんでした: '+err.message});
- }
+  if(!sharedConfig)throw Error('共通設定がありません');
+  res.type('application/json; charset=utf-8');res.attachment('zamajan-kagoya-settings.json');
+  res.send(JSON.stringify({format:'zamajan-config',schemaVersion:1,app:'zamajan',...sharedConfig},null,2));
+ }catch(e){res.status(404).json({error:'KAGOYA共通設定を取得できません: '+e.message})}
 });
 
 app.post('/api/admin/save-config',express.json({limit:'14mb'}),async(req,res)=>{
@@ -390,10 +420,8 @@ if(r.round===1&&!r.firstDice){
 }
 if(r.round>1)r.startSeat=((r.startSeat??0)+1)%4;
 r.turn=r.startSeat??0;r.drawn=false;r.result=null;r.phase='playing';
-// Select once per round on server, share the selected track to every player.
-const previous=r.bgmTrack;
-r.bgmTrack=crypto.randomInt(5);
-if(Number.isInteger(previous)&&r.bgmTrack===previous)r.bgmTrack=(previous+1+crypto.randomInt(4))%5;
+// Keep one room-wide soundtrack for the entire game, including subsequent rounds.
+if(!Number.isInteger(r.bgmTrack))r.bgmTrack=crypto.randomInt(5);
 for(let k=0;k<8;k++)for(let i=0;i<4;i++)r.hands[i].push(r.wall.pop());r.hands.forEach(h=>h.sort((a,b)=>a-b));log(r,r.round===1?`🎲 サイコロ ${r.firstDice}！部屋主から右回りで${r.firstDice}人目：${r.players[r.startSeat].name}がスタート！`:`第${r.round}局 はじめ！`);schedule(r);broadcast(r);return null}
 function finish(r,result){clearTimeout(r.timer);r.deadline=0;r.phase='result';r.result=result;log(r,result.method==='流局'?'流局':result.method==='ロン'?`${result.winnerName}が${result.loserName||r.players[result.loser]?.name||'相手'}からロン！`:`${result.winnerName}が${result.method}！`);broadcast(r)}
 function zjScoreWin(r,p,hand,y,method,loser=null,winningTile=null){
