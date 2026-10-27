@@ -545,19 +545,8 @@ body:has(#lobby:not(.hidden)) header .zj-bgm-volume{display:inline-flex!importan
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const imageOK=s=>typeof s==='string'&&/^data:image\/(?:png|jpe?g|webp|gif);base64,/i.test(s);
 function scoreRoleVisible(pattern,activeIds){
- if(!Array.isArray(pattern)||!pattern.length)return false;
- if(pattern.every(id=>activeIds.has(id)))return true;
- // 1枚ずつの候補役：山にある異なる牌が9種類以上あれば表示
- if(pattern.length>=9&&new Set(pattern).size===pattern.length){
-  return new Set(pattern.filter(id=>activeIds.has(id))).size>=9;
- }
- // 3枚組の候補役：山にある牌だけで3種類以上の三枚組を作れるなら表示
- const counts=new Map();
- for(const id of pattern)counts.set(id,(counts.get(id)||0)+1);
- if(pattern.length>=9&&counts.size>=3&&[...counts.values()].every(n=>n===3)){
-  return [...counts.keys()].filter(id=>activeIds.has(id)).length>=3;
- }
- return false;
+ // A registered role cannot be displayed when any required tile is disabled (count=0).
+ return Array.isArray(pattern)&&pattern.length>0&&pattern.every(id=>activeIds.has(id));
 }
 function buildScoreHtml(cfg,context,hero){
  const tiles=Array.isArray(cfg?.tiles)?cfg.tiles:[];
@@ -861,9 +850,9 @@ function zjRoleTargets(hand,cfg){
  const result=[];
  for(const role of roles){
   const original=Array.isArray(role.pattern)?role.pattern:[];
-  const p=original.filter(id=>active.has(id)&&id!==wild);
-  // A role consisting only of exhausted tiles is not achievable.
-  if(!p.length)continue;
+  // Do not silently omit 0-count required tiles: the entire role is unavailable.
+  if(!original.length||original.some(id=>!active.has(id)))continue;
+  const p=original.filter(id=>id!==wild);
   if(!p.length)continue;
   const needs=new Map();for(const id of p)needs.set(id,(needs.get(id)||0)+1);
   const counts=[...needs.values()];
@@ -1182,25 +1171,38 @@ function zjDogTakeover(){
 .zj-yaku-edit-grid{display:grid;grid-template-columns:2fr 1fr;gap:8px}
 .zj-yaku-edit-grid input{min-width:0;width:100%;box-sizing:border-box}
 .zj-yaku-tile-choices{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}
-.zj-yaku-tile-choices select{max-width:145px;min-width:85px;flex:1 0 85px;background:#fff;color:#111;padding:7px 4px}
+.zj-yaku-tile-choices{display:flex;flex-wrap:wrap;gap:6px}
+.zj-yaku-tile-slot{width:58px;min-height:76px;background:#f2ebd9;color:#192126;border:2px solid #af9461;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:3px;cursor:pointer}
+.zj-yaku-tile-slot img,.zj-yaku-palette-btn img{width:42px;height:48px;object-fit:contain}
+.zj-yaku-tile-slot span,.zj-yaku-palette-btn span{font-size:10px;overflow:hidden;text-overflow:ellipsis;max-width:100%;white-space:nowrap}
+.zj-yaku-palette{display:none;grid-template-columns:repeat(auto-fill,minmax(65px,1fr));gap:7px;padding:12px;margin:8px 0;border:1px solid #9f8653;border-radius:9px;background:#18282a}
+.zj-yaku-palette.open{display:grid}
+.zj-yaku-palette-btn{min-height:80px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:5px;background:#e9e0cc;color:#172325;border:1px solid #ab965f;border-radius:7px;cursor:pointer}
+.zj-yaku-palette-btn:hover,.zj-yaku-tile-slot:hover{outline:3px solid #ffce68}
+.zj-yaku-password{display:block;margin:14px 0;padding:12px;background:#223032;border:1px solid #cfac64;border-radius:8px}
+.zj-yaku-password input{width:min(100%,420px);display:block;margin-top:6px}
 @media(max-width:550px){.zj-yaku-edit-grid{grid-template-columns:1fr}}
 </style>
-<div id="zjYakuEditorMask"><section id="zjYakuEditorBox" role="dialog" aria-modal="true" aria-label="役設定編集"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;position:sticky;top:-14px;padding:10px 0;background:#142426;z-index:4"><h2>🀄 役設定の編集</h2><button type="button" id="zjYakuClose">✕ 閉じる</button></div><p>役名・点数・構成牌を変更できます。既存の役を編集または新しい役を追加してください。</p><div id="zjYakuEditRows"></div><div class="row"><button type="button" id="zjYakuAdd">＋ 役を追加</button><button type="button" id="zjYakuSave">💾 KAGOYAへ保存</button></div><p id="zjYakuSaveStatus" role="status"></p></section></div>
+<div id="zjYakuEditorMask"><section id="zjYakuEditorBox" role="dialog" aria-modal="true" aria-label="役設定編集"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;position:sticky;top:-14px;padding:10px 0;background:#142426;z-index:4"><h2>🀄 役設定の編集</h2><button type="button" id="zjYakuClose">✕ 閉じる</button></div><p>役名・点数・構成牌を変更できます。既存の役を編集または新しい役を追加してください。</p><div id="zjYakuEditRows"></div><div class="row"><button type="button" id="zjYakuAdd">＋ 役を追加</button></div><label class="zj-yaku-password">🔐 管理者パスワード（KAGOYA保存用）<input id="zjYakuPassword" type="password" autocomplete="off" placeholder="管理者パスワードを入力"></label><div class="row"><button type="button" id="zjYakuSave">💾 KAGOYAへ保存</button></div><p id="zjYakuSaveStatus" role="status"></p></section></div>
 <script>
 let zjEditingConfig=null;
 const zjEditorEsc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function zjYakuTileIcon(t){
+ const img=typeof t?.image==='string'&&/^data:image\/(png|jpeg|webp);base64,/.test(t.image)?'<img src="'+zjEditorEsc(t.image)+'" alt="">':('<b style="font-size:24px">'+zjEditorEsc(t?.emoji||'🀄')+'</b>');
+ return img+'<span>'+zjEditorEsc(t?.name||'牌')+'</span>';
+}
 function zjRenderYakuEditor(){
  const root=$('zjYakuEditRows');if(!zjEditingConfig)return;
  const tiles=zjEditingConfig.tiles;
  root.innerHTML=zjEditingConfig.yaku.map((y,i)=>{
-  const opts=id=>'<option value="0">牌を選択</option>'+tiles.map(t=>'<option value="'+t.id+'" '+(t.id===id?'selected':'')+'>'+t.id+': '+zjEditorEsc(t.name)+'</option>').join('');
-  return '<article class="zj-yaku-edit" data-yaku-index="'+i+'"><div class="zj-yaku-edit-grid"><label>役名<input class="zj-yn" maxlength="80" value="'+zjEditorEsc(y.name)+'"></label><label>得点<input class="zj-yp" type="number" min="1" max="100000" step="1" value="'+y.points+'"></label></div><p>構成牌（牌ごとに選択）</p><div class="zj-yaku-tile-choices">'+y.pattern.map(id=>'<select class="zj-yt">'+opts(id)+'</select>').join('')+'</div><div class="row"><button type="button" class="zj-addtile">＋牌</button><button type="button" class="zj-removetile">－牌</button><button type="button" class="zj-deleteyaku">この役を削除</button></div></article>';
+  const slots=y.pattern.map(id=>{const t=tiles.find(t=>t.id===id);return '<button type="button" class="zj-yaku-tile-slot" data-tile="'+Number(id)+'" title="クリックでこの牌を取り除く">'+(t?zjYakuTileIcon(t):'<span>未設定</span>')+'</button>'}).join('');
+  return '<article class="zj-yaku-edit" data-yaku-index="'+i+'"><div class="zj-yaku-edit-grid"><label>役名<input class="zj-yn" maxlength="80" value="'+zjEditorEsc(y.name)+'"></label><label>得点<input class="zj-yp" type="number" min="1" max="100000" step="1" value="'+y.points+'"></label></div><p>構成牌（画像をクリックして追加。上の牌をクリックで取り除く）</p><div class="zj-yaku-tile-choices">'+slots+'</div><div class="row"><button type="button" class="zj-show-palette">🀄 牌一覧から追加</button><button type="button" class="zj-deleteyaku">この役を削除</button></div><div class="zj-yaku-palette"></div></article>';
  }).join('');
 }
 function zjReadYakuRows(){
  return [...document.querySelectorAll('#zjYakuEditRows .zj-yaku-edit')].map(row=>({
  name:row.querySelector('.zj-yn').value.trim(),points:Number(row.querySelector('.zj-yp').value),
- pattern:[...row.querySelectorAll('.zj-yt')].map(el=>Number(el.value))}));
+ pattern:[...row.querySelectorAll('.zj-yaku-tile-slot')].map(el=>Number(el.dataset.tile))}));
 }
 function zjEnsureYakuValid(roles,tileCount){
  if(roles.length>100)throw Error('役は100件まで');
@@ -1209,31 +1211,43 @@ function zjEnsureYakuValid(roles,tileCount){
 function zjOpenYakuEditor(){
  const cfg=zjSharedConfig;
  if(!cfg){alert('サーバー設定を取得できません。再読み込みしてください。');return}
- zjEditingConfig=JSON.parse(JSON.stringify(cfg));zjRenderYakuEditor();$('zjYakuEditorMask').classList.add('open');
+ zjEditingConfig=JSON.parse(JSON.stringify(cfg));$('zjYakuPassword').value=$('zjServerPassword').value;zjRenderYakuEditor();$('zjYakuEditorMask').classList.add('open');
 }
 $('zjEditYakuOpen').onclick=zjOpenYakuEditor;
 $('zjYakuClose').onclick=()=>{$('zjYakuEditorMask').classList.remove('open');zjEditingConfig=null};
 $('zjYakuEditorMask').addEventListener('click',e=>{if(e.target.id==='zjYakuEditorMask')$('zjYakuClose').click()});
 $('zjYakuEditRows').addEventListener('click',e=>{
  const row=e.target.closest('.zj-yaku-edit');if(!row)return;
- const index=Number(row.dataset.yakuIndex),old=zjReadYakuRows();zjEditingConfig.yaku=old;
- if(e.target.closest('.zj-deleteyaku'))zjEditingConfig.yaku.splice(index,1);
- else if(e.target.closest('.zj-addtile'))zjEditingConfig.yaku[index].pattern.push(0);
- else if(e.target.closest('.zj-removetile')&&zjEditingConfig.yaku[index].pattern.length>1)zjEditingConfig.yaku[index].pattern.pop();
- else return;
- zjRenderYakuEditor();
+ const index=Number(row.dataset.yakuIndex);
+ if(e.target.closest('.zj-show-palette')){
+  const panel=row.querySelector('.zj-yaku-palette');const open=panel.classList.toggle('open');
+  document.querySelectorAll('.zj-yaku-palette').forEach(p=>{if(p!==panel){p.classList.remove('open');p.replaceChildren()}});
+  if(open){panel.innerHTML=zjEditingConfig.tiles.map(t=>'<button type="button" class="zj-yaku-palette-btn" data-tile="'+t.id+'" title="'+zjEditorEsc(t.name)+'を追加">'+zjYakuTileIcon(t)+'</button>').join('')}else panel.replaceChildren();
+  return;
+ }
+ if(e.target.closest('.zj-yaku-palette-btn')){
+  const tile=Number(e.target.closest('.zj-yaku-palette-btn').dataset.tile);
+  if(row.querySelectorAll('.zj-yaku-tile-slot').length>=99){alert('構成牌は最大99枚です');return}
+  const holder=row.querySelector('.zj-yaku-tile-choices');const t=zjEditingConfig.tiles.find(x=>x.id===tile);
+  holder.insertAdjacentHTML('beforeend','<button type="button" class="zj-yaku-tile-slot" data-tile="'+tile+'" title="クリックでこの牌を取り除く">'+zjYakuTileIcon(t)+'</button>');return;
+ }
+ if(e.target.closest('.zj-yaku-tile-slot')){e.target.closest('.zj-yaku-tile-slot').remove();return}
+ if(e.target.closest('.zj-deleteyaku')){
+  if(!confirm('この役を削除しますか？'))return;
+  zjEditingConfig.yaku=zjReadYakuRows();zjEditingConfig.yaku.splice(index,1);zjRenderYakuEditor();return;
+ }
 });
-$('zjYakuAdd').onclick=()=>{zjEditingConfig.yaku=zjReadYakuRows();zjEditingConfig.yaku.push({name:'新しい役',points:1000,pattern:Array(9).fill(0)});zjRenderYakuEditor();$('zjYakuEditRows').lastElementChild?.scrollIntoView({block:'nearest'})};
+$('zjYakuAdd').onclick=()=>{zjEditingConfig.yaku=zjReadYakuRows();zjEditingConfig.yaku.push({name:'新しい役',points:1000,pattern:[]});zjRenderYakuEditor();const row=$('zjYakuEditRows').lastElementChild;row?.scrollIntoView({block:'center'});row?.querySelector('.zj-show-palette')?.click()};
 $('zjYakuSave').onclick=async()=>{
  const button=$('zjYakuSave'),status=$('zjYakuSaveStatus');
  try{
-  const password=$('zjServerPassword').value;if(!password)throw Error('管理者パスワードを入力してください');
+  const password=$('zjYakuPassword').value;if(!password)throw Error('この画面の管理者パスワード欄に入力してください');
   zjEditingConfig.yaku=zjReadYakuRows();zjEnsureYakuValid(zjEditingConfig.yaku,zjEditingConfig.tiles.length);
   if(!confirm('役 '+zjEditingConfig.yaku.length+' 件をKAGOYAへ保存しますか？（新しい部屋から反映）'))return;
   button.disabled=true;status.textContent='サーバーに保存中…';
   const response=await fetch('/api/admin/save-server-config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password,config:portableBackup(zjEditingConfig)})});
   const result=await response.json();if(!response.ok)throw Error(result.error||'保存失敗');
-  $('zjServerPassword').value='';status.textContent='保存完了：'+result.yaku+'件の役をKAGOYAに保存しました';
+  $('zjYakuPassword').value='';status.textContent='保存完了：'+result.yaku+'件の役をKAGOYAに保存しました';
   await zjFetchSharedConfig(true);$('zjYakuClose').click();$('zjServerEditorStatus').textContent='保存成功：役 '+result.yaku+'件／'+new Date(result.updatedAt).toLocaleString('ja-JP');
  }catch(err){status.textContent='保存失敗：'+err.message;alert(status.textContent)}finally{button.disabled=false}
 };
