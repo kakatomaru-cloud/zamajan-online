@@ -347,15 +347,60 @@ function zjReplaceHighThree(r,p){
  let changed=0;for(let k=0;k<Math.min(replacement.length,remove.length);k++){const wi=w.indexOf(replacement[k]);if(wi<0)continue;const i=remove[k],old=h[i];h[i]=w.splice(wi,1)[0];w.push(old);changed++}
  shuffle(w);h.sort((a,b)=>a-b);return changed;
 }
+// リーチ強奪：KAGOYAサーバーが開始時刻、連打数、勝敗を管理する。
+const ZJ_FIGHT_COUNTDOWN_MS=3000,ZJ_FIGHT_DURATION_MS=10000;
+function zjStartRiichiFight(r,p,target){
+ if(r.boxing)return false;
+ clearTimeout(r.timer);r.deadline=0;
+ const now=Date.now();
+ const fight={id:crypto.randomUUID(),actor:p,target,startsAt:now+ZJ_FIGHT_COUNTDOWN_MS,endsAt:now+ZJ_FIGHT_COUNTDOWN_MS+ZJ_FIGHT_DURATION_MS,counts:[0,0],lastTap:[0,0]};
+ r.boxing=fight;
+ io.to(r.code).emit('riichiFightStart',{id:fight.id,actor:p,target,startsAt:fight.startsAt,endsAt:fight.endsAt,actorName:r.players[p].name,targetName:r.players[target].name});
+ if(r.players[target].cpu){
+  // CPU対戦：毎秒10～14打程度の疑似連打。通信イベントには依存しない。
+  fight.botTimer=setInterval(()=>{if(r.boxing!==fight)return;const t=Date.now();if(t>=fight.startsAt&&t<fight.endsAt)fight.counts[1]+=crypto.randomInt(1,3)},130);
+ }
+ fight.timer=setTimeout(()=>zjFinishRiichiFight(r,fight),ZJ_FIGHT_COUNTDOWN_MS+ZJ_FIGHT_DURATION_MS+120);
+ broadcast(r);return true;
+}
+function zjFinishRiichiFight(r,fight){
+ if(r.boxing!==fight)return;
+ clearTimeout(fight.timer);clearInterval(fight.botTimer);r.boxing=null;
+ const success=fight.counts[0]>fight.counts[1];
+ if(success&&r.phase==='playing'&&r.hands?.[fight.actor]&&r.hands?.[fight.target]&&r.riichi[fight.target]){
+  const a=fight.actor,b=fight.target,h=r.hands;
+  const mine=h[a].slice(0,8),theirs=h[b].slice(0,8),extra=h[a].slice(8);
+  h[a]=theirs.concat(extra);h[b]=mine;r.riichi[b]=false;r.riichi[a]=true;
+ }
+ const description=success?'リーチ強奪成功！':'リーチ強奪失敗（防衛または引き分け）';
+ log(r,'🥊 '+r.players[fight.actor].name+' vs '+r.players[fight.target].name+' '+fight.counts.join(' - ')+' '+description);
+ io.to(r.code).emit('riichiFightResult',{id:fight.id,actor:fight.actor,target:fight.target,counts:fight.counts,success});
+ // 結果画像の表示中は手番を進めない。別のアイテム演出も重ねない。
+ if(r.phase==='playing'){r.boxing={ending:true};setTimeout(()=>{if(r.boxing?.ending){r.boxing=null;schedule(r);broadcast(r)}},3000)}
+ broadcast(r);
+}
+function zjRiichiFightPunch(r,p,id){
+ const f=r.boxing,now=Date.now();
+ if(!f||f.id!==id||now<f.startsAt||now>=f.endsAt||![f.actor,f.target].includes(p))return;
+ const index=p===f.actor?0:1;
+ // 同時に到着した異常な大量イベントを制限（通常の連打は通過）。
+ if(now-f.lastTap[index]<30)return;
+ f.lastTap[index]=now;f.counts[index]++;
+ io.to(r.code).emit('riichiFightCount',{id:f.id,counts:f.counts});
+}
 function zjUse(r,p,data,s){
  const id=String(data?.id||''),x=zjItemById(id),target=data?.target,a=r.items;
+ if(r.boxing)return s?.emit('errorMessage','ストリートファイトの対戦中です');
  if(!zjAllowed(r,p,id))return s?.emit('errorMessage','アイテムの使用条件を満たしていません');
  if(ZJ_TARGETED.has(id)&&(!Number.isInteger(target)||target===p||target<0||target>3||id==='riichiswap'&&!r.riichi[target]))return s?.emit('errorMessage','有効な対象を選んでください');
  const h=r.hands,w=r.wall,e=a.effects;let detail=x[3],victim=ZJ_TARGETED.has(id)?target:null;
  if(id==='dogtakeover'){detail='使用者以外の3人の画面を実写犬が45秒間占領！'}
  else if(id==='steal'){r.scores[target]-=3000;r.scores[p]+=3000;detail='3,000点を移動'}
  else if(id==='openall')e[p].openall=true;
- else if(id==='riichiswap'){const mine=h[p].slice(0,8),theirs=h[target].slice(0,8),extra=h[p].slice(8);h[p]=theirs.concat(extra);h[target]=mine;r.riichi[target]=false;r.riichi[p]=true;detail='リーチと手牌8枚を強奪'}
+ else if(id==='riichiswap'){
+  if(a.tickets[p]>0)a.tickets[p]--;else if(a.bags[p].includes(id))a.bags[p].splice(a.bags[p].indexOf(id),1);else r.scores[p]-=x[2];
+  a.used[p]++;zjStartRiichiFight(r,p,target);return;
+ }
  else if(id==='hightriple'){const changed=zjReplaceHighThree(r,p);if(!changed)return s?.emit('errorMessage','交換できる高得点役の牌が山にありません');detail=changed+'枚を高得点役向けに交換'}
  else if(id==='revolution'){const sizes=h.map(v=>v.length),all=w.splice(0);for(const hand of h)all.push(...hand.splice(0));shuffle(all);for(let i=0;i<4;i++)for(let j=0;j<sizes[i];j++)h[i].push(all.pop());w.push(...all);h.forEach(v=>v.sort((a,b)=>a-b));r.riichi=[false,false,false,false];detail='全員の手牌とリーチをリセット'}
  else if(id==='freeze'){const targets=[0,1,2,3].filter(i=>i!==p);victim=targets[crypto.randomInt(targets.length)];zjAddFreeze(r,victim,p,'freeze',5);detail=r.players[victim].name+'が5回の手番をスキップ'}
@@ -388,6 +433,7 @@ function state(r,seat){
 function log(r,s){r.logs.push(s);if(r.logs.length>100)r.logs.shift()}
 function schedule(r){
  clearTimeout(r.timer);
+ if(r.boxing)return;
  if(r.phase!=='playing')return;
  let count=0;
  while(!r.drawn&&r.items?.effects[r.turn]?.frozen>0&&count<20){
@@ -429,9 +475,9 @@ function zjScoreWin(r,p,hand,y,method,loser=null,winningTile=null){
  finish(r,{method,winner:p,winnerName:r.players[p].name,...(loser!==null?{loser,loserName:r.players[loser].name}:{}),yaku:y.name,points:actual+b.ojBonus-b.manaPenalty+bonus,rolePoints,basePoints:actual,ojBonus:b.ojBonus,manaPenalty:b.manaPenalty,ownBonus:bonus,hand:hand.slice(),winningTile:winningTile??hand.at(-1),groups:resultGroups(r,hand,y)});
 }
 function zjFinishDraw(r,p,t){r.hands[p].push(t);r.drawn=true;const y=win(r,r.hands[p]);if(y){zjScoreWin(r,p,r.hands[p],y,'ツモ',null,t);return}schedule(r);broadcast(r)}
-function draw(r,p){if(r.phase!=='playing'||r.turn!==p||r.drawn)return;if(!r.wall.length){finish(r,{method:'流局'});return}zjFinishDraw(r,p,r.wall.pop())}
-function discard(r,p,index){if(r.phase!=='playing'||r.turn!==p||!r.drawn||!Number.isInteger(index)||index<0||index>=r.hands[p].length)return;const t=r.hands[p].splice(index,1)[0];r.discards[p].push(t);r.discardHistory.push({seat:p,id:t});r.hands[p].sort((a,b)=>a-b);r.drawn=false;log(r,`${r.players[p].name}が${r.config.tiles[t-1].name}を捨てた`);if(!r.riichi[p]&&tenpai(r,r.hands[p])){r.riichi[p]=true;r.discardHistory[r.discardHistory.length-1].riichi=true;log(r,`${r.players[p].name} リーチ！（供託なし・宣言牌：${r.config.tiles[t-1].name}）`)}for(let k=1;k<4;k++){const q=(p+k)%4;if(!r.riichi[q])continue;const hand=[...r.hands[q],t],y=win(r,hand);if(y){zjScoreWin(r,q,hand,y,'ロン',p,t);return}}if(!r.wall.length){finish(r,{method:'流局'});return}r.turn=(p+1)%4;schedule(r);broadcast(r)}
-function cpuAct(r){if(r.phase!=='playing')return;const p=r.players[r.turn];if(!p||!p.cpu)return;
+function draw(r,p){if(r.boxing)return;if(r.phase!=='playing'||r.turn!==p||r.drawn)return;if(!r.wall.length){finish(r,{method:'流局'});return}zjFinishDraw(r,p,r.wall.pop())}
+function discard(r,p,index){if(r.boxing)return;if(r.phase!=='playing'||r.turn!==p||!r.drawn||!Number.isInteger(index)||index<0||index>=r.hands[p].length)return;const t=r.hands[p].splice(index,1)[0];r.discards[p].push(t);r.discardHistory.push({seat:p,id:t});r.hands[p].sort((a,b)=>a-b);r.drawn=false;log(r,`${r.players[p].name}が${r.config.tiles[t-1].name}を捨てた`);if(!r.riichi[p]&&tenpai(r,r.hands[p])){r.riichi[p]=true;r.discardHistory[r.discardHistory.length-1].riichi=true;log(r,`${r.players[p].name} リーチ！（供託なし・宣言牌：${r.config.tiles[t-1].name}）`)}for(let k=1;k<4;k++){const q=(p+k)%4;if(!r.riichi[q])continue;const hand=[...r.hands[q],t],y=win(r,hand);if(y){zjScoreWin(r,q,hand,y,'ロン',p,t);return}}if(!r.wall.length){finish(r,{method:'流局'});return}r.turn=(p+1)%4;schedule(r);broadcast(r)}
+function cpuAct(r){if(r.boxing)return;if(r.phase!=='playing')return;const p=r.players[r.turn];if(!p||!p.cpu)return;
  const seat=r.turn;
  if(!r.drawn&&r.items?.tickets[seat]>0&&r.items.used[seat]<r.items.limit){
   const candidates=['openall','hightriple','festival','revolution','freeze','leaderfall','riichiswap','mirror','timefreeze','steal','triplefactory','selfreset','wildhunt','doublepoints','oj','mana2','handraid','riichicancel'].filter(id=>zjAllowed(r,seat,id));
@@ -440,12 +486,13 @@ function cpuAct(r){if(r.phase!=='playing')return;const p=r.players[r.turn];if(!p
  if(r.drawn){const h=r.hands[r.turn];const counts={};h.forEach(x=>counts[x]=(counts[x]||0)+1);const idx=r.riichi[r.turn]?h.length-1:h.map((x,i)=>({x,i,c:counts[x]})).sort((a,b)=>a.c-b.c)[0].i;discard(r,r.turn,idx)}else draw(r,r.turn)}
 
 function makeCode(){let c;do{c=String(crypto.randomInt(100000,1000000))}while(rooms.has(c));return c}
-function join(s,r,name,token){let seat=r.players.findIndex(p=>p&&p.token===token);if(seat<0){if(r.phase!=='lobby')return s.emit('errorMessage','対戦開始後は新規参加できません');seat=r.players.findIndex(p=>!p);if(seat<0)return s.emit('errorMessage','満員です');token=crypto.randomUUID();r.players[seat]={name:safe(name)||`プレイヤー${seat+1}`,token,socket:s.id,cpu:false}}else{r.players[seat].socket=s.id;r.players[seat].cpu=false} s.join(r.code);s.data.room=r.code;s.data.seat=seat;s.data.token=token;s.emit('joined',{code:r.code,seat,token});broadcast(r)}
+function join(s,r,name,token){let seat=r.players.findIndex(p=>p&&p.token===token);if(seat<0){if(r.phase!=='lobby')return s.emit('errorMessage','対戦開始後は新規参加できません');seat=r.players.findIndex(p=>!p);if(seat<0)return s.emit('errorMessage','満員です');token=crypto.randomUUID();r.players[seat]={name:safe(name)||`プレイヤー${seat+1}`,token,socket:s.id,cpu:false}}else{r.players[seat].socket=s.id;r.players[seat].cpu=false} s.join(r.code);s.data.room=r.code;s.data.seat=seat;s.data.token=token;s.emit('joined',{code:r.code,seat,token});broadcast(r);if(r.boxing)s.emit('riichiFightStart',{id:r.boxing.id,actor:r.boxing.actor,target:r.boxing.target,startsAt:r.boxing.startsAt,endsAt:r.boxing.endsAt,actorName:r.players[r.boxing.actor].name,targetName:r.players[r.boxing.target].name})}
 io.on('connection',s=>{
  s.on('create',({name,config,maxRounds,itemMode,itemLimit,tableThemeChoice,bgmChoice}={})=>{const code=makeCode(),token=crypto.randomUUID();const r={code,host:token,players:[{name:safe(name)||'あなた',token,socket:s.id,cpu:false},null,null,null],config:configFrom(sharedConfig||config),maxRounds:[1,2,4,8,12,16,20].includes(+maxRounds)?+maxRounds:4,phase:'lobby',itemMode:['both','last','paid','off'].includes(itemMode)?itemMode:'both',itemLimit:[1,2,3].includes(+itemLimit)?+itemLimit:1,round:1,bgmTrack:/^[0-4]$/.test(String(bgmChoice??''))?Number(bgmChoice):crypto.randomInt(5),tableTheme:/^[1-8]$/.test(String(tableThemeChoice||''))?Number(tableThemeChoice):crypto.randomInt(1,9),scores:[30000,30000,30000,30000],hands:null,discards:[[],[],[],[]],discardHistory:[],riichi:[false,false,false,false],logs:[],deadline:0};zjInitItems(r);rooms.set(code,r);s.join(code);s.data={room:code,seat:0,token};s.emit('joined',{code,seat:0,token});broadcast(r)});
  s.on('join',({code,name,token}={})=>{const r=rooms.get(String(code));if(!r)return s.emit('errorMessage','ルームが見つかりません');join(s,r,name,token)});
  s.on('start',()=>{const r=rooms.get(s.data.room);if(!r||r.host!==s.data.token||r.phase!=='lobby')return;for(let i=0;i<4;i++)if(!r.players[i])r.players[i]={name:randomCpuName(r.players.filter(Boolean).map(p=>p.name)),cpu:true,socket:null,token:null};const err=roundStart(r);if(err)s.emit('errorMessage',err)});
  s.on('itemUse',data=>{const r=rooms.get(s.data.room);const p=s.data.seat;if(!r||!Number.isInteger(p)||r.players[p]?.token!==s.data.token||r.players[p]?.cpu)return;zjUse(r,p,data,s)});
+ s.on('riichiFightPunch',({id}={})=>{const r=rooms.get(s.data.room),p=s.data.seat;if(r&&Number.isInteger(p)&&r.players[p]?.token===s.data.token&&!r.players[p]?.cpu)zjRiichiFightPunch(r,p,id)});
  s.on('itemOptions',({id}={})=>{const r=rooms.get(s.data.room),p=s.data.seat;if(!r||r.players[p]?.token!==s.data.token||!zjAllowed(r,p,id))return;
   if(id==='jackpot'){const n=Math.min(5,r.wall.length);s.emit('itemOptions',{id,wall:r.wall.slice(-n).map((v,i)=>({index:i,name:r.config.tiles[v-1]?.name||String(v)})),hand:r.hands[p].map((v,i)=>({index:i,name:r.config.tiles[v-1]?.name||String(v)}))})}
  });
@@ -455,7 +502,7 @@ io.on('connection',s=>{
  // draw first and then discard this selected tile. Server remains authoritative.
  s.on('playTile',i=>{
   const r=rooms.get(s.data.room);
-  if(!r||r.phase!=='playing'||r.pendingDouble||r.players[r.turn]?.token!==s.data.token||r.riichi[r.turn])return;
+  if(!r||r.boxing||r.phase!=='playing'||r.pendingDouble||r.players[r.turn]?.token!==s.data.token||r.riichi[r.turn])return;
   if(!Number.isInteger(i)||i<0||i>=r.hands[r.turn].length+(r.drawn?0:1))return;
   const p=r.turn;
   if(!r.drawn)draw(r,p);
