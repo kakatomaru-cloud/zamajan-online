@@ -15,6 +15,8 @@ g.imageSmoothingEnabled=false;
 const shade=document.getElementById('shade'),title=document.getElementById('statusTitle'),desc=document.getElementById('statusText'),countOverlay=document.getElementById('countOverlay'),countText=document.getElementById('countText'),bgm=document.getElementById('battleBgm');
 let countdownSession=0;const load=(name)=>{const im=new Image();im.src='assets/'+name;return im};
 const sprites={stage:load('stage_clean.png'),pig:load('pig_full.png'),red:load('wolf_red.png'),yellow:load('wolf_yellow.png'),green:load('wolf_green.png'),fat:load('wolf_fat.png'),baby:load('baby.png'),bottle:load('bottle.png')};
+const riichiParams=new URLSearchParams(location.search),isObserver=riichiParams.get('observer')==='1',fightId=riichiParams.get('game')||'';
+let lastMirrorAt=0;
 let state='menu',pigY=430,arrows=[],objects=[],kills=0,score=0,seconds=15,last=0,spawnClock=0,spawnId=0,particles=[],elapsed=0,misses=0,enemyArrows=[];
 const keys={up:false,down:false};
 function rand(a,b){return a+Math.random()*(b-a)}
@@ -39,7 +41,7 @@ function spawn(){
  const x=rand(385,830);
  objects.push({kind,variant:fat?'fat':variant,x,y:-h-8,w,h,vy,sway:rand(0,6.3),hit:false,archer,fireClock:archer?rand(.3,.8):99,fat,thin,vx:rand(-16,16),bumpCooldown:0});
 }
-function shot(){if(state!=='playing'||arrows.length>=3)return;arrows.push({x:1132,y:pigY+61,vx:-710,bounce:false});beep(680,.045,'square',.035)}
+function shot(){if(isObserver||state!=='playing'||arrows.length>=3)return;arrows.push({x:1132,y:pigY+61,vx:-710,bounce:false});beep(680,.045,'square',.035)}
 let ctx;
 function beep(freq,dur,type='sine',vol=.045){try{ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();ctx.resume();const o=ctx.createOscillator(),v=ctx.createGain();o.type=type;o.frequency.value=freq;v.gain.setValueAtTime(vol,ctx.currentTime);v.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+dur);o.connect(v);v.connect(ctx.destination);o.start();o.stop(ctx.currentTime+dur)}catch(e){}}
 function finish(win,reason){if(state!=='playing')return; if(window.parent!==window&&new URLSearchParams(location.search).get('riichi')==='1'){window.parent.postMessage({type:'zamajan-wolf-finished',success:win===true},location.origin);} stopBgm();state=win?'win':'lose';shade.classList.remove('hidden');title.classList.remove('mission-head');document.getElementById('rules').classList.add('hidden');title.textContent=win?'🎉 STAGE CLEAR!':'💀 GAME OVER';desc.innerHTML=(win?'狼を3匹撃破！ お見事！':'失敗！ '+reason)+'<br>スコア：<b>'+score.toLocaleString()+'</b> ／ 狼撃破：'+kills+'匹';document.getElementById('start').textContent='↻ もう一度遊ぶ';beep(win?920:165,.35,'sawtooth',.07)}
@@ -130,6 +132,7 @@ function loop(now){
   if(arrows.includes(ar) && (ar.x<0||ar.x>1390))removeArrow(ar)
  }
  for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt}particles=particles.filter(p=>p.life>0);
+ if(!isObserver&&fightId&&now-lastMirrorAt>=100){lastMirrorAt=now;window.parent.postMessage({type:'zamajan-wolf-frame',id:fightId,frame:{seconds,kills,misses,pigY,objects:objects.map(o=>({kind:o.kind,variant:o.variant,x:o.x,y:o.y,w:o.w,h:o.h})),arrows:arrows.map(a=>({x:a.x,y:a.y,bounce:a.bounce})),enemyArrows:enemyArrows.map(a=>({x:a.x,y:a.y}))}},location.origin)}
  draw(); if(state==='playing')requestAnimationFrame(loop)
 }
 function stopBgm(){bgm.pause();bgm.currentTime=0;}
@@ -148,13 +151,15 @@ async function launch(){
  countOverlay.classList.add('hidden');
  try{bgm.currentTime=0;bgm.volume=.65;const playPromise=bgm.play();if(playPromise&&playPromise.catch)playPromise.catch(e=>{console.warn('音楽再生が許可されていません',e);document.getElementById('soundNote').textContent='音楽が再生されない場合はブラウザの再生許可をご確認ください。';})}catch(e){console.warn(e)}
 }
-function down(k,on){if(['ArrowUp','w','W'].includes(k))keys.up=on;else if(['ArrowDown','s','S'].includes(k))keys.down=on;else if(on&&[' ','Enter'].includes(k))shot()}
+function down(k,on){if(isObserver)return;if(['ArrowUp','w','W'].includes(k))keys.up=on;else if(['ArrowDown','s','S'].includes(k))keys.down=on;else if(on&&[' ','Enter'].includes(k))shot()}
 window.addEventListener('keydown',e=>{if(['ArrowUp','ArrowDown',' ','Enter'].includes(e.key))e.preventDefault();if(e.repeat&&[' ','Enter'].includes(e.key))return;down(e.key,true)});
 window.addEventListener('keyup',e=>down(e.key,false));window.addEventListener('blur',()=>{keys.up=keys.down=false});
 for(const [id,key] of [['up','up'],['down','down']]){const b=document.getElementById(id);b.addEventListener('pointerdown',e=>{e.preventDefault();keys[key]=true;b.setPointerCapture(e.pointerId)});for(const type of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(type,()=>keys[key]=false)}
-document.getElementById('fire').addEventListener('pointerdown',e=>{e.preventDefault();shot()});
-C.addEventListener('pointermove',e=>{if(state!=='playing'||e.buttons!==1)return;const rect=C.getBoundingClientRect();pigY=Math.max(386,Math.min(670,(e.clientY-rect.top)*1040/rect.height-60))});
-C.addEventListener('pointerdown',e=>{if(state!=='playing')return;const rect=C.getBoundingClientRect();pigY=Math.max(386,Math.min(670,(e.clientY-rect.top)*1040/rect.height-60))});
-document.getElementById('start').addEventListener('click',launch);const im=sprites.stage;im.onload=draw;draw();setTimeout(launch,200)
+document.getElementById('fire').addEventListener('pointerdown',e=>{e.preventDefault();if(!isObserver)shot()});
+C.addEventListener('pointermove',e=>{if(isObserver||state!=='playing'||e.buttons!==1)return;const rect=C.getBoundingClientRect();pigY=Math.max(386,Math.min(670,(e.clientY-rect.top)*1040/rect.height-60))});
+C.addEventListener('pointerdown',e=>{if(isObserver||state!=='playing')return;const rect=C.getBoundingClientRect();pigY=Math.max(386,Math.min(670,(e.clientY-rect.top)*1040/rect.height-60))});
+document.getElementById('start').addEventListener('click',()=>{if(!isObserver)launch()});const im=sprites.stage;im.onload=draw;draw();
+if(isObserver){bgm.pause();state='watching';shade.classList.remove('hidden');title.textContent='リーチ防衛を観戦中';desc.textContent='相手の操作画面を同期しています。操作はできません。';document.getElementById('rules').classList.add('hidden');document.getElementById('start').classList.add('hidden');document.querySelector('.ctrl').style.display='none';}else setTimeout(launch,200);
+window.addEventListener('message',ev=>{if(!isObserver||ev.origin!==location.origin||ev.data?.type!=='zamajan-wolf-observe')return;const f=ev.data.frame;if(!f||f.id!==fightId)return;state='watching';shade.classList.add('hidden');pigY=f.pigY;seconds=f.seconds;kills=f.kills;misses=f.misses;objects=f.objects.map(o=>({...o,sway:0}));arrows=f.arrows.map(a=>({...a,vx:a.bounce?570:-710}));enemyArrows=f.enemyArrows;draw();});
 })();
 </script></body></html>

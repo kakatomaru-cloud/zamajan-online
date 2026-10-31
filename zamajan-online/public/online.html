@@ -1273,7 +1273,7 @@ function zjClientAvailable(id){if(!state||!state.items)return false;const p=stat
 function zjItemOpen(){try{const C=window.AudioContext||window.webkitAudioContext;if(C){zjItemSoundCtx=zjItemSoundCtx||new C();zjItemSoundCtx.resume?.()}}catch{}const a=state?.items;if(!a){alert('アイテム設定がありません。最新サーバーをデプロイし、新しい部屋を作成してください。');return}const p=state.seat,free=a.tickets?.[p]||0;
  const warnings=['OJ','mana2','ザマン'].filter(n=>!state.config.tiles.some(t=>t.name?.normalize('NFKC').toLowerCase()===n.toLowerCase()));
  const msg='<p style="font-weight:bold">🎟️ 無料使用権：'+free+'回 ／ この局：'+a.used[p]+'/'+a.limit+'回 ／ '+state.scores[p].toLocaleString()+'点</p><p style="font-size:12px">4位が同率2人までなら、第2局から好きなアイテムを1回無料で使用できます。OJ万歳・mana2 だよは発動演出なし。</p>'+(warnings.length?'<p style="color:#f4b868">※ '+escape(warnings.join('・'))+'が牌設定に未登録です。該当するアイテムは使えません。</p>':'');
- zjItemDialog(msg+'<div class="zj-item-grid">'+a.catalog.map(x=>{const owned=a.bags.includes(x[0]),can=state.phase==='playing'&&state.turn===p&&a.used[p]<a.limit&&zjClientAvailable(x[0])&&(x[0]!=='riichicancel'||(a.riichiCancelCount||0)<2)&&(free>0||owned||(['both','paid'].includes(a.mode)&&(x[0]==='palpunte'||state.scores[p]>=x[2])));return '<div class="zj-item-card"><b>'+escape(x[1])+'</b><p>'+escape(x[3])+'</p><small>'+x[2].toLocaleString()+'点'+(free?' ／ 🎟️無料使用可':'')+'</small><button data-item="'+x[0]+'" '+(can?'':'disabled')+'>'+(zjSecretItems.has(x[0])?'秘密で装備':'使用する')+'</button></div>'}).join('')+'</div>');
+ zjItemDialog(msg+'<div class="zj-item-grid">'+a.catalog.map(x=>{const owned=a.bags.includes(x[0]),can=state.phase==='playing'&&state.turn===p&&a.used[p]<a.limit&&zjClientAvailable(x[0])&&(x[0]!=='riichicancel'||(a.riichiCancelCount||0)<2)&&(x[0]!=='riichiswap'||(a.riichiStealCount||0)<2)&&(free>0||owned||(['both','paid'].includes(a.mode)&&(x[0]==='palpunte'||state.scores[p]>=x[2])));return '<div class="zj-item-card"><b>'+escape(x[1])+'</b><p>'+escape(x[3])+'</p><small>'+x[2].toLocaleString()+'点'+(free?' ／ 🎟️無料使用可':'')+'</small><button data-item="'+x[0]+'" '+(can?'':'disabled')+'>'+(zjSecretItems.has(x[0])?'秘密で装備':'使用する')+'</button></div>'}).join('')+'</div>');
  document.querySelectorAll('#zjItemBody [data-item]').forEach(b=>b.onclick=()=>zjItemChoose(b.dataset.item));
 }
 function zjItemChoose(id){if(zjItemsTargeted.has(id)){const opts=state.players.map((p,i)=>p&&i!==state.seat&&(id!=='riichiswap'||state.riichi[i])?'<option value="'+i+'">'+escape(p.name)+(state.riichi[i]?'（リーチ中）':'')+'</option>':'').join('');if(!opts)return alert('対象のプレイヤーがいません');zjItemDialog('<p>対象を選択してください。</p><select id="zjTargetSeat">'+opts+'</select><p><button id="zjItemApply">この相手に使用する</button></p>');$('zjItemApply').onclick=()=>{socket.emit('itemUse',{id,target:+$('zjTargetSeat').value});zjItemClose()};return}if(id==='jackpot'){socket.emit('itemOptions',{id});return}socket.emit('itemUse',{id});zjItemClose()}
@@ -1283,7 +1283,7 @@ const zjFightMusic=new Audio('/assets/riichi-fight/street.mp3');zjFightMusic.pre
 let zjFight=null,zjFightRAF=0,zjFightReturnTimer=null,zjFightLastVisual=0;
 const zjFightAssets=['stance.jpg','left_punch.jpg','right_punch.jpg','alternate.jpg'];
 function zjWolfClose(){const m=$('zjWolfModal');m.classList.remove('show');$('zjWolfFrame').removeAttribute('src');$('zjWolfFinal').classList.remove('show');$('zjWolfFinal').replaceChildren()}
-window.addEventListener('message',ev=>{if(ev.origin!==location.origin||ev.source!==$('zjWolfFrame').contentWindow||ev.data?.type!=='zamajan-wolf-finished')return;if(!zjFight||zjFight.mode!=='wolf'||zjFight.done||state?.seat!==zjFight.actor)return;socket.emit('riichiWolfResult',{id:zjFight.id,success:ev.data.success===true});});
+window.addEventListener('message',ev=>{if(ev.origin!==location.origin||ev.source!==$('zjWolfFrame').contentWindow||ev.data?.type!=='zamajan-wolf-finished')return;if(!zjFight||zjFight.mode!=='wolf'||zjFight.done||state?.seat!==zjFight.target)return;socket.emit('riichiWolfResult',{id:zjFight.id,success:ev.data.success===true});});
 function zjFightClose(){zjWolfClose();
  cancelAnimationFrame(zjFightRAF);clearTimeout(zjFightReturnTimer);zjFightMusic.pause();zjFightMusic.currentTime=0;
  $('zjFightRoot').classList.remove('show');$('zjFightResultOverlay').classList.remove('show');$('zjFightArena').classList.remove('zj-fight-finished');zjFight=null;
@@ -1317,10 +1317,12 @@ window.addEventListener('keydown',ev=>{if(ev.repeat||!zjFight||ev.target?.matche
 socket.on('riichiFightStart',f=>{
  if(zjFight?.id===f.id)return;
  zjFightClose();onlineBgm.pause();zjFight={...f,counts:[0,0],done:false,musicStarted:false};
- if(f.mode==='wolf'){$('zjWolfModal').classList.add('show');$('zjWolfFrame').src='/minigames/wolf-archery/index.html?riichi=1&game='+encodeURIComponent(f.id);return;}
+ if(f.mode==='wolf'){$('zjWolfModal').classList.add('show');const observer=state?.seat!==f.target;const q='/minigames/wolf-archery/index.html?riichi=1&game='+encodeURIComponent(f.id)+'&observer='+(observer?'1':'0');$('zjWolfFrame').src=q;return;}
  $('zjFightRoot').classList.add('show');$('zjFightResultOverlay').classList.remove('show');$('zjFightArena').classList.remove('zj-fight-finished');$('zjFightUnmute').style.display='none';$('zjFightNote').textContent=state?.seat===f.actor?'Aキーか左ボタンで連打！':state?.seat===f.target?'Lキーか右ボタンで連打！':'観戦中：2人の連打対決を表示します';
  zjFightVisual('stance.jpg');zjFightUpdate();
 });
+window.addEventListener('message',ev=>{if(ev.origin!==location.origin||ev.source!==$('zjWolfFrame').contentWindow||ev.data?.type!=='zamajan-wolf-frame'||!zjFight||zjFight.done||state?.seat!==zjFight.target||ev.data.id!==zjFight.id)return;socket.emit('riichiWolfFrame',{id:zjFight.id,frame:ev.data.frame});});
+socket.on('riichiWolfFrame',frame=>{if(!zjFight||zjFight.mode!=='wolf'||zjFight.done||frame.id!==zjFight.id||state?.seat===zjFight.target)return;const target=$('zjWolfFrame').contentWindow;if(target)target.postMessage({type:'zamajan-wolf-observe',frame},location.origin);});
 socket.on('riichiFightCount',({id,counts})=>{if(zjFight?.id===id)zjFight.counts=counts});
 socket.on('riichiFightResult',result=>{
  if(!zjFight||zjFight.id!==result.id)return;
