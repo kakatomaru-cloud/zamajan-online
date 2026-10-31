@@ -282,7 +282,7 @@ const ZJ_ITEMS=[
  ['revolution','🌋 大革命',7000,'全員の手牌を配り直し、全員のリーチを解除する。'],
  ['freeze','🧊 金縛り',5000,'ランダムな相手1人の手番を5回スキップさせる。'],
  ['oj','🎉 OJ万歳',6000,'秘密装備：自分のあがり時にOJ1枚につき5,000点加算。'],
- ['mana2','😈 mana2 だよ',7000,'秘密装備：他人のあがり時にmana2 1枚につき3,000点減点。'],
+ ['mana2','😈 mana2 だよ',7000,'秘密装備：あがり時に全員の手牌を確認。mana2を持つ本人が1枚につき3,000点減点。'],
  ['festival','🎊 ザマン祭',5000,'全員の手牌のmana2とOJがザマンに変わる。'],
  ['mirror','🌀 手牌大移動',7000,'全員の手牌8枚を右隣へ回しリーチを解除する。'],
  ['jackpot','🎰 山の秘宝',5000,'山の上5枚から欲しい牌と、自分が返す牌を選択して交換。'],
@@ -329,7 +329,33 @@ function zjAvailable(r,p,id){const h=r.hands?.[p]||[],w=r.wall||[],a=r.items,e=a
 function zjAllowed(r,p,id){if(id==='scoreflip')return false;const a=r.items,x=zjItemById(id);if(!a||!x||a.mode==='off'||r.phase!=='playing'||r.turn!==p||a.used[p]>=a.limit||!zjAvailable(r,p,id))return false;return a.tickets[p]>0||a.bags[p].includes(id)||(['both','paid'].includes(a.mode)&&(id==='palpunte'||r.scores[p]>=x[2]))}
 function zjAddFreeze(r,target,by,id,turns){const e=r.items.effects[target];e.frozen=(e.frozen||0)+turns;(e.freezeQueue||(e.freezeQueue=[])).push({by,id,remaining:turns})}
 function zjConsumeFreeze(r,p){const e=r.items.effects[p];if(!e?.frozen)return;e.frozen--;const q=e.freezeQueue||[];const head=q.find(v=>v.remaining>0);if(head)head.remaining--;e.freezeQueue=q.filter(v=>v.remaining>0)}
-function zjWinBonuses(r,p,hand){const effects=r.items?.effects||[];const oj=zjTileId(r,'OJ'),mana=zjTileId(r,'mana2');const ojBonus=effects[p]?.oj&&oj?hand.filter(v=>v===oj).length*5000:0;const manaCount=mana?hand.filter(v=>v===mana).length:0;const otherHolders=effects.reduce((n,x,i)=>n+(i!==p&&x?.mana2?1:0),0);return {ojBonus,manaPenalty:otherHolders*manaCount*3000,multiplier:effects[p]?.doublepoints?2:1}}
+function zjWinBonuses(r,p,hand){
+ const effects=r.items?.effects||[],oj=zjTileId(r,'OJ');
+ const ojBonus=effects[p]?.oj&&oj?hand.filter(v=>v===oj).length*5000:0;
+ return {ojBonus,multiplier:effects[p]?.doublepoints?2:1};
+}
+// 「mana2だよ」装備者が1人でもいれば、あがりのタイミングで
+// あがり牌9枚と残りの全プレイヤーの手牌を調べる。
+// mana2を保持している本人が1枚につき3,000点を失う（重複課金なし）。
+function zjApplyMana2Penalty(r,winner,winningHand){
+ const effects=r.items?.effects||[];
+ if(!effects.some(e=>e?.mana2))return {winnerPenalty:0,entries:[]};
+ const mana=zjTileId(r,'mana2');
+ if(!mana)return {winnerPenalty:0,entries:[]};
+ const entries=[];let winnerPenalty=0;
+ for(let i=0;i<4;i++){
+  const tiles=i===winner?winningHand:(r.hands?.[i]||[]);
+  const count=tiles.filter(id=>id===mana).length;
+  if(!count)continue;
+  const amount=count*3000;
+  r.scores[i]-=amount;
+  if(i===winner)winnerPenalty=amount;
+  const name=r.players?.[i]?.name||('プレイヤー'+(i+1));
+  log(r,'😈 mana2だよ：'+name+'の手牌にmana2が'+count+'枚！ −'+amount.toLocaleString()+'点');
+  entries.push({seat:i,name,count,points:amount});
+ }
+ return {winnerPenalty,entries};
+}
 function zjReplaceHighThree(r,p){
  const h=r.hands[p],w=r.wall,roles=[...r.config.yaku].filter(y=>y.points>0&&Array.isArray(y.pattern)).sort((a,b)=>b.points-a.points);if(!w.length||!roles.length)return 0;
  const count=arr=>{const m=new Map();for(const id of arr)m.set(id,(m.get(id)||0)+1);return m};const owned=count(h),onWall=count(w);let best=null;
@@ -646,9 +672,10 @@ function finish(r,result){if(r.phase==='result')return;zjAwardLp(r,result);clear
 function zjScoreWin(r,p,hand,y,method,loser=null,winningTile=null){
  const b=zjWinBonuses(r,p,hand),rolePoints=Math.round(y.points*b.multiplier),bonus=ownBonus(r,p,hand)?1000:0;
  for(let i=0;i<4;i++)if(i!==p){if(method==='ロン'&&loser!==i)continue;const payment=rolePoints;r.scores[i]-=payment;r.scores[p]+=payment}
- r.scores[p]+=b.ojBonus-b.manaPenalty+bonus;
+ r.scores[p]+=b.ojBonus+bonus;
+ const mana=zjApplyMana2Penalty(r,p,hand);
  const actual=method==='ロン'?rolePoints:rolePoints*3;
- finish(r,{method,winner:p,winnerName:r.players[p].name,...(loser!==null?{loser,loserName:r.players[loser].name}:{}),yaku:y.name,points:actual+b.ojBonus-b.manaPenalty+bonus,rolePoints,basePoints:actual,ojBonus:b.ojBonus,manaPenalty:b.manaPenalty,ownBonus:bonus,hand:hand.slice(),winningTile:winningTile??hand.at(-1),groups:resultGroups(r,hand,y)});
+ finish(r,{method,winner:p,winnerName:r.players[p].name,...(loser!==null?{loser,loserName:r.players[loser].name}:{}),yaku:y.name,points:actual+b.ojBonus-mana.winnerPenalty+bonus,rolePoints,basePoints:actual,ojBonus:b.ojBonus,manaPenalty:mana.winnerPenalty,manaPenalties:mana.entries,ownBonus:bonus,hand:hand.slice(),winningTile:winningTile??hand.at(-1),groups:resultGroups(r,hand,y)});
 }
 function zjFinishDraw(r,p,t){r.hands[p].push(t);r.drawn=true;const y=win(r,r.hands[p]);if(y){zjScoreWin(r,p,r.hands[p],y,'ツモ',null,t);return}schedule(r);broadcast(r)}
 function draw(r,p){if(r.boxing)return;if(r.phase!=='playing'||r.turn!==p||r.drawn)return;if(!r.wall.length){finish(r,{method:'流局'});return}zjFinishDraw(r,p,r.wall.pop())}
