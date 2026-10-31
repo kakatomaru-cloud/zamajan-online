@@ -1281,9 +1281,13 @@ $('zjItemOpen').onclick=zjItemOpen;
 // リーチ強奪 ストリートファイト（勝敗は必ずサーバーで判定）
 const zjFightMusic=new Audio('/assets/riichi-fight/street.mp3');zjFightMusic.preload='auto';
 let zjFight=null,zjFightRAF=0,zjFightReturnTimer=null,zjFightLastVisual=0;
+const zjWolfCompleted=new Set();
+function zjMySeat(){return Number.isInteger(state?.seat)?state.seat:(Number.isInteger(session?.seat)?session.seat:null)}
 const zjFightAssets=['stance.jpg','left_punch.jpg','right_punch.jpg','alternate.jpg'];
-function zjWolfClose(){const m=$('zjWolfModal');m.classList.remove('show');$('zjWolfFrame').removeAttribute('src');$('zjWolfFinal').classList.remove('show');$('zjWolfFinal').replaceChildren()}
-window.addEventListener('message',ev=>{if(ev.origin!==location.origin||ev.source!==$('zjWolfFrame').contentWindow||ev.data?.type!=='zamajan-wolf-finished')return;if(!zjFight||zjFight.mode!=='wolf'||zjFight.done||state?.seat!==zjFight.target)return;socket.emit('riichiWolfResult',{id:zjFight.id,success:ev.data.success===true});});
+let zjWolfLatestFrame=null;
+$('zjWolfFrame').addEventListener('load',()=>{if(zjWolfLatestFrame&&zjFight?.id===zjWolfLatestFrame.id&&zjMySeat()!==zjFight.target)$('zjWolfFrame').contentWindow?.postMessage({type:'zamajan-wolf-observe',frame:zjWolfLatestFrame},location.origin)});
+function zjWolfClose(){zjWolfLatestFrame=null;const m=$('zjWolfModal');m.classList.remove('show');$('zjWolfFrame').removeAttribute('src');$('zjWolfFinal').classList.remove('show');$('zjWolfFinal').replaceChildren()}
+window.addEventListener('message',ev=>{if(ev.origin!==location.origin||ev.source!==$('zjWolfFrame').contentWindow||ev.data?.type!=='zamajan-wolf-finished')return;if(!zjFight||zjFight.mode!=='wolf'||zjFight.done||zjMySeat()!==zjFight.target||zjWolfCompleted.has(zjFight.id))return;zjWolfCompleted.add(zjFight.id);socket.emit('riichiWolfResult',{id:zjFight.id,success:ev.data.success===true});});
 function zjFightClose(){zjWolfClose();
  cancelAnimationFrame(zjFightRAF);clearTimeout(zjFightReturnTimer);zjFightMusic.pause();zjFightMusic.currentTime=0;
  $('zjFightRoot').classList.remove('show');$('zjFightResultOverlay').classList.remove('show');$('zjFightArena').classList.remove('zj-fight-finished');zjFight=null;
@@ -1317,12 +1321,12 @@ window.addEventListener('keydown',ev=>{if(ev.repeat||!zjFight||ev.target?.matche
 socket.on('riichiFightStart',f=>{
  if(zjFight?.id===f.id)return;
  zjFightClose();onlineBgm.pause();zjFight={...f,counts:[0,0],done:false,musicStarted:false};
- if(f.mode==='wolf'){$('zjWolfModal').classList.add('show');const observer=state?.seat!==f.target;const q='/minigames/wolf-archery/index.html?riichi=1&game='+encodeURIComponent(f.id)+'&observer='+(observer?'1':'0');$('zjWolfFrame').src=q;return;}
+ if(f.mode==='wolf'){zjWolfLatestFrame=null;$('zjWolfModal').classList.add('show');const observer=zjMySeat()!==f.target;const q='/minigames/wolf-archery/index.html?riichi=1&game='+encodeURIComponent(f.id)+'&observer='+(observer?'1':'0');$('zjWolfFrame').src=q;return;}
  $('zjFightRoot').classList.add('show');$('zjFightResultOverlay').classList.remove('show');$('zjFightArena').classList.remove('zj-fight-finished');$('zjFightUnmute').style.display='none';$('zjFightNote').textContent=state?.seat===f.actor?'Aキーか左ボタンで連打！':state?.seat===f.target?'Lキーか右ボタンで連打！':'観戦中：2人の連打対決を表示します';
  zjFightVisual('stance.jpg');zjFightUpdate();
 });
-window.addEventListener('message',ev=>{if(ev.origin!==location.origin||ev.source!==$('zjWolfFrame').contentWindow||ev.data?.type!=='zamajan-wolf-frame'||!zjFight||zjFight.done||state?.seat!==zjFight.target||ev.data.id!==zjFight.id)return;socket.emit('riichiWolfFrame',{id:zjFight.id,frame:ev.data.frame});});
-socket.on('riichiWolfFrame',frame=>{if(!zjFight||zjFight.mode!=='wolf'||zjFight.done||frame.id!==zjFight.id||state?.seat===zjFight.target)return;const target=$('zjWolfFrame').contentWindow;if(target)target.postMessage({type:'zamajan-wolf-observe',frame},location.origin);});
+window.addEventListener('message',ev=>{if(ev.origin!==location.origin||ev.source!==$('zjWolfFrame').contentWindow||ev.data?.type!=='zamajan-wolf-frame'||!zjFight||zjFight.done||zjMySeat()!==zjFight.target||ev.data.id!==zjFight.id)return;socket.emit('riichiWolfFrame',{id:zjFight.id,frame:ev.data.frame});});
+socket.on('riichiWolfFrame',frame=>{if(!zjFight||zjFight.mode!=='wolf'||zjFight.done||frame.id!==zjFight.id||zjMySeat()===zjFight.target)return;zjWolfLatestFrame=frame;const target=$('zjWolfFrame').contentWindow;if(target)target.postMessage({type:'zamajan-wolf-observe',frame},location.origin);});
 socket.on('riichiFightCount',({id,counts})=>{if(zjFight?.id===id)zjFight.counts=counts});
 socket.on('riichiFightResult',result=>{
  if(!zjFight||zjFight.id!==result.id)return;
