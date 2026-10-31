@@ -658,7 +658,7 @@ main{max-width:1120px;margin:auto;padding:22px 16px 65px}.section-title{font-siz
 .zj-rank-emblem[data-rank="MASTER"]{background:linear-gradient(140deg,#f1aaff,#7d24b5)}
 .zj-rank-emblem[data-rank="HIGH MASTER"]{background:linear-gradient(140deg,#ffdb6f,#a32b34)}
 .zj-rank-emblem[data-rank="GRAND MASTER"]{background:linear-gradient(140deg,#ffb8a4,#b62018)}
-.zj-rank-emblem[data-rank="ULTIMATE MASTER"]{background:linear-gradient(140deg,#fff,#8e8dff,#e7a85c)}
+.zj-rank-emblem[data-rank="ULTIMATE GRAND MASTER"]{background:linear-gradient(140deg,#fff,#8e8dff,#e7a85c)}
 /* 実際の座魔雀紋章画像を表示 */
 .zj-my-rank{gap:5px;max-width:100%;padding:2px 4px}
 .zj-rank-emblem{width:38px;height:36px;clip-path:none!important;background:transparent!important;filter:none!important;border:0;color:transparent;font-size:0;overflow:hidden;display:inline-flex;align-items:center;justify-content:center}
@@ -1010,8 +1010,8 @@ function zjDockTargetIcon(){
 
 // /api/ranks はサーバー保存済みの累積LP。自分以外のスコアボードには表示しない。
 let zjMineRankName='',zjMineRankRecord=null,zjMineRankLast=0,zjMineRankLoading=false;
-const zjMineRankThresholds=[['BRONZE',0],['SILVER',500],['GOLD',1000],['PLATINUM',2000],['DIAMOND',3500],['MASTER',5500],['HIGH MASTER',8000],['GRAND MASTER',11000],['ULTIMATE MASTER',15000]];
-const zjRankIconNames={'BRONZE':'bronze','SILVER':'silver','GOLD':'gold','PLATINUM':'platinum','DIAMOND':'diamond','MASTER':'master','HIGH MASTER':'high-master','GRAND MASTER':'grand-master','ULTIMATE MASTER':'ultimate-master'};
+const zjMineRankThresholds=[['BRONZE',0],['SILVER',500],['GOLD',1000],['PLATINUM',2000],['DIAMOND',3500],['MASTER',5500],['HIGH MASTER',8000],['GRAND MASTER',11000],['ULTIMATE GRAND MASTER',15000],['LEGEND',50000]];
+const zjRankIconNames={'BRONZE':'bronze','SILVER':'silver','GOLD':'gold','PLATINUM':'platinum','DIAMOND':'diamond','MASTER':'master','HIGH MASTER':'high-master','GRAND MASTER':'grand-master','ULTIMATE GRAND MASTER':'ultimate-grand-master','LEGEND':'legend'};
 function zjSetEmblemImage(el,rank){
  const file=zjRankIconNames[rank]||'bronze';
  if(el.dataset.iconFile===file)return;
@@ -1477,13 +1477,13 @@ $('zjServerRefresh').onclick=async()=>{await zjFetchSharedConfig(true);$('zjServ
 </script><style>.zj-rank-levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px}.zj-rank-level,.zj-rank-player{background:#171b1d;border:1px solid #a98a55;border-radius:10px;padding:12px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}.zj-rank-level{flex-direction:column}.zj-rank-level strong{color:#ffe1a0}.zj-rank-players{display:grid;gap:6px}.zj-rank-player span{color:#ecc177}.zj-rank-player strong{color:#f8dc9d}</style><script>
 (function(){
  const mask=document.getElementById('zjRankMask'),body=document.getElementById('zjRankBody');
- const levels=['BRONZE','SILVER','GOLD','PLATINUM','DIAMOND','MASTER','HIGH MASTER','GRAND MASTER','ULTIMATE MASTER'];
+ const levels=['BRONZE','SILVER','GOLD','PLATINUM','DIAMOND','MASTER','HIGH MASTER','GRAND MASTER','ULTIMATE GRAND MASTER','LEGEND'];
  const esc=(s)=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  async function open(){mask.classList.remove('hidden');body.textContent='ランク情報を取得しています…';try{
  const response=await fetch('/api/ranks',{cache:'no-store'});if(!response.ok)throw Error('HTTP '+response.status);const data=await response.json();
- body.innerHTML='<h3>ランク基準</h3><div class="zj-rank-levels">'+data.levels.map((x,i)=>'<div class="zj-rank-level"><img alt="" style="height:70px;width:94px;object-fit:contain;align-self:center" src="/assets/rank-icons/'+(zjRankIconNames[x.name]||'bronze')+'.webp"><strong>'+esc(x.name)+'</strong><span>'+Number(x.minLp).toLocaleString()+' LP〜</span></div>').join('')+'</div><p>ツモ +50 LP ／ ロン +30 LP ／ 敗北 −10 LP（下限0）。あがり点5,000点ごとに +10 LP。3連勝から勝利LPが2倍、4連勝4倍、5連勝8倍…（安全上最大1024倍）。流局は変動なし。</p><h3>累積LPランキング</h3><div class="zj-rank-players">'+(data.players.length?data.players.map((x,i)=>'<div class="zj-rank-player"><img alt="" style="width:52px;height:49px;object-fit:contain" src="/assets/rank-icons/'+(zjRankIconNames[x.rank]||'bronze')+'.webp"><b>'+(i+1)+'. '+esc(x.name)+'</b><span>'+esc(x.rank)+'</span><strong>'+Number(x.lp).toLocaleString()+' LP</strong><small>'+Number(x.streak)+'連勝</small></div>').join(''):'<p>まだ対戦結果が記録されていません。</p>')+'</div><p style="opacity:.75;font-size:12px">※現在はプレイヤー名で累積管理します。同名の人は同じ記録になるため、将来的にはログインID管理を推奨します。</p>';
+ body.innerHTML='<h3>ランク基準</h3><div class="zj-rank-levels">'+data.levels.map((x,i)=>'<div class="zj-rank-level"><img alt="" style="height:70px;width:94px;object-fit:contain;align-self:center" src="/assets/rank-icons/'+(zjRankIconNames[x.name]||'bronze')+'.webp"><strong>'+esc(x.name)+'</strong><span>'+Number(x.minLp).toLocaleString()+' LP〜</span></div>').join('')+'</div><p>ツモ +50 LP ／ ロン +30 LP ／ 敗北 −10 LP（下限0）。あがり点5,000点ごとに +10 LP。3連勝から勝利LPが2倍、4連勝4倍、5連勝8倍…（安全上最大1024倍）。流局は変動なし。</p><h3>累積LPランキング</h3><div class="zj-rank-players">'+(data.players.filter(x=>Number(x.lp)>0).length?data.players.filter(x=>Number(x.lp)>0).map((x,i)=>'<div class="zj-rank-player"><img alt="" style="width:52px;height:49px;object-fit:contain" src="/assets/rank-icons/'+(zjRankIconNames[x.rank]||'bronze')+'.webp"><b>'+(i+1)+'. '+esc(x.name)+'</b><span>'+esc(x.rank)+'</span><strong>'+Number(x.lp).toLocaleString()+' LP</strong><small>'+Number(x.streak)+'連勝</small></div>').join(''):'<p>まだ対戦結果が記録されていません。</p>')+'</div><p style="opacity:.75;font-size:12px">※現在はプレイヤー名で累積管理します。同名の人は同じ記録になるため、将来的にはログインID管理を推奨します。</p>';
  }catch(err){
-  const thresholds=[0,500,1000,2000,3500,5500,8000,11000,15000];
+  const thresholds=[0,500,1000,2000,3500,5500,8000,11000,15000,50000];
   body.innerHTML='<p style="color:#ffcb89">累積LPは現在取得できません（'+esc(err.message)+'）。サーバーの更新が未反映の可能性があります。</p><h3>ランク基準（閲覧可能）</h3><div class="zj-rank-levels">'+levels.map((name,i)=>'<div class="zj-rank-level"><img alt="" style="width:94px;height:70px;object-fit:contain" src="/assets/rank-icons/'+(zjRankIconNames[name]||'bronze')+'.webp"><strong>'+esc(name)+'</strong><span>'+thresholds[i].toLocaleString()+' LP〜</span></div>').join('')+'</div>';
  }}
  document.getElementById('zjRankOpen').addEventListener('click',open);
