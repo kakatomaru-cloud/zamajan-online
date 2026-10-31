@@ -1,0 +1,160 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>ザマじゃん・ぷーやん風 弓矢ミニゲーム</title><style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{background:#080d33;color:#fff8dc;margin:0;font-family:system-ui,'Yu Gothic',sans-serif}main{width:min(1200px,100%);margin:0 auto;padding:12px}.header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}.header h1{font-size:clamp(17px,3vw,29px);margin:0;color:#ffda55;text-shadow:3px 3px #6c1625}.header p{margin:0;font-size:12px;color:#a9b7eb}#wrap{position:relative;width:100%;aspect-ratio:1387/1040;border:4px solid #e1a744;box-shadow:0 0 0 4px #2b1647,0 0 28px #0bf9;overflow:hidden;background:#000676;border-radius:6px}canvas{display:block;width:100%;height:100%;image-rendering:pixelated;touch-action:none}.shade{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#000a;padding:12px}.dialog{border:4px double #f6c851;background:linear-gradient(#080e30f9,#061027fb);padding:16px 22px;text-align:center;width:min(900px,96%);box-shadow:0 0 40px #000;max-height:100%;overflow:auto}.dialog h2{font-size:clamp(25px,5vw,48px);color:#ffdf58;margin:0 0 10px;text-shadow:3px 3px #9f2e2c}.dialog p{line-height:1.6;font-size:clamp(13px,1.65vw,21px);font-weight:750;text-shadow:1px 2px #000}.instructions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;text-align:left;margin:12px auto;max-width:800px}.instructions div{background:#030817;border:1px solid #bf973e;border-radius:8px;padding:9px 11px;font-size:clamp(12px,1.45vw,17px);line-height:1.45}.instructions strong{color:#ffe36d}.mission-head{font-size:clamp(28px,4.5vw,65px)!important;color:#ffe83f!important;-webkit-text-stroke:1.2px #b52b20;text-shadow:3px 4px #17020d,0 0 16px #ff6f19!important}.warning{color:#ffb3b0!important;font-weight:900}.dialog #start{font-size:clamp(17px,2.2vw,25px);padding:12px 30px;background:linear-gradient(#fff39e,#ffb426)}@media(max-width:650px){.instructions{grid-template-columns:1fr;gap:4px}.instructions div{padding:5px 8px}.dialog{padding:10px}.dialog #start{padding:8px 16px}.dialog h2{margin:0}}button{background:linear-gradient(#ffe28b,#f19e35);border:2px solid #fff5ba;border-radius:8px;color:#24200b;font-weight:900;cursor:pointer;padding:12px 20px;font-size:16px;touch-action:manipulation}button:active{transform:translateY(2px)}.ctrl{display:grid;grid-template-columns:1fr 1fr 1.5fr;gap:10px;margin-top:12px}.ctrl button{font-size:clamp(14px,2vw,22px);min-height:62px}.ctrl button:last-child{background:linear-gradient(#fa8d8d,#d3272b);color:#fff} .note{font-size:12px;color:#a6bcf4;line-height:1.7;margin-top:12px}.hidden{display:none!important}@media(min-width:900px){.ctrl{max-width:540px;margin:14px auto}}
+
+#countOverlay{position:absolute;inset:0;z-index:4;display:flex;align-items:center;justify-content:center;background:#0009;pointer-events:none}
+#countText{font-weight:1000;text-align:center;font-size:clamp(44px,9vw,150px);color:#ffe45c;-webkit-text-stroke:clamp(1px,.5vw,7px) #8d1910;text-shadow:0 7px #2b0804,0 0 20px #ff9b0c,0 0 45px #ffda3d;line-height:1.2;transform:scale(1);animation:countPop .35s ease-out}
+#countText.mission{font-size:clamp(26px,5.4vw,82px);padding:10px}
+@keyframes countPop{from{transform:scale(1.65);opacity:.1}to{transform:scale(1);opacity:1}}
+#soundNote{font-size:12px;margin:4px 0;color:#ffe3a0}.zj-intro-countdown{font-size:clamp(48px,8vw,115px);font-weight:1000;line-height:1;color:#ffe34c;text-shadow:4px 5px #861707,0 0 13px #ffbd45;margin:4px auto 8px}.zj-intro-countdown.hidden{display:none!important}
+</style></head><body><main><div class="header"><h1>🐷🏹 ザマじゃん 弓矢で狼退治！</h1><p>狼3匹撃破でクリア ／ 15秒 ／ 狼3匹落下で失敗 ／ 反射矢・敵矢にも注意</p></div><div id="wrap"><canvas id="game" width="1387" height="1040" aria-label="弓矢アーケードゲーム"></canvas><div id="countOverlay" class="hidden"><div id="countText"></div></div><div id="shade" class="shade"><div class="dialog"><h2 id="statusTitle" class="mission-head">狼を3匹倒せ！</h2><div id="zjIntroCountdown" class="zj-intro-countdown" aria-live="assertive">3</div><p id="statusText">風船を弓矢で割って、<strong>15秒以内に狼を3匹撃破！</strong></p><div id="rules" class="instructions"><div>🎮 <strong>PC：</strong> ↑ ↓／W S で移動</div><div>🏹 <strong>スペース／タップ：</strong>矢を発射</div><div>🎈 <strong>風船を狙え！</strong> 矢は画面に3本まで同時発射</div><div>↩️ 壁・狼の体・足場に当たると反射</div><div>💀 <strong>子豚・瓶・敵の矢・戻った矢</strong>に当たると失敗</div><div>⏳ <strong>3匹逃すか15秒経過</strong>でも失敗</div></div><p id="soundNote">説明を見ながら3・2・1で自動開始！ ゲーム開始後は説明が消えます。</p><button id="start" type="button">↻ もう一度遊ぶ</button></div></div></div><div class="ctrl"><button type="button" id="up">▲ 上へ</button><button type="button" id="down">▼ 下へ</button><button type="button" id="fire">🏹 矢を撃つ！</button></div><p class="note">PC：↑ ↓ または W S で移動、スペース／Enterで射撃。スマホ：上下ボタンを長押し、射撃ボタンをタップ。画面上のドラッグでも豚を動かせます。矢は3発まで同時に撃てます。※添付画像をもとにした独立デモ版です。ザマじゃんONLINEへの組み込みはまだ行っていません。</p></main>
+<audio id="battleBgm" preload="auto" src="assets/theme.mp3"></audio>
+<script>
+(()=>{'use strict';
+const C=document.getElementById('game'),g=C.getContext('2d');
+g.imageSmoothingEnabled=false;
+const shade=document.getElementById('shade'),title=document.getElementById('statusTitle'),desc=document.getElementById('statusText'),countOverlay=document.getElementById('countOverlay'),countText=document.getElementById('countText'),bgm=document.getElementById('battleBgm');
+let countdownSession=0;const load=(name)=>{const im=new Image();im.src='assets/'+name;return im};
+const sprites={stage:load('stage_clean.png'),pig:load('pig_full.png'),red:load('wolf_red.png'),yellow:load('wolf_yellow.png'),green:load('wolf_green.png'),fat:load('wolf_fat.png'),baby:load('baby.png'),bottle:load('bottle.png')};
+let state='menu',pigY=430,arrows=[],objects=[],kills=0,score=0,seconds=15,last=0,spawnClock=0,spawnId=0,particles=[],elapsed=0,misses=0,enemyArrows=[];
+const keys={up:false,down:false};
+function rand(a,b){return a+Math.random()*(b-a)}
+function boxImage(im,x,y,w,h){if(im.complete&&im.naturalWidth)g.drawImage(im,x,y,w,h)}
+function pigHitRects(){return[
+ {x:1160,y:pigY+26,w:52,h:48},   // head / face
+ {x:1146,y:pigY+76,w:64,h:58},   // body
+ {x:1124,y:pigY+72,w:28,h:22},   // extended arm / bow arm
+];}
+function pointInRect(x,y,r){return x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h}
+function pigHitPoint(x,y){return pigHitRects().some(r=>pointInRect(x,y,r))}
+function reset(){stopBgm();countOverlay.classList.add('hidden');pigY=405;arrows=[];objects=[];kills=0;score=0;seconds=15;misses=0;enemyArrows=[];elapsed=0;spawnClock=.3;spawnId=0;particles=[];state='playing';shade.classList.add('hidden');last=performance.now();requestAnimationFrame(loop)}
+function spawn(){
+ const n=spawnId++;const kind=n%7===4?'baby':n%9===7?'bottle':'wolf';
+ const variant=['red','yellow','green'][n%3];
+ const fat=kind==='wolf'&&n%12===0;const thin=kind==='wolf'&&!fat&&n%3===1;
+ const archer=kind==='wolf'&&n%4===2;
+ const size=fat?1.85:thin?.76:1;
+ const w=kind==='wolf'?(fat?238:133*size):kind==='baby'?120:95;
+ const h=kind==='wolf'?(fat?350:220*size):kind==='baby'?220:140;
+ const vy=kind==='bottle'?rand(135,185):fat?rand(255,315):thin?rand(72,104):rand(125,160);
+ const x=rand(385,830);
+ objects.push({kind,variant:fat?'fat':variant,x,y:-h-8,w,h,vy,sway:rand(0,6.3),hit:false,archer,fireClock:archer?rand(.3,.8):99,fat,thin,vx:rand(-16,16),bumpCooldown:0});
+}
+function shot(){if(state!=='playing'||arrows.length>=3)return;arrows.push({x:1132,y:pigY+61,vx:-710,bounce:false});beep(680,.045,'square',.035)}
+let ctx;
+function beep(freq,dur,type='sine',vol=.045){try{ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();ctx.resume();const o=ctx.createOscillator(),v=ctx.createGain();o.type=type;o.frequency.value=freq;v.gain.setValueAtTime(vol,ctx.currentTime);v.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+dur);o.connect(v);v.connect(ctx.destination);o.start();o.stop(ctx.currentTime+dur)}catch(e){}}
+function finish(win,reason){if(state!=='playing')return;stopBgm();state=win?'win':'lose';shade.classList.remove('hidden');title.classList.remove('mission-head');document.getElementById('rules').classList.add('hidden');title.textContent=win?'🎉 STAGE CLEAR!':'💀 GAME OVER';desc.innerHTML=(win?'狼を3匹撃破！ お見事！':'失敗！ '+reason)+'<br>スコア：<b>'+score.toLocaleString()+'</b> ／ 狼撃破：'+kills+'匹';document.getElementById('start').textContent='↻ もう一度遊ぶ';beep(win?920:165,.35,'sawtooth',.07)}
+function burst(x,y,color){for(let i=0;i<18;i++)particles.push({x,y,vx:rand(-155,155),vy:rand(-145,145),life:rand(.25,.65),color})}
+function lineVsBox(x0,x1,y,box){return y>=box.y&&y<=box.y+box.h&&Math.max(x0,x1)>=box.x&&Math.min(x0,x1)<=box.x+box.w}
+function removeArrow(ar){const idx=arrows.indexOf(ar);if(idx>=0)arrows.splice(idx,1)}
+function popBalloon(o,x,y,ar){kills++;score+=200;burst(x,y,'#ffe85c');beep(980,.12,'triangle');const idx=objects.indexOf(o);if(idx>=0)objects.splice(idx,1);removeArrow(ar);if(kills>=3)finish(true,'')}
+function reflectArrow(ar){ar.vx=570;ar.bounce=true;beep(140,.15,'square')}
+function collide(ar,previousX){
+ if(!ar||ar.bounce)return;
+ const ax=ar.x,ay=ar.y;
+ for(const o of objects){
+  if(o.kind!=='wolf')continue;
+  const sway=Math.sin(elapsed*2+o.sway)*5,x=o.x+sway;
+  const balloon={x:x+o.w*.17,y:o.y+o.h*.005,w:o.w*.68,h:o.h*.37};
+  if(lineVsBox(previousX,ax,ay,balloon)){popBalloon(o,ax,ay,ar);return}
+ }
+ for(const o of objects){
+  const ox=o.x+Math.sin(elapsed*2+o.sway)*5;
+  const body={x:ox+o.w*.08,y:o.y+(o.kind==='wolf'?o.h*.35:0),w:o.w*.85,h:o.h*(o.kind==='wolf'?.63:1)};
+  if(!lineVsBox(previousX,ax,ay,body))continue;
+  if(o.kind==='wolf'){reflectArrow(ar);return}
+  burst(ax,ay,'#ff2864');finish(false,o.kind==='baby'?'子豚に当ててしまった！':'髑髏の瓶に当ててしまった！');removeArrow(ar);return
+ }
+ if(ax<300)reflectArrow(ar)
+}
+function draw(){
+ g.clearRect(0,0,1387,1040);
+ boxImage(sprites.stage,0,0,1387,1040);
+ for(const o of objects){
+  const x=o.x+Math.sin(elapsed*2+o.sway)*5,y=o.y;
+  if(o.kind==='wolf'){
+   boxImage(sprites[o.variant],x,y,o.w,o.h);
+   if(o.archer){g.font='bold 32px monospace';g.fillStyle='#ff9e19';g.fillText('🏹',x+o.w*.35,y+o.h*.74)}
+  }else boxImage(sprites[o.kind],x,y,o.w,o.h)
+ }
+ // 崖の下端からゴンドラ頂点までつながる、赤白の吊り紐。
+ // 屋根と同じ縦移動量に合わせて下端が上下する。
+ const ropeTop=230, ropeBottom=pigY-136+8, ropeX=1189;
+ if(ropeBottom>ropeTop){
+  g.save();g.fillStyle='#16101c';g.fillRect(ropeX-4,ropeTop,9,ropeBottom-ropeTop);
+  for(let y=ropeTop;y<ropeBottom;y+=12){
+   g.fillStyle=(Math.floor((y-ropeTop)/12)%2===0)?'#f3f2e0':'#e92620';
+   g.fillRect(ropeX-2,y,5,Math.min(12,ropeBottom-y));
+  }
+  g.restore();
+ }
+ boxImage(sprites.pig,1091,pigY-136,197,343);
+ for(const ar of arrows){
+  g.save();g.translate(ar.x,ar.y);if(ar.bounce)g.rotate(.17);g.strokeStyle='#ffe35c';g.lineWidth=6;g.beginPath();g.moveTo(-23,0);g.lineTo(18,0);g.stroke();g.fillStyle='#f1faff';g.beginPath();if(ar.vx<0){g.moveTo(-32,0);g.lineTo(-15,-11);g.lineTo(-15,11)}else{g.moveTo(28,0);g.lineTo(12,-11);g.lineTo(12,11)}g.fill();g.restore();
+ }
+ for(const e of enemyArrows){g.strokeStyle='#ff5b60';g.lineWidth=7;g.beginPath();g.moveTo(e.x-24,e.y);g.lineTo(e.x+23,e.y);g.stroke();g.fillStyle='#fff4db';g.beginPath();g.moveTo(e.x+28,e.y);g.lineTo(e.x+14,e.y-12);g.lineTo(e.x+14,e.y+12);g.fill()}
+ for(const p of particles){g.fillStyle=p.color;g.fillRect(p.x,p.y,8,8)}
+ g.fillStyle='#00114dc9';g.fillRect(3,0,1380,83);g.font='bold 34px monospace';g.textAlign='left';g.fillStyle='#ff605c';g.fillText('1UP',75,37);g.fillStyle='#fff';g.fillText(String(score).padStart(6,'0'),75,71);g.textAlign='center';g.fillStyle='#ffdd43';g.fillText('WOLVES',700,38);g.fillStyle='#fff';g.fillText(kills+' / 3',700,74);g.textAlign='right';g.fillStyle='#5cffff';g.fillText('TIME '+Math.ceil(seconds),1320,38);g.fillStyle='#ffc979';g.font='bold 23px monospace';g.fillText('MISSED '+misses+'/3  ARROWS '+(3-arrows.length),1320,74)
+}
+function loop(now){
+ if(state!=='playing')return;
+ let dt=Math.min(.045,(now-last)/1000);last=now;elapsed+=dt;seconds-=dt;
+ if(seconds<=0){seconds=0;finish(false,'時間切れ！');draw();return}
+ pigY=Math.max(386,Math.min(670,pigY+((keys.down?1:0)-(keys.up?1:0))*320*dt));
+ spawnClock-=dt;if(spawnClock<=0){spawn();spawnClock=rand(.65,1.05)}
+ for(const o of objects){
+  o.y+=o.vy*dt; o.x=Math.max(280,Math.min(880-o.w,o.x+(o.vx||0)*dt)); o.vx=(o.vx||0)*Math.pow(.995,dt*60); o.bumpCooldown=Math.max(0,(o.bumpCooldown||0)-dt);
+  if(o.archer){o.fireClock-=dt;if(o.fireClock<=0&&o.y>130&&o.y<800){enemyArrows.push({x:o.x+o.w*.75,y:o.y+o.h*.66,vx:rand(525,650)});o.fireClock=rand(1.35,2.1);beep(420,.045,'square',.02)}}
+ }
+ for(let i=0;i<objects.length;i++)for(let j=i+1;j<objects.length;j++){
+  const a=objects[i],b=objects[j];
+  const ax=a.x+a.w/2,ay=a.y+a.h*.55,bx=b.x+b.w/2,by=b.y+b.h*.55;
+  const dx=bx-ax,dy=by-ay,dist=Math.hypot(dx,dy)||1;
+  const minimum=(a.w+b.w)*.35+(a.h+b.h)*.13;
+  if(dist>=minimum)continue;
+  const ux=dx/dist,uy=dy/dist,over=minimum-dist+2;
+  a.x-=ux*over*.5;b.x+=ux*over*.5;
+  a.y-=uy*over*.5;b.y+=uy*over*.5;
+  a.x=Math.max(280,Math.min(880-a.w,a.x));b.x=Math.max(280,Math.min(880-b.w,b.x));
+  a.vx=Math.max(-165,Math.min(165,(a.vx||0)-ux*145));
+  b.vx=Math.max(-165,Math.min(165,(b.vx||0)+ux*145));
+  a.vy=Math.max(45,a.vy-uy*55);b.vy=Math.max(45,b.vy+uy*55);
+  if((a.bumpCooldown||0)<=0&&(b.bumpCooldown||0)<=0){burst((ax+bx)/2,(ay+by)/2,'#fff19b');beep(280,.05,'triangle',.015);a.bumpCooldown=b.bumpCooldown=.25;}
+ }
+ for(const o of [...objects]){if(o.y>1040){objects.splice(objects.indexOf(o),1);if(o.kind==='wolf'){misses++;beep(160,.1,'square',.04);if(misses>=3){finish(false,'狼が3匹下まで降りてしまった！');break}}}}
+ for(const e of enemyArrows){e.x+=e.vx*dt;if(pigHitPoint(e.x,e.y)){finish(false,'狼が放った矢に当たった！');break}}
+ enemyArrows=enemyArrows.filter(e=>e.x<1420);
+ for(let i=arrows.length-1;i>=0;i--){
+  const ar=arrows[i];
+  const previousX=ar.x; ar.x+=ar.vx*dt; collide(ar,previousX);
+  if(arrows.includes(ar) && ar.bounce && pigHitPoint(ar.x,ar.y)){finish(false,'跳ね返った矢が豚に命中した！')}
+  if(arrows.includes(ar) && (ar.x<0||ar.x>1390))removeArrow(ar)
+ }
+ for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt}particles=particles.filter(p=>p.life>0);
+ draw(); if(state==='playing')requestAnimationFrame(loop)
+}
+function stopBgm(){bgm.pause();bgm.currentTime=0;}
+function showCountdownText(msg,mission=false){countText.className=mission?'mission':'';countText.textContent=msg;countText.style.animation='none';void countText.offsetWidth;countText.style.animation='countPop .35s ease-out';}
+function delay(ms){return new Promise(r=>setTimeout(r,ms));}
+async function launch(){
+ if(state==='countdown')return;
+ const session=++countdownSession;
+ stopBgm();state='countdown';shade.classList.remove('hidden');countOverlay.classList.add('hidden');title.classList.add('mission-head');title.textContent='狼を3匹倒せ！';document.getElementById('rules').classList.remove('hidden');document.getElementById('start').classList.add('hidden');const introCount=document.getElementById('zjIntroCountdown');introCount.classList.remove('hidden');
+ try{bgm.load()}catch(e){}
+ draw();
+ for(const n of [3,2,1]){if(session!==countdownSession)return;introCount.textContent=String(n);beep(360+n*90,.14,'square',.035);await delay(1000)}
+ if(session!==countdownSession)return;
+ introCount.classList.add('hidden');document.getElementById('start').classList.remove('hidden');
+ reset();
+ countOverlay.classList.add('hidden');
+ try{bgm.currentTime=0;bgm.volume=.65;const playPromise=bgm.play();if(playPromise&&playPromise.catch)playPromise.catch(e=>{console.warn('音楽再生が許可されていません',e);document.getElementById('soundNote').textContent='音楽が再生されない場合はブラウザの再生許可をご確認ください。';})}catch(e){console.warn(e)}
+}
+function down(k,on){if(['ArrowUp','w','W'].includes(k))keys.up=on;else if(['ArrowDown','s','S'].includes(k))keys.down=on;else if(on&&[' ','Enter'].includes(k))shot()}
+window.addEventListener('keydown',e=>{if(['ArrowUp','ArrowDown',' ','Enter'].includes(e.key))e.preventDefault();if(e.repeat&&[' ','Enter'].includes(e.key))return;down(e.key,true)});
+window.addEventListener('keyup',e=>down(e.key,false));window.addEventListener('blur',()=>{keys.up=keys.down=false});
+for(const [id,key] of [['up','up'],['down','down']]){const b=document.getElementById(id);b.addEventListener('pointerdown',e=>{e.preventDefault();keys[key]=true;b.setPointerCapture(e.pointerId)});for(const type of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(type,()=>keys[key]=false)}
+document.getElementById('fire').addEventListener('pointerdown',e=>{e.preventDefault();shot()});
+C.addEventListener('pointermove',e=>{if(state!=='playing'||e.buttons!==1)return;const rect=C.getBoundingClientRect();pigY=Math.max(386,Math.min(670,(e.clientY-rect.top)*1040/rect.height-60))});
+C.addEventListener('pointerdown',e=>{if(state!=='playing')return;const rect=C.getBoundingClientRect();pigY=Math.max(386,Math.min(670,(e.clientY-rect.top)*1040/rect.height-60))});
+document.getElementById('start').addEventListener('click',launch);const im=sprites.stage;im.onload=draw;draw();setTimeout(launch,200)
+})();
+</script></body></html>
