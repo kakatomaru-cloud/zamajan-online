@@ -667,42 +667,7 @@ main{max-width:1120px;margin:auto;padding:22px 16px 65px}.section-title{font-siz
 .zj-rank-label{font-size:11px;line-height:1.25;color:#ffe2a1;font-weight:800;overflow:hidden;text-overflow:ellipsis}
 @media(max-width:700px){.zj-my-rank{gap:3px;padding:3px}.zj-rank-emblem{width:23px;height:26px;font-size:13px}.zj-rank-label{font-size:9px}}
 </style>
-<script>
-// /api/ranks はサーバー保存済みの累積LP。自分以外のスコアボードには表示しない。
-let zjMineRankName='',zjMineRankRecord=null,zjMineRankLast=0,zjMineRankLoading=false;
-const zjMineRankThresholds=[['BRONZE',0],['SILVER',500],['GOLD',1000],['PLATINUM',2000],['DIAMOND',3500],['MASTER',5500],['HIGH MASTER',8000],['GRAND MASTER',11000],['ULTIMATE MASTER',15000]];
-const zjRankIconNames={'BRONZE':'bronze','SILVER':'silver','GOLD':'gold','PLATINUM':'platinum','DIAMOND':'diamond','MASTER':'master','HIGH MASTER':'high-master','GRAND MASTER':'grand-master','ULTIMATE MASTER':'ultimate-master'};
-function zjSetEmblemImage(el,rank){
- const file=zjRankIconNames[rank]||'bronze';
- if(el.dataset.iconFile===file)return;
- el.dataset.iconFile=file;
- el.textContent='';
- const im=document.createElement('img');
- im.src='/assets/rank-icons/'+file+'.webp';im.alt=rank+' ランク紋章';im.loading='lazy';
- el.appendChild(im);
-}
-function zjRenderMyRank(){
- const el=document.querySelector('[data-zj-own-rank]');if(!el)return;
- const icon=el.querySelector('.zj-rank-emblem'),label=el.querySelector('.zj-rank-label');
- if(!zjMineRankRecord){icon.dataset.rank='BRONZE';zjSetEmblemImage(icon,'BRONZE');label.textContent='BRONZE / 0 LP';return}
- const lp=Math.max(0,Number(zjMineRankRecord.lp)||0);
- let rank=zjMineRankThresholds[0][0];for(const [name,min] of zjMineRankThresholds)if(lp>=min)rank=name;
- icon.dataset.rank=rank;icon.title=rank+'・'+lp.toLocaleString()+' LP';zjSetEmblemImage(icon,rank);
- label.textContent=rank+' / '+lp.toLocaleString()+' LP';
-}
-function zjSyncMyRank(s){
- const p=s.players?.[s.seat];if(!p)return;
- const name=String(p.name||'');if(!name)return;
- if(zjMineRankName!==name){zjMineRankName=name;zjMineRankRecord=null;zjMineRankLast=0}
- zjRenderMyRank();
- const now=Date.now();if(zjMineRankLoading||now-zjMineRankLast<15000)return;
- zjMineRankLast=now;zjMineRankLoading=true;
- fetch('/api/ranks',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('rank '+r.status);return r.json()})
- .then(data=>{if(zjMineRankName!==name)return;zjMineRankRecord=data.players?.find(x=>x.name===name)||{lp:0};zjRenderMyRank()})
- .catch(()=>{const label=document.querySelector('[data-zj-own-rank] .zj-rank-label');if(label&&!zjMineRankRecord)label.textContent='LP確認不可'})
- .finally(()=>{zjMineRankLoading=false});
-}
-</script>
+
 </body></html>`;
 }
 window.zjOpenScoreSheet=function(config,context,hero,provided){
@@ -1033,6 +998,44 @@ function zjDockTargetIcon(){
  const badge=document.getElementById('zjTargetTrigger');
  const dock=document.getElementById('zjBoardItemControls');if(dock&&badge&&badge.parentElement!==dock)dock.appendChild(badge);
 }
+
+// LPは表示専用。通信失敗でもゲームの描画を止めない。
+
+// /api/ranks はサーバー保存済みの累積LP。自分以外のスコアボードには表示しない。
+let zjMineRankName='',zjMineRankRecord=null,zjMineRankLast=0,zjMineRankLoading=false;
+const zjMineRankThresholds=[['BRONZE',0],['SILVER',500],['GOLD',1000],['PLATINUM',2000],['DIAMOND',3500],['MASTER',5500],['HIGH MASTER',8000],['GRAND MASTER',11000],['ULTIMATE MASTER',15000]];
+const zjRankIconNames={'BRONZE':'bronze','SILVER':'silver','GOLD':'gold','PLATINUM':'platinum','DIAMOND':'diamond','MASTER':'master','HIGH MASTER':'high-master','GRAND MASTER':'grand-master','ULTIMATE MASTER':'ultimate-master'};
+function zjSetEmblemImage(el,rank){
+ const file=zjRankIconNames[rank]||'bronze';
+ if(el.dataset.iconFile===file)return;
+ el.dataset.iconFile=file;
+ el.textContent='';
+ const im=document.createElement('img');
+ im.src='/assets/rank-icons/'+file+'.webp';im.alt=rank+' ランク紋章';im.loading='lazy';
+ el.appendChild(im);
+}
+function zjRenderMyRank(){
+ const el=document.querySelector('[data-zj-own-rank]');if(!el)return;
+ const icon=el.querySelector('.zj-rank-emblem'),label=el.querySelector('.zj-rank-label');
+ if(!zjMineRankRecord){icon.dataset.rank='BRONZE';zjSetEmblemImage(icon,'BRONZE');label.textContent='BRONZE / 0 LP';return}
+ const lp=Math.max(0,Number(zjMineRankRecord.lp)||0);
+ let rank=zjMineRankThresholds[0][0];for(const [name,min] of zjMineRankThresholds)if(lp>=min)rank=name;
+ icon.dataset.rank=rank;icon.title=rank+'・'+lp.toLocaleString()+' LP';zjSetEmblemImage(icon,rank);
+ label.textContent=rank+' / '+lp.toLocaleString()+' LP';
+}
+function zjSyncMyRank(s){
+ const p=s.players?.[s.seat];if(!p)return;
+ const name=String(p.name||'');if(!name)return;
+ if(zjMineRankName!==name){zjMineRankName=name;zjMineRankRecord=null;zjMineRankLast=0}
+ zjRenderMyRank();
+ const now=Date.now();if(zjMineRankLoading||now-zjMineRankLast<15000)return;
+ zjMineRankLast=now;zjMineRankLoading=true;
+ fetch('/api/ranks',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('rank '+r.status);return r.json()})
+ .then(data=>{if(zjMineRankName!==name)return;zjMineRankRecord=data.players?.find(x=>x.name===name)||{lp:0};zjRenderMyRank()})
+ .catch(()=>{const label=document.querySelector('[data-zj-own-rank] .zj-rank-label');if(label&&!zjMineRankRecord)label.textContent='LP確認不可'})
+ .finally(()=>{zjMineRankLoading=false});
+}
+
 function show(s){if(!session)return;zjDockTargetIcon();
  const table=document.querySelector('#play .board');
  if(table){const theme=Math.max(1,Math.min(8,Number(s.tableTheme)||1));
@@ -1049,7 +1052,7 @@ function show(s){if(!session)return;zjDockTargetIcon();
   if(newly>=0)zjAnnounceRiichi(s.players[newly]?.name||('プレイヤー'+(newly+1)));
  }
  if(s.phase==='playing'&&(old?.code!==s.code||old?.round!==s.round||old?.phase!=='playing'))zjSelectRoundBgm(s.code,s.round,s.bgmTrack);else if(s.phase==='playing'&&old?.code===s.code&&old?.bgmTrack!==s.bgmTrack){onlineBgm.pause();onlineBgm.src=zjBgmTracks[s.bgmTrack]||zjBgmTracks[0];onlineBgm.load();playOnlineBgm()}
- state=s;zjRefreshItemStatus();zjShowTargetButton(s.hand||[],s.config,s.phase==='playing');if(s.config?.tiles){const count=s.config.tiles.filter(t=>t.image).length;const note=$('roomHelp');if(note)note.dataset.imageCount=String(count)}$('globalExit').classList.remove('hidden');$('lobby').classList.add('hidden');$('room').classList.toggle('hidden',s.phase!=='lobby');$('play').classList.toggle('hidden',s.phase==='lobby');$('code').textContent=s.code;$('members').innerHTML=s.players.map((p,i)=>`<p>${i+1}番：${p?escape(p.name)+(p.cpu?'（CPU）':p.connected?'（接続中）':'（切断）'):'空席'}</p>`).join('');$('roomHelp').textContent=(s.host?'参加者がそろったら対戦開始を押してください。空席はCPUになります。':'部屋主の開始を待っています。')+` 共有中の牌画像：${s.config.tiles.filter(t=>t.image).length}種類（全端末共通）`; $('start').classList.toggle('hidden',!s.host||s.phase!=='lobby');if(s.phase==='lobby'){$('zjWinCutscene').classList.add('hidden');return;}const current=s.players[s.turn];$('message').textContent=`第${s.round}局 ／ 山の残り ${s.wallCount}枚 ／ ${current?.name||''}の番${s.round===1&&s.firstDice?' ／ 🎲 '+s.firstDice+'：'+s.players[s.startSeat]?.name+'スタート':''}`;$('players').innerHTML=s.players.map((p,i)=>`<div class="player p${(i-s.seat+4)%4} ${i===s.turn&&s.phase==='playing'?'active':''}"><b>${escape(p.name)}</b>　${s.scores[i].toLocaleString()}点${i===s.seat?'<div class="zj-my-rank" data-zj-own-rank><span class="zj-rank-emblem" data-rank="BRONZE">雀</span><span class="zj-rank-label">LP読み込み中…</span></div>':''}${i===s.startSeat?'<span class="zj-start-marker">スタート</span>':''}<br>${s.riichi[i]?'<span style="color:#ffcf75">リーチ ━●━</span><br>':''}${zjOnlineStatusHTML(i)}${i===s.seat?'あなた':`<div class="opponent-tiles ${s.visibleHands?.[i]?'zj-open-hands':''}">${s.visibleHands?.[i]?s.visibleHands[i].map(id=>'<span class="zj-open-opponent-tile">'+tile(id)+'</span>').join(''):Array.from({length:s.handCounts[i]},()=>'<span class="tile-back"></span>').join('')}</div>`}${i===s.turn&&s.phase==='playing'&&i!==s.seat?'<br>💭 思考中…':''}</div>`).join('');zjSyncMyRank(s);$('discards').innerHTML=onlineDiscardHTML(s);scrollOnlineDiscards(s);const drawnId=s.drawn&&s.turn===s.seat?s.hand[s.hand.length-1]:null;$('hand').innerHTML=s.hand.map((id,i)=>tile(id,true,i)).join('');$('hand').querySelectorAll('button').forEach((b,i)=>{if(s.readyDiscards?.includes(i))b.classList.add('riichi-ready-discard')});if(drawnId!==null){$('hand').querySelectorAll('button').forEach((b,i)=>{if(s.hand[i]===drawnId)b.classList.add('matching-drawn');if(i===s.hand.length-1)b.classList.add('just-drawn')})}$('hand').querySelectorAll('button').forEach(b=>{b.disabled=s.phase!=='playing'||s.turn!==s.seat||!!s.riichi[s.seat];b.onclick=()=>playTileOnce(+b.dataset.idx)});$('guide').textContent=s.phase==='playing'?(s.turn===s.seat?(s.riichi[s.seat]?'🔒 リーチ中：自動ツモ・自動ツモ切り（操作不要。あがりは自動判定）':s.drawn?'牌を1回クリックで捨てられます（15秒）':'牌は1回クリックで捨てられます（ツモ待ち中も可）'):'相手の手番です'):'局の終了';$('logs').innerHTML=s.logs.slice(-4).map(x=>`<div>${escape(x)}</div>`).join('');if(s.phase==='playing'&&s.round!==seenRound){seenRound=s.round;voice('はじめ！',true)}if(s.phase==='result'||s.phase==='final'){const resultKey=s.round+'-'+s.phase;if(seenResult!==resultKey){seenResult=resultKey;if(s.phase==='result')voice(s.result.method==='流局'?'りゅうきょく':s.result.method,s.result.method==='流局')}const ranks=s.scores.map((score,i)=>({i,score,name:s.players[i].name})).sort((a,b)=>b.score-a.score);$('overlay').classList.toggle('zj-one-screen-win',s.phase==='result'&&!!s.result?.winnerName);$('outcome').innerHTML=s.phase==='final'?`<h2>最終順位</h2>${ranks.map((p,i)=>`<div class="rank"><b>${['🥇','🥈','🥉','4位'][i]} ${escape(p.name)}</b><b>${p.score.toLocaleString()}点</b></div>`).join('')}`:`<div class="zj-result-heading"><h2>${escape(s.result.method)}</h2>${s.result.winnerName?`<b>🏆 ${escape(s.result.winnerName)} のあがり</b>`:''}</div>${s.result.winnerName?`${s.result.method==='ロン'?`<p class="zj-ron-target">🎯 ${escape(s.result.loserName||s.players[s.result.loser]?.name||'相手')} からロン！</p>`:''}<div class="zj-result-role-label">成立した役</div><div class="zj-result-role">${escape(s.result.yaku)}</div><div class="zj-result-points">${Number(s.result.points).toLocaleString()}<small>点</small></div><div class="zj-result-bonus-line">${s.result.ownBonus?'<span>🎉 自分ボーナス ＋1,000点</span>':''}${s.result.ojBonus?'<span>🎉 OJ万歳 ＋'+Number(s.result.ojBonus).toLocaleString()+'点</span>':''}${s.result.manaPenalty?'<span>😈 mana2だよ −'+Number(s.result.manaPenalty).toLocaleString()+'点</span>':''}</div>`:'<p>山の牌がなくなりました</p>'}${s.result.hand?`<div class="zj-result-combined">${zjLargeWinningTile(s.result)}<div class="zj-result-nine">${resultTiles(s.result)}</div></div>`:''}`;if(!showWinCutscene(s)&&$('zjWinCutscene').classList.contains('hidden'))$('overlay').classList.remove('hidden');$('next').classList.toggle('hidden',!s.host||s.phase==='final');$('next').textContent=s.round>=s.maxRounds?'最終ランキングを見る':'次の局へ'}else $('overlay').classList.add('hidden')}
+ state=s;zjRefreshItemStatus();zjShowTargetButton(s.hand||[],s.config,s.phase==='playing');if(s.config?.tiles){const count=s.config.tiles.filter(t=>t.image).length;const note=$('roomHelp');if(note)note.dataset.imageCount=String(count)}$('globalExit').classList.remove('hidden');$('lobby').classList.add('hidden');$('room').classList.toggle('hidden',s.phase!=='lobby');$('play').classList.toggle('hidden',s.phase==='lobby');$('code').textContent=s.code;$('members').innerHTML=s.players.map((p,i)=>`<p>${i+1}番：${p?escape(p.name)+(p.cpu?'（CPU）':p.connected?'（接続中）':'（切断）'):'空席'}</p>`).join('');$('roomHelp').textContent=(s.host?'参加者がそろったら対戦開始を押してください。空席はCPUになります。':'部屋主の開始を待っています。')+` 共有中の牌画像：${s.config.tiles.filter(t=>t.image).length}種類（全端末共通）`; $('start').classList.toggle('hidden',!s.host||s.phase!=='lobby');if(s.phase==='lobby'){$('zjWinCutscene').classList.add('hidden');return;}const current=s.players[s.turn];$('message').textContent=`第${s.round}局 ／ 山の残り ${s.wallCount}枚 ／ ${current?.name||''}の番${s.round===1&&s.firstDice?' ／ 🎲 '+s.firstDice+'：'+s.players[s.startSeat]?.name+'スタート':''}`;$('players').innerHTML=s.players.map((p,i)=>`<div class="player p${(i-s.seat+4)%4} ${i===s.turn&&s.phase==='playing'?'active':''}"><b>${escape(p.name)}</b>　${s.scores[i].toLocaleString()}点${i===s.seat?'<div class="zj-my-rank" data-zj-own-rank><span class="zj-rank-emblem" data-rank="BRONZE">雀</span><span class="zj-rank-label">LP読み込み中…</span></div>':''}${i===s.startSeat?'<span class="zj-start-marker">スタート</span>':''}<br>${s.riichi[i]?'<span style="color:#ffcf75">リーチ ━●━</span><br>':''}${zjOnlineStatusHTML(i)}${i===s.seat?'あなた':`<div class="opponent-tiles ${s.visibleHands?.[i]?'zj-open-hands':''}">${s.visibleHands?.[i]?s.visibleHands[i].map(id=>'<span class="zj-open-opponent-tile">'+tile(id)+'</span>').join(''):Array.from({length:s.handCounts[i]},()=>'<span class="tile-back"></span>').join('')}</div>`}${i===s.turn&&s.phase==='playing'&&i!==s.seat?'<br>💭 思考中…':''}</div>`).join('');try{zjSyncMyRank(s)}catch(err){console.warn("LP表示の読み込みに失敗しました",err)};$('discards').innerHTML=onlineDiscardHTML(s);scrollOnlineDiscards(s);const drawnId=s.drawn&&s.turn===s.seat?s.hand[s.hand.length-1]:null;$('hand').innerHTML=s.hand.map((id,i)=>tile(id,true,i)).join('');$('hand').querySelectorAll('button').forEach((b,i)=>{if(s.readyDiscards?.includes(i))b.classList.add('riichi-ready-discard')});if(drawnId!==null){$('hand').querySelectorAll('button').forEach((b,i)=>{if(s.hand[i]===drawnId)b.classList.add('matching-drawn');if(i===s.hand.length-1)b.classList.add('just-drawn')})}$('hand').querySelectorAll('button').forEach(b=>{b.disabled=s.phase!=='playing'||s.turn!==s.seat||!!s.riichi[s.seat];b.onclick=()=>playTileOnce(+b.dataset.idx)});$('guide').textContent=s.phase==='playing'?(s.turn===s.seat?(s.riichi[s.seat]?'🔒 リーチ中：自動ツモ・自動ツモ切り（操作不要。あがりは自動判定）':s.drawn?'牌を1回クリックで捨てられます（15秒）':'牌は1回クリックで捨てられます（ツモ待ち中も可）'):'相手の手番です'):'局の終了';$('logs').innerHTML=s.logs.slice(-4).map(x=>`<div>${escape(x)}</div>`).join('');if(s.phase==='playing'&&s.round!==seenRound){seenRound=s.round;voice('はじめ！',true)}if(s.phase==='result'||s.phase==='final'){const resultKey=s.round+'-'+s.phase;if(seenResult!==resultKey){seenResult=resultKey;if(s.phase==='result')voice(s.result.method==='流局'?'りゅうきょく':s.result.method,s.result.method==='流局')}const ranks=s.scores.map((score,i)=>({i,score,name:s.players[i].name})).sort((a,b)=>b.score-a.score);$('overlay').classList.toggle('zj-one-screen-win',s.phase==='result'&&!!s.result?.winnerName);$('outcome').innerHTML=s.phase==='final'?`<h2>最終順位</h2>${ranks.map((p,i)=>`<div class="rank"><b>${['🥇','🥈','🥉','4位'][i]} ${escape(p.name)}</b><b>${p.score.toLocaleString()}点</b></div>`).join('')}`:`<div class="zj-result-heading"><h2>${escape(s.result.method)}</h2>${s.result.winnerName?`<b>🏆 ${escape(s.result.winnerName)} のあがり</b>`:''}</div>${s.result.winnerName?`${s.result.method==='ロン'?`<p class="zj-ron-target">🎯 ${escape(s.result.loserName||s.players[s.result.loser]?.name||'相手')} からロン！</p>`:''}<div class="zj-result-role-label">成立した役</div><div class="zj-result-role">${escape(s.result.yaku)}</div><div class="zj-result-points">${Number(s.result.points).toLocaleString()}<small>点</small></div><div class="zj-result-bonus-line">${s.result.ownBonus?'<span>🎉 自分ボーナス ＋1,000点</span>':''}${s.result.ojBonus?'<span>🎉 OJ万歳 ＋'+Number(s.result.ojBonus).toLocaleString()+'点</span>':''}${s.result.manaPenalty?'<span>😈 mana2だよ −'+Number(s.result.manaPenalty).toLocaleString()+'点</span>':''}</div>`:'<p>山の牌がなくなりました</p>'}${s.result.hand?`<div class="zj-result-combined">${zjLargeWinningTile(s.result)}<div class="zj-result-nine">${resultTiles(s.result)}</div></div>`:''}`;if(!showWinCutscene(s)&&$('zjWinCutscene').classList.contains('hidden'))$('overlay').classList.remove('hidden');$('next').classList.toggle('hidden',!s.host||s.phase==='final');$('next').textContent=s.round>=s.maxRounds?'最終ランキングを見る':'次の局へ'}else $('overlay').classList.add('hidden')}
 function tick(){if(!state||state.phase!=='playing'){$('timer').textContent='';return}const remaining=Math.max(0,Math.ceil((state.deadline-Date.now())/1000));$('timer').textContent=(state.riichi[state.turn]?'リーチ・自動ツモ'+(state.drawn?'切り中':'待機中'):(state.drawn?'捨て牌まで':'ツモまで'))+` ${remaining}秒`}
 setInterval(tick,200);const nicknameKey='zamajan-online-nickname-v1';
 $('nickname').value=localStorage.getItem(nicknameKey)||$('nickname').value;
