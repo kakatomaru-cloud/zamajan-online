@@ -28,10 +28,10 @@ function pointInRect(x,y,r){return x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h}
 function pigHitPoint(x,y){return pigHitRects().some(r=>pointInRect(x,y,r))}
 function reset(){stopBgm();countOverlay.classList.add('hidden');pigY=405;arrows=[];objects=[];kills=0;score=0;seconds=15;misses=0;enemyArrows=[];elapsed=0;spawnClock=.3;spawnId=0;particles=[];state='playing';shade.classList.add('hidden');last=performance.now();requestAnimationFrame(loop)}
 function spawn(){
- const n=spawnId++;const kind=n%7===4?'baby':n%9===7?'bottle':'wolf';
- const variant=['red','yellow','green'][n%3];
- const fat=kind==='wolf'&&n%12===0;const thin=kind==='wolf'&&!fat&&n%3===1;
- const archer=kind==='wolf'&&n%4===2;
+ const n=spawnId++;const roll=Math.random();const kind=roll<.11?'baby':roll<.19?'bottle':'wolf';
+ const variant=['red','yellow','green'][Math.floor(Math.random()*3)];
+ const fat=kind==='wolf'&&Math.random()<.09;const thin=kind==='wolf'&&!fat&&Math.random()<.38;
+ const archer=kind==='wolf'&&Math.random()<.26;
  const size=fat?1.85:thin?.76:1;
  const w=kind==='wolf'?(fat?238:133*size):kind==='baby'?120:95;
  const h=kind==='wolf'?(fat?350:220*size):kind==='baby'?220:140;
@@ -42,7 +42,7 @@ function spawn(){
 function shot(){if(state!=='playing'||arrows.length>=3)return;arrows.push({x:1132,y:pigY+61,vx:-710,bounce:false});beep(680,.045,'square',.035)}
 let ctx;
 function beep(freq,dur,type='sine',vol=.045){try{ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();ctx.resume();const o=ctx.createOscillator(),v=ctx.createGain();o.type=type;o.frequency.value=freq;v.gain.setValueAtTime(vol,ctx.currentTime);v.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+dur);o.connect(v);v.connect(ctx.destination);o.start();o.stop(ctx.currentTime+dur)}catch(e){}}
-function finish(win,reason){if(state!=='playing')return;stopBgm();state=win?'win':'lose';shade.classList.remove('hidden');title.classList.remove('mission-head');document.getElementById('rules').classList.add('hidden');title.textContent=win?'🎉 STAGE CLEAR!':'💀 GAME OVER';desc.innerHTML=(win?'狼を3匹撃破！ お見事！':'失敗！ '+reason)+'<br>スコア：<b>'+score.toLocaleString()+'</b> ／ 狼撃破：'+kills+'匹';document.getElementById('start').textContent='↻ もう一度遊ぶ';beep(win?920:165,.35,'sawtooth',.07)}
+function finish(win,reason){if(state!=='playing')return; if(window.parent!==window&&new URLSearchParams(location.search).get('riichi')==='1'){window.parent.postMessage({type:'zamajan-wolf-finished',success:win===true},location.origin);} stopBgm();state=win?'win':'lose';shade.classList.remove('hidden');title.classList.remove('mission-head');document.getElementById('rules').classList.add('hidden');title.textContent=win?'🎉 STAGE CLEAR!':'💀 GAME OVER';desc.innerHTML=(win?'狼を3匹撃破！ お見事！':'失敗！ '+reason)+'<br>スコア：<b>'+score.toLocaleString()+'</b> ／ 狼撃破：'+kills+'匹';document.getElementById('start').textContent='↻ もう一度遊ぶ';beep(win?920:165,.35,'sawtooth',.07)}
 function burst(x,y,color){for(let i=0;i<18;i++)particles.push({x,y,vx:rand(-155,155),vy:rand(-145,145),life:rand(.25,.65),color})}
 function lineVsBox(x0,x1,y,box){return y>=box.y&&y<=box.y+box.h&&Math.max(x0,x1)>=box.x&&Math.min(x0,x1)<=box.x+box.w}
 function removeArrow(ar){const idx=arrows.indexOf(ar);if(idx>=0)arrows.splice(idx,1)}
