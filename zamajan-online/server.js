@@ -414,9 +414,9 @@ const ZJ_PALPUNTE=[
  ['swapThree','嵐の通り道！ 全員の手牌3枚が右隣へ！'],
  ['refreshActor','光の羽根が舞う！ 使用者の手牌3枚が山と入れ替わった！'],
  ['refreshAll','新しい風が吹く！ 全員の手牌1枚が山と入れ替わった！'],
- ['riichiOff','静寂が訪れた！ 全員のリーチが解除された！'],
+ ['riichiOff','静寂が訪れた！ リーチ中の者の3枚組が崩れ、リーチが解除された！'],
  ['riichiOnly','赤い月が昇る！ 使用者だけがリーチ状態になった！'],
- ['riichiAll','赤い稲妻が走る！ 全員にリーチの印が灯った！'],
+ ['riichiAll','赤い稲妻が走る！ 全員の手牌が自動的に組み替わり、あがりを待つ！'],
  ['freezeOne','時が一瞬止まった！ ランダムな相手の次の手番が飛ばされる！'],
  ['freezeAll','氷の輪が広がる！ 使用者以外の次の手番が飛ばされる！'],
  ['revealAll','霧が晴れる！ 全員の手牌がこの局だけ見えるようになった！'],
@@ -428,6 +428,68 @@ const ZJ_PALPUNTE=[
  ['themeShift','世界が色を変える！ 対戦卓の壁紙が一瞬で変わった！'],
  ['nothing','まばゆい閃光！ ……しかし何も起こらなかった！']
 ];
+// リーチ系の呪文は旗だけを変えず、実牌を山札と交換して成立を検証する。
+// 牌の枚数の保存を優先し、実現不能な場合は「不発」としてリーチにしない。
+function zjMakeRealRiichi(r, seat){
+ const hand=r.hands?.[seat],wall=r.wall;
+ if(!Array.isArray(hand)||hand.length<8||!Array.isArray(wall))return false;
+ const bonus=hand.length-8, pool=hand.slice(0,8).concat(wall);
+ // 任意の3種類を3枚・3枚・2枚で揃え、残りの同種牌で9枚目を待つ。
+ // 対象が実際に九枚であがれるかも既存のwin()で確認する。
+ const counts=new Map();pool.forEach(v=>counts.set(v,(counts.get(v)||0)+1));
+ const ids=[...counts].filter(([id,c])=>c>=3 && id!==wildId(r)).map(([id])=>id);
+ shuffle(ids);
+ let picked=null;
+ for(const pair of ids){
+  for(const first of ids){if(first===pair)continue;
+   for(const second of ids){if(second===pair||second===first)continue;
+    const wanted=[first,first,first,second,second,second,pair,pair];
+    if(win(r,wanted.concat(pair))&&tenpai(r,wanted)){picked={wanted,pair};break}
+   }
+   if(picked)break;
+  }
+  if(picked)break;
+ }
+ if(!picked)return false;
+ // 既存の8枚と山札だけで交換（特殊に生成した牌は含めない）。
+ const remain=pool.slice();
+ for(const tile of picked.wanted){const i=remain.indexOf(tile);if(i<0)return false;remain.splice(i,1)}
+ // 待ち牌が山札に少なくとも1枚あることを保証する。
+ if(!remain.includes(picked.pair))return false;
+ hand.splice(0,8,...picked.wanted.sort((a,b)=>a-b));
+ wall.splice(0,wall.length,...remain);shuffle(wall);
+ r.riichi[seat]=true;
+ return true;
+}
+function zjBreakRealRiichi(r,seat){
+ const hand=r.hands?.[seat],wall=r.wall;
+ if(!Array.isArray(hand)||hand.length<8)return false;
+ const counts=new Map();hand.slice(0,8).forEach(x=>counts.set(x,(counts.get(x)||0)+1));
+ const triples=[...counts].filter(([id,n])=>n>=3).map(([id])=>id);
+ shuffle(triples);
+ // 完成した3枚組のうち1枚を、別種類の山札と交換。
+ for(const trip of triples){
+  const hi=hand.slice(0,8).indexOf(trip);
+  const choices=shuffle(wall.map((v,i)=>({v,i})).filter(o=>o.v!==trip));
+  // できる限りテンパイも崩して、ただのフラグ解除にならないようにする。
+  const selected=choices.find(({v})=>{const test=hand.slice(0,8);test[hi]=v;return !tenpai(r,test)})||choices[0];
+  if(!selected)continue;
+  const old=hand[hi];hand[hi]=wall[selected.i];wall[selected.i]=old;
+  hand.sort((a,b)=>a-b);shuffle(wall);r.riichi[seat]=false;
+  return true;
+ }
+ // 三枚組がない特殊役テンパイでも、手牌を山札と交換して実際に崩す。
+ for(let hi=0;hi<Math.min(8,hand.length);hi++){
+  for(const {v,i} of shuffle(wall.map((v,i)=>({v,i})))){
+   if(v===hand[hi])continue;
+   const trial=hand.slice(0,8);trial[hi]=v;
+   if(tenpai(r,trial))continue;
+   const old=hand[hi];hand[hi]=wall[i];wall[i]=old;
+   hand.sort((a,b)=>a-b);shuffle(wall);r.riichi[seat]=false;return true;
+  }
+ }
+ return false;
+}
 function zjDoPalpunte(r,p){
  const h=r.hands,w=r.wall,n=4,idx=crypto.randomInt(ZJ_PALPUNTE.length),[kind,baseMessage]=ZJ_PALPUNTE[idx];let message=baseMessage;
  const transfer=(from,to,amount)=>{const value=Math.min(Math.max(0,r.scores[from]),amount);r.scores[from]-=value;r.scores[to]+=value};
@@ -457,9 +519,9 @@ function zjDoPalpunte(r,p){
  case 'swapThree':mixHands(1,3);break;
  case 'refreshActor':zjSwapWall(r,p,3);r.riichi[p]=false;break;
  case 'refreshAll':for(let i=0;i<4;i++)zjSwapWall(r,i,1);r.riichi=[false,false,false,false];break;
- case 'riichiOff':r.riichi=[false,false,false,false];break;
- case 'riichiOnly':r.riichi=[false,false,false,false];r.riichi[p]=true;break;
- case 'riichiAll':r.riichi=[true,true,true,true];break;
+ case 'riichiOff':{let changed=0;for(let i=0;i<4;i++)if(r.riichi[i]){if(zjBreakRealRiichi(r,i))changed++;else r.riichi[i]=false}message+=' （'+changed+'人の手牌を交換）';break}
+ case 'riichiOnly':{for(let i=0;i<4;i++)if(i!==p&&r.riichi[i]){if(!zjBreakRealRiichi(r,i))r.riichi[i]=false}const ok=zjMakeRealRiichi(r,p);message+=ok?' 実際にあがれる待ち牌ができた！':' しかし山に必要な牌がなく不発！';break}
+ case 'riichiAll':{let changed=0;for(let i=0;i<4;i++)if(zjMakeRealRiichi(r,i))changed++;message+=' （'+changed+'人が実際にテンパイ）';break}
  case 'freezeOne':zjAddFreeze(r,randOther(),p,'palpunte',1);break;
  case 'freezeAll':for(let i=0;i<4;i++)if(i!==p)zjAddFreeze(r,i,p,'palpunte',1);break;
  case 'revealAll':for(let i=0;i<4;i++)r.items.effects[i].openall=true;break;
@@ -494,7 +556,7 @@ function zjUse(r,p,data,s){
  else if(id==='jackpot'){const n=Math.min(5,w.length),choice=Number(data?.choice),discardIndex=Number(data?.discard);if(!Number.isInteger(choice)||choice<0||choice>=n||!Number.isInteger(discardIndex)||discardIndex<0||discardIndex>=h[p].length)return s?.emit('errorMessage','山と自分の牌をプルダウンで選択してください');const wi=w.length-n+choice,old=h[p][discardIndex];h[p][discardIndex]=w.splice(wi,1)[0];w.push(old);shuffle(w);h[p].sort((a,b)=>a-b);detail='山の上5枚から好きな1枚を交換'}
  else if(id==='triplefactory'){const counts=new Map();for(const t of w)counts.set(t,(counts.get(t)||0)+1);const candidates=[...counts].filter(([id,n])=>n>=3).map(([id])=>id);if(!candidates.length)return s?.emit('errorMessage','山に3枚ある牌がありません');const v=candidates[crypto.randomInt(candidates.length)],ids=zjRandomIndices(3,h[p].length);for(const i of ids){const wi=w.indexOf(v),old=h[p][i];h[p][i]=w.splice(wi,1)[0];w.push(old)}shuffle(w);h[p].sort((a,b)=>a-b);detail=(r.config.tiles[v-1]?.name||v)+'の暗刻を作成'}
  else if(id==='leaderfall'){const top=r.scores.indexOf(Math.max(...r.scores));r.scores[top]-=6000;for(let i=0;i<4;i++)if(i!==top)r.scores[i]+=2000;detail=r.players[top].name+'が6,000点失い他3人が2,000点獲得'}
- else if(id==='riichicancel'){a.riichiCancelCount=(a.riichiCancelCount||0)+1;r.riichi=[false,false,false,false];detail='全員のリーチ解除（この局 '+a.riichiCancelCount+'/2回）'}
+ else if(id==='riichicancel'){a.riichiCancelCount=(a.riichiCancelCount||0)+1;let changed=0;for(let i=0;i<4;i++)if(r.riichi[i]){if(zjBreakRealRiichi(r,i))changed++;else r.riichi[i]=false}detail='完成した3枚組を崩してリーチ解除（交換'+changed+'人／この局 '+a.riichiCancelCount+'/2回）'}
  else if(id==='palpunte'){const outcome=zjDoPalpunte(r,p);detail=outcome.message}
  else if(id==='doublepoints')e[p].doublepoints=true;
  else if(id==='handraid'){const n=Math.min(3,h[p].length,h[target].length),left=zjRandomIndices(n,h[p].length),right=zjRandomIndices(n,h[target].length);for(let k=0;k<n;k++)[h[p][left[k]],h[target][right[k]]]=[h[target][right[k]],h[p][left[k]]];h[p].sort((a,b)=>a-b);h[target].sort((a,b)=>a-b);detail='3枚ずつ強制交換'}
