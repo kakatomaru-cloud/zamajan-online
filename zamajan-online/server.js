@@ -613,7 +613,36 @@ r.turn=r.startSeat??0;r.drawn=false;r.result=null;r.phase='playing';
 // Keep one room-wide soundtrack for the entire game, including subsequent rounds.
 if(!Number.isInteger(r.bgmTrack))r.bgmTrack=crypto.randomInt(5);
 for(let k=0;k<8;k++)for(let i=0;i<4;i++)r.hands[i].push(r.wall.pop());r.hands.forEach(h=>h.sort((a,b)=>a-b));r.roundOpening={hands:r.hands.map(v=>v.slice()),wall:r.wall.slice(),discards:r.discards.map(v=>v.slice()),scores:r.scores.slice(),turn:r.turn,bgmTrack:r.bgmTrack,tableTheme:r.tableTheme};log(r,r.round===1?`🎲 サイコロ ${r.firstDice}！部屋主から右回りで${r.firstDice}人目：${r.players[r.startSeat].name}がスタート！`:`第${r.round}局 はじめ！`);schedule(r);broadcast(r);return null}
-function finish(r,result){clearTimeout(r.timer);r.deadline=0;r.phase='result';r.result=result;log(r,result.method==='流局'?'流局':result.method==='ロン'?`${result.winnerName}が${result.loserName||r.players[result.loser]?.name||'相手'}からロン！`:`${result.winnerName}が${result.method}！`);broadcast(r)}
+// Persistent player ranking (independent from git checkout and game-config).
+const ZJ_RANK_LEVELS=[['BRONZE',0],['SILVER',500],['GOLD',1000],['PLATINUM',2000],['DIAMOND',3500],['MASTER',5500],['HIGH MASTER',8000],['GRAND MASTER',11000],['ULTIMATE MASTER',15000]];
+const ZJ_LP_FILE=process.env.ZAMAJAN_LP_FILE||path.join(path.dirname(SERVER_CONFIG_FILE),'player-lp.json');
+let zjLpStore={schemaVersion:1,players:{}};
+try{const data=JSON.parse(fs.readFileSync(ZJ_LP_FILE,'utf8'));if(data&&data.schemaVersion===1&&data.players&&typeof data.players==='object')zjLpStore=data}catch(e){if(e.code!=='ENOENT')console.warn('LP saved data could not be loaded:',e.message)}
+function zjRank(lp){let rank=ZJ_RANK_LEVELS[0][0];for(const [name,min] of ZJ_RANK_LEVELS)if(lp>=min)rank=name;return rank}
+function zjSaveLp(){const dir=path.dirname(ZJ_LP_FILE);fs.mkdirSync(dir,{recursive:true,mode:0o700});const tmp=ZJ_LP_FILE+'.tmp-'+process.pid;try{fs.writeFileSync(tmp,JSON.stringify(zjLpStore,null,2),{mode:0o600});fs.renameSync(tmp,ZJ_LP_FILE)}finally{try{fs.unlinkSync(tmp)}catch{}}}
+// Names are temporary ranking IDs until account-based player authentication is introduced.
+function zjLpName(player){return safe(player?.name||'').trim().slice(0,20)}
+function zjAwardLp(r,result){
+ if(result.method!=='ツモ'&&result.method!=='ロン')return;
+ const winner=result.winner;if(!Number.isInteger(winner)||winner<0||winner>=4)return;
+ const updates=new Map();
+ for(let i=0;i<4;i++){
+  const player=r.players[i];if(!player||player.cpu)continue;
+  const key=zjLpName(player);if(!key)continue;
+  const prev=updates.get(key)||zjLpStore.players[key]||{lp:0,streak:0,wins:0,losses:0};
+  // The loser is every other human participant (not only the ron discarder).
+  if(i===winner){
+   const streak=Math.min(40,Math.max(0,prev.streak||0)+1);
+   const base=(result.method==='ツモ'?50:30)+Math.floor(Math.max(0,Number(result.points)||0)/5000)*10;
+   const multiplier=streak>=3?2**Math.min(10,streak-2):1;
+   updates.set(key,{...prev,lp:Math.min(Number.MAX_SAFE_INTEGER,Math.max(0,(prev.lp||0)+base*multiplier)),streak,wins:(prev.wins||0)+1,lastGain:base*multiplier,updatedAt:new Date().toISOString()});
+  }else updates.set(key,{...prev,lp:Math.max(0,(prev.lp||0)-10),streak:0,losses:(prev.losses||0)+1,lastGain:-10,updatedAt:new Date().toISOString()});
+ }
+ for(const [key,value] of updates)zjLpStore.players[key]=value;
+ try{zjSaveLp()}catch(e){console.error('LP persistence failed:',e.message)}
+}
+app.get('/api/ranks',(req,res)=>{res.set('Cache-Control','no-store');const players=Object.entries(zjLpStore.players).map(([name,p])=>({name,lp:p.lp||0,rank:zjRank(p.lp||0),streak:p.streak||0,wins:p.wins||0,losses:p.losses||0})).sort((a,b)=>b.lp-a.lp||a.name.localeCompare(b.name,'ja')).slice(0,200);res.json({levels:ZJ_RANK_LEVELS.map(([name,lp])=>({name,minLp:lp})),players})});
+function finish(r,result){if(r.phase==='result')return;zjAwardLp(r,result);clearTimeout(r.timer);r.deadline=0;r.phase='result';r.result=result;log(r,result.method==='流局'?'流局':result.method==='ロン'?`${result.winnerName}が${result.loserName||r.players[result.loser]?.name||'相手'}からロン！`:`${result.winnerName}が${result.method}！`);broadcast(r)}
 function zjScoreWin(r,p,hand,y,method,loser=null,winningTile=null){
  const b=zjWinBonuses(r,p,hand),rolePoints=Math.round(y.points*b.multiplier),bonus=ownBonus(r,p,hand)?1000:0;
  for(let i=0;i<4;i++)if(i!==p){if(method==='ロン'&&loser!==i)continue;const payment=rolePoints;r.scores[i]-=payment;r.scores[p]+=payment}
