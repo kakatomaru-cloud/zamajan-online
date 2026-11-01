@@ -650,35 +650,59 @@ r.turn=r.startSeat??0;r.drawn=false;r.result=null;r.phase='playing';
 if(!Number.isInteger(r.bgmTrack))r.bgmTrack=crypto.randomInt(5);
 for(let k=0;k<8;k++)for(let i=0;i<4;i++)r.hands[i].push(r.wall.pop());r.hands.forEach(h=>h.sort((a,b)=>a-b));r.roundOpening={hands:r.hands.map(v=>v.slice()),wall:r.wall.slice(),discards:r.discards.map(v=>v.slice()),scores:r.scores.slice(),turn:r.turn,bgmTrack:r.bgmTrack,tableTheme:r.tableTheme};log(r,r.round===1?`🎲 サイコロ ${r.firstDice}！部屋主から右回りで${r.firstDice}人目：${r.players[r.startSeat].name}がスタート！`:`第${r.round}局 はじめ！`);schedule(r);broadcast(r);return null}
 // Persistent player ranking (independent from git checkout and game-config).
-const ZJ_RANK_LEVELS=[['BRONZE',0],['SILVER',500],['GOLD',1000],['PLATINUM',2000],['DIAMOND',3500],['MASTER',5500],['HIGH MASTER',8000],['GRAND MASTER',11000],['ULTIMATE GRAND MASTER',15000],['LEGEND',50000],['HIGH LEGEND',5000000],['GRAND LEGEND',10000000],['ULTIMATE LEGEND',50000000],['GOD',100000000],['OMEGA',500000000],['ORIGIN',1000000000],['THE ONE',10000000000],['ZAMA',1000000000000]];
+const ZJ_RANK_LEVELS=[['BRONZE',0],['SILVER',500],['GOLD',1000],['PLATINUM',2000],['DIAMOND',4000],['MASTER',6000],['HIGH MASTER',9000],['GRAND MASTER',12000],['ULTIMATE GRAND MASTER',16000],['LEGEND',20000],['HIGH LEGEND',30000],['GRAND LEGEND',40000],['ULTIMATE LEGEND',50000],['GOD',70000],['OMEGA',90000],['ORIGIN',120000],['THE ONE',150000],['ZAMA',200000]];
 const ZJ_LP_FILE=process.env.ZAMAJAN_LP_FILE||path.join(path.dirname(SERVER_CONFIG_FILE),'player-lp.json');
-let zjLpStore={schemaVersion:1,players:{}};
-try{const data=JSON.parse(fs.readFileSync(ZJ_LP_FILE,'utf8'));if(data&&data.schemaVersion===1&&data.players&&typeof data.players==='object'){zjLpStore=data;for(const rec of Object.values(zjLpStore.players)){if(rec&&typeof rec==='object')rec.lp=Math.max(0,Number(rec.lp)||0)}}}catch(e){if(e.code!=='ENOENT')console.warn('LP saved data could not be loaded:',e.message)}
+// LP v2: one-time reset of prior per-hand / streak-based records.
+// Keep a timestamped immutable backup before resetting. Do not reset v2 records on subsequent restarts.
+let zjLpStore={schemaVersion:2,players:{},awardedGames:{}};
+try{
+ const data=JSON.parse(fs.readFileSync(ZJ_LP_FILE,'utf8'));
+ if(data&&data.schemaVersion===2&&data.players&&typeof data.players==='object'){
+  zjLpStore={schemaVersion:2,players:data.players,awardedGames:data.awardedGames||{}};
+  for(const rec of Object.values(zjLpStore.players))if(rec&&typeof rec==='object')rec.lp=Math.max(0,Number(rec.lp)||0);
+ }else if(data&&data.schemaVersion!==2){
+  const backup=ZJ_LP_FILE+'.before-lp-v2-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';
+  fs.copyFileSync(ZJ_LP_FILE,backup,fs.constants.COPYFILE_EXCL);
+  console.log('Old LP records archived to '+backup+'; LP resets to zero for v2.');
+  const dir=path.dirname(ZJ_LP_FILE);fs.mkdirSync(dir,{recursive:true,mode:0o700});
+  const tmp=ZJ_LP_FILE+'.v2-'+process.pid+'.tmp';
+  fs.writeFileSync(tmp,JSON.stringify(zjLpStore,null,2),{mode:0o600,flag:'wx'});fs.renameSync(tmp,ZJ_LP_FILE);
+ }
+}catch(e){if(e.code!=='ENOENT')throw e}
 function zjRank(lp){let rank=ZJ_RANK_LEVELS[0][0];for(const [name,min] of ZJ_RANK_LEVELS)if(lp>=min)rank=name;return rank}
 function zjSaveLp(){const dir=path.dirname(ZJ_LP_FILE);fs.mkdirSync(dir,{recursive:true,mode:0o700});const tmp=ZJ_LP_FILE+'.tmp-'+process.pid;try{fs.writeFileSync(tmp,JSON.stringify(zjLpStore,null,2),{mode:0o600});fs.renameSync(tmp,ZJ_LP_FILE)}finally{try{fs.unlinkSync(tmp)}catch{}}}
 // Names are temporary ranking IDs until account-based player authentication is introduced.
 function zjLpName(player){return safe(player?.name||'').trim().slice(0,20)}
-function zjAwardLp(r,result){
- if(result.method!=='ツモ'&&result.method!=='ロン')return;
- const winner=result.winner;if(!Number.isInteger(winner)||winner<0||winner>=4)return;
+function zjAwardFinalLp(r){
+ // Only completed online games involving >=2 humans qualify. CPU seats never earn LP.
+ if(r.lpAwarded)return;
+ if(!r.players.every(Boolean)||r.players.filter(p=>!p.cpu).length<2){r.lpAwarded=true;return}
+ // A single finalization per room. No round-by-round awards, winning-method bonuses,
+ // point bonuses, streak multipliers or deductions.
+ const gameKey=r.code+':'+(r.gameStartedAt||0);
+ if(zjLpStore.awardedGames[gameKey]){r.lpAwarded=true;return}
+ const seats=[0,1,2,3].sort((a,b)=>r.scores[b]-r.scores[a]||a-b);
  const updates=new Map();
- for(let i=0;i<4;i++){
-  const player=r.players[i];if(!player||player.cpu)continue;
+ for(let i=0;i<seats.length;i++){
+  const seat=seats[i],player=r.players[seat];if(player.cpu)continue;
+  // Equal scores share their standing. E.g. tied top places both receive first-place LP.
+  const position=seats.findIndex(k=>r.scores[k]===r.scores[seat])+1;
+  const gain=position===1?100:position===2?50:0;
   const key=zjLpName(player);if(!key)continue;
-  const prev=updates.get(key)||zjLpStore.players[key]||{lp:0,streak:0,wins:0,losses:0};
-  // The loser is every other human participant (not only the ron discarder).
-  if(i===winner){
-   const streak=Math.min(40,Math.max(0,prev.streak||0)+1);
-   const base=(result.method==='ツモ'?50:30)+Math.floor(Math.max(0,Number(result.points)||0)/5000)*10;
-   const multiplier=streak>=3?2**Math.min(10,streak-2):1;
-   updates.set(key,{...prev,lp:Math.min(Number.MAX_SAFE_INTEGER,Math.max(0,(prev.lp||0)+base*multiplier)),streak,wins:(prev.wins||0)+1,lastGain:base*multiplier,updatedAt:new Date().toISOString()});
-  }else updates.set(key,{...prev,lp:Math.max(0,(prev.lp||0)-10),streak:0,losses:(prev.losses||0)+1,lastGain:-10,updatedAt:new Date().toISOString()});
+  const prev=updates.get(key)||zjLpStore.players[key]||{lp:0,wins:0,losses:0};
+  updates.set(key,{...prev,lp:Math.max(0,Number(prev.lp||0)+gain),streak:0,
+   wins:(prev.wins||0)+(position===1?1:0),losses:prev.losses||0,lastGain:gain,
+   updatedAt:new Date().toISOString()});
  }
+ // Commit award marker and LP together in one atomic JSON file write.
+ const before=JSON.stringify(zjLpStore);
  for(const [key,value] of updates)zjLpStore.players[key]=value;
- try{zjSaveLp()}catch(e){console.error('LP persistence failed:',e.message)}
+ zjLpStore.awardedGames[gameKey]=new Date().toISOString();
+ try{zjSaveLp();r.lpAwarded=true;log(r,'🏅 ゲーム最終順位LPを加算（1位+100／2位+50）')}
+ catch(e){zjLpStore=JSON.parse(before);console.error('LP persistence failed:',e.message)}
 }
-app.get('/api/ranks',(req,res)=>{res.set('Cache-Control','no-store');const players=Object.entries(zjLpStore.players).map(([name,p])=>({name,lp:Math.max(0,Number(p.lp)||0),rank:zjRank(Math.max(0,Number(p.lp)||0)),streak:p.streak||0,wins:p.wins||0,losses:p.losses||0})).sort((a,b)=>b.lp-a.lp||a.name.localeCompare(b.name,'ja')).slice(0,200);res.json({levels:ZJ_RANK_LEVELS.map(([name,lp])=>({name,minLp:lp})),players})});
-function finish(r,result){if(r.phase==='result')return;zjAwardLp(r,result);clearTimeout(r.timer);r.deadline=0;r.phase='result';r.result=result;log(r,result.method==='流局'?'流局':result.method==='ロン'?`${result.winnerName}が${result.loserName||r.players[result.loser]?.name||'相手'}からロン！`:`${result.winnerName}が${result.method}！`);broadcast(r)}
+app.get('/api/ranks',(req,res)=>{res.set('Cache-Control','no-store');const players=Object.entries(zjLpStore.players).map(([name,p])=>({name,lp:Math.max(0,Number(p.lp)||0),rank:zjRank(Math.max(0,Number(p.lp)||0)),streak:0,wins:p.wins||0,losses:p.losses||0})).sort((a,b)=>b.lp-a.lp||a.name.localeCompare(b.name,'ja')).slice(0,200);res.json({levels:ZJ_RANK_LEVELS.map(([name,lp])=>({name,minLp:lp})),players})});
+function finish(r,result){if(r.phase==='result')return;clearTimeout(r.timer);r.deadline=0;r.phase='result';r.result=result;log(r,result.method==='流局'?'流局':result.method==='ロン'?`${result.winnerName}が${result.loserName||r.players[result.loser]?.name||'相手'}からロン！`:`${result.winnerName}が${result.method}！`);broadcast(r)}
 function zjScoreWin(r,p,hand,y,method,loser=null,winningTile=null){
  const b=zjWinBonuses(r,p,hand),rolePoints=Math.round(y.points*b.multiplier),bonus=ownBonus(r,p,hand)?1000:0;
  for(let i=0;i<4;i++)if(i!==p){if(method==='ロン'&&loser!==i)continue;const payment=rolePoints;r.scores[i]-=payment;r.scores[p]+=payment}
@@ -703,7 +727,7 @@ function join(s,r,name,token){let seat=r.players.findIndex(p=>p&&p.token===token
 io.on('connection',s=>{
  s.on('create',({name,config,maxRounds,itemMode,itemLimit,tableThemeChoice,bgmChoice}={})=>{const code=makeCode(),token=crypto.randomUUID();const r={code,host:token,players:[{name:safe(name)||'あなた',token,socket:s.id,cpu:false},null,null,null],config:configFrom(sharedConfig||config),maxRounds:[1,2,4,8,12,16,20].includes(+maxRounds)?+maxRounds:4,phase:'lobby',itemMode:['both','last','paid','off'].includes(itemMode)?itemMode:'both',itemLimit:[1,2,3].includes(+itemLimit)?+itemLimit:1,round:1,bgmTrack:/^[0-4]$/.test(String(bgmChoice??''))?Number(bgmChoice):crypto.randomInt(5),tableTheme:/^[1-8]$/.test(String(tableThemeChoice||''))?Number(tableThemeChoice):crypto.randomInt(1,9),scores:[30000,30000,30000,30000],hands:null,discards:[[],[],[],[]],discardHistory:[],riichi:[false,false,false,false],logs:[],deadline:0};zjInitItems(r);rooms.set(code,r);s.join(code);s.data={room:code,seat:0,token};s.emit('joined',{code,seat:0,token});broadcast(r)});
  s.on('join',({code,name,token}={})=>{const r=rooms.get(String(code));if(!r)return s.emit('errorMessage','ルームが見つかりません');join(s,r,name,token)});
- s.on('start',()=>{const r=rooms.get(s.data.room);if(!r||r.host!==s.data.token||r.phase!=='lobby')return;for(let i=0;i<4;i++)if(!r.players[i])r.players[i]={name:randomCpuName(r.players.filter(Boolean).map(p=>p.name)),cpu:true,socket:null,token:null};const err=roundStart(r);if(err)s.emit('errorMessage',err)});
+ s.on('start',()=>{const r=rooms.get(s.data.room);if(!r||r.host!==s.data.token||r.phase!=='lobby')return;r.gameStartedAt=Date.now();r.lpAwarded=false;for(let i=0;i<4;i++)if(!r.players[i])r.players[i]={name:randomCpuName(r.players.filter(Boolean).map(p=>p.name)),cpu:true,socket:null,token:null};const err=roundStart(r);if(err)s.emit('errorMessage',err)});
  s.on('itemUse',data=>{const r=rooms.get(s.data.room);const p=s.data.seat;if(!r||!Number.isInteger(p)||r.players[p]?.token!==s.data.token||r.players[p]?.cpu)return;zjUse(r,p,data,s)});
  s.on('riichiWolfResult',({id,success}={})=>{const r=rooms.get(s.data.room),p=s.data.seat,f=r?.boxing,now=Date.now();if(!f||f.ending||f.resolved||f.mode!=='wolf'||f.id!==id||p!==f.target||r.players[p]?.token!==s.data.token||r.players[p]?.cpu||now<f.startsAt-1000||now>f.endsAt+2000||f.wolfReported)return;f.wolfReported=true;f.defenderCleared=success===true;zjFinishRiichiFight(r,f)});
  s.on('riichiWolfFrame',({id,frame}={})=>{const r=rooms.get(s.data.room),p=s.data.seat,f=r?.boxing,now=Date.now();if(!f||f.ending||f.mode!=='wolf'||f.id!==id||p!==f.target||r.players[p]?.token!==s.data.token||r.players[p]?.cpu||now<f.startsAt-3200||now>f.endsAt+1500)return;if(!frame||typeof frame!=='object'||now-(f.lastWolfFrame||0)<80)return;f.lastWolfFrame=now;const clean={id,seconds:Math.max(0,Math.min(15,Number(frame.seconds)||0)),kills:Math.max(0,Math.min(3,Number(frame.kills)||0)),misses:Math.max(0,Math.min(3,Number(frame.misses)||0)),pigY:Math.max(0,Math.min(1000,Number(frame.pigY)||0)),objects:Array.isArray(frame.objects)?frame.objects.slice(0,35).map(o=>({kind:['wolf','baby','bottle'].includes(o.kind)?o.kind:'wolf',variant:['red','yellow','green','fat'].includes(o.variant)?o.variant:'red',x:Number(o.x)||0,y:Number(o.y)||0,w:Number(o.w)||0,h:Number(o.h)||0})):[],arrows:Array.isArray(frame.arrows)?frame.arrows.slice(0,3).map(a=>({x:Number(a.x)||0,y:Number(a.y)||0,bounce:!!a.bounce})):[],enemyArrows:Array.isArray(frame.enemyArrows)?frame.enemyArrows.slice(0,25).map(a=>({x:Number(a.x)||0,y:Number(a.y)||0})):[]};io.to(r.code).emit('riichiWolfFrame',clean)});
@@ -724,7 +748,7 @@ io.on('connection',s=>{
   if(!r.drawn)draw(r,p);
   if(r.phase==='playing'&&r.turn===p&&r.drawn&&i<r.hands[p].length)discard(r,p,i);
  });
- s.on('next',()=>{const r=rooms.get(s.data.room);if(!r||r.phase!=='result'||r.host!==s.data.token)return;if(r.round>=r.maxRounds){r.phase='final';r.result={method:'最終結果'};broadcast(r)}else{r.round++;roundStart(r)}});
+ s.on('next',()=>{const r=rooms.get(s.data.room);if(!r||r.phase!=='result'||r.host!==s.data.token)return;if(r.round>=r.maxRounds){zjAwardFinalLp(r);r.phase='final';r.result={method:'最終結果'};broadcast(r)}else{r.round++;roundStart(r)}});
  function handoff(r,seat,reason){const p=r.players[seat];if(!p)return;if(r.phase==='lobby'){if(r.host===p.token){clearTimeout(r.timer);rooms.delete(r.code);for(const client of io.sockets.sockets.values())if(client.data.room===r.code){client.data={};client.emit('roomClosed','部屋主が退出したため、部屋を終了しました')}}else{r.players[seat]=null;broadcast(r)}return}
   const wasHost=r.host===p.token;
   p.socket=null;p.cpu=true;p.token=null;p.name=randomCpuName(r.players.filter((x,i)=>i!==seat&&x).map(x=>x.name));
@@ -737,5 +761,5 @@ io.on('connection',s=>{
  s.on('disconnect',()=>{const r=rooms.get(s.data.room),seat=s.data.seat,p=r?.players[seat];if(p&&p.socket===s.id){p.socket=null;broadcast(r);const token=p.token;setTimeout(()=>{const q=r.players[seat];if(q&&q.token===token&&!q.socket&&rooms.has(r.code))handoff(r,seat,'切断')},20000)}});
 
 });
-setInterval(()=>{for(const [c,r] of rooms){if(!r.players.some(p=>p?.socket)&&r.phase!=='playing'){clearTimeout(r.timer);rooms.delete(c)}else if(r.phase==='result'&&!r.host){if(r.round>=r.maxRounds){r.phase='final';r.result={method:'最終結果'};broadcast(r)}else{r.round++;roundStart(r)}}}},60000);
+setInterval(()=>{for(const [c,r] of rooms){if(!r.players.some(p=>p?.socket)&&r.phase!=='playing'){clearTimeout(r.timer);rooms.delete(c)}else if(r.phase==='result'&&!r.host){if(r.round>=r.maxRounds){zjAwardFinalLp(r);r.phase='final';r.result={method:'最終結果'};broadcast(r)}else{r.round++;roundStart(r)}}}},60000);
 fetchGitHubConfig().finally(()=>server.listen(process.env.PORT||3000,()=>console.log('Zamajan online listening')));
