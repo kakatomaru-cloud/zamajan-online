@@ -8,11 +8,19 @@ function bgImage(im,x,y,w,h){if(im.complete&&im.naturalWidth)c.drawImage(im,x,y,
 function background(){bgImage(art.cemetery,0,0,W,H);c.fillStyle='#050815d9';c.fillRect(0,0,W,20);c.fillStyle='#382824';c.fillRect(8,5,105,8);c.fillStyle=p.armor?'#bbc9e0':'#eb9477';c.fillRect(9,6,p.armor?103:48,6);c.fillStyle='#4e202d';c.fillRect(356,5,113,8);c.fillStyle='#f05244';c.fillRect(357,6,Math.max(0,111*e.hp/4),6);c.font='bold 7px monospace';c.fillStyle='#ffebbb';c.fillText('KNIGHT',9,24);c.fillText('RED DEMON',416,24);}
 function knight(){
 if(state==='dying'){
-  const progress=1-Math.max(0,deathTimer)/1.35;
-  c.save();c.translate(Math.round(p.x+8),Math.round(p.y+11));
-  c.rotate(Math.min(Math.PI*.52,progress*2.7)*(p.knockX>=0?1:-1));
-  if(progress>.36){bgImage(art.skull,-14,-25,30,34);}
-  else {bgImage(art.naked_idle,-23,-32,47,48);}
+  // Retain the whole humanoid skeleton including ribs, arms, pelvis and feet.
+  // Anchor the feet to the same ground plane as the knight and rotate about the hip.
+  const progress=1-Math.max(0,deathTimer)/1.8;
+  c.save();
+  c.translate(Math.round(p.x+8),Math.round(p.y+11));
+  if(progress>.27){
+    const fall=Math.max(0,(progress-.34)/.66);
+    c.rotate(Math.min(.95,fall*1.02)*(p.knockX>=0?1:-1));
+    bgImage(art.skull,-18,-37,36,55);
+  }else{
+    c.rotate(progress*.45*(p.knockX>=0?1:-1));
+    bgImage(art.naked_idle,-23,-32,47,48);
+  }
   c.restore();return;
 }
 if(inv>0&&p.hurtTime<=0&&Math.floor(clock*18)%2)return;
@@ -112,8 +120,8 @@ function particles(x,y,col,n=9){for(let i=0;i<n;i++)sparks.push({x,y,vx:R(-85,85
    p.armor=0;inv=1.65;
    message.textContent=kind==='fire'?'火球が直撃！ 鎧が砕けた！':'体当たり！ 鎧が砕けた！';
  }else{
-   stopMusic();state='dying';deathTimer=1.35;p.knockTime=.55;
-   message.textContent='最後の一撃！ 髑髏になって倒れた…';
+   stopMusic();state='dying';deathTimer=1.8;p.knockTime=.55;
+   message.textContent='最後の一撃！ 全身が骸骨となって倒れた…';
    sound(95,.7,'sawtooth',.06);
  }
 }
