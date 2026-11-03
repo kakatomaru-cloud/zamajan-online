@@ -289,7 +289,7 @@ const ZJ_ITEMS=[
  ['triplefactory','🏭 暗刻製造機',6000,'山に3枚ある同一牌で自分の手牌3枚を交換し暗刻を作る。'],
  ['leaderfall','👑 王者転落',7000,'1位が6,000点失い、他の3人が各2,000点獲得する。'],
  ['riichicancel','🚫 リーチ脱却',5000,'全員のリーチを解除する（1局全体で2回まで）。'],
- ['palpunte','🌈 パルプ○テ',3000,'34種類の不思議な現象から何が起こるかわからない。マイナス点でも使用可能。'],
+ ['palpunte','🌈 パルプ○テ',3000,'34種類の不思議な現象。3,000点でマイナス点でも使用可。最終局は一人1回まで。他の局では同一局3回目の詠唱で負担がかかり、自分の手牌がすべて別絵柄に交換される。'],
  ['doublepoints','🔥 得点倍増',6000,'この局で自分があがった際、役の基本点が2倍になる。'],
  ['handraid','🧤 手牌略奪',7000,'相手と手牌3枚ずつをランダム交換する。'],
  ['selfreset','♻️ 生まれ変わり',5000,'自分の手牌を最大5枚交換しリーチを解除する。'],
@@ -302,16 +302,17 @@ const ZJ_PASSIVE=new Set(['oj','mana2']);
 const zjName=s=>String(s||'').normalize('NFKC').replace(/[\s　_・-]/g,'').toLowerCase();
 const zjTileId=(r,s)=>r.config.tiles.find(t=>zjName(t.name)===zjName(s))?.id||0;
 const zjItemById=id=>ZJ_ITEMS.find(x=>x[0]===id);
-function zjInitItems(r){r.items={version:2,mode:r.itemMode||'both',limit:r.itemLimit||1,used:[0,0,0,0],tickets:[0,0,0,0],bags:[[],[],[],[]],effects:[{},{},{},{}],riichiCancelCount:0,riichiStealCount:0}}
+function zjInitItems(r){r.items={version:2,mode:r.itemMode||'both',limit:r.itemLimit||1,used:[0,0,0,0],tickets:[0,0,0,0],bags:[[],[],[],[]],effects:[{},{},{},{}],riichiCancelCount:0,riichiStealCount:0,palpunteUses:[0,0,0,0]}}
 function zjBottomSeats(r){const min=Math.min(...r.scores),seats=r.scores.flatMap((v,i)=>v===min?[i]:[]);return seats.length<=2?seats:[]}
-function zjRoundItems(r){const a=r.items;if(!a)return;a.used=[0,0,0,0];a.tickets=[0,0,0,0];a.bags=[[],[],[],[]];a.effects=[{},{},{},{}];a.riichiCancelCount=0;a.riichiStealCount=0;if(r.round<2||!['both','last'].includes(a.mode))return;const seats=zjBottomSeats(r);if(!seats.length){log(r,'🎟️ 同率最下位が3人以上のため無料使用権はありません');return}for(const p of seats){a.tickets[p]=1;log(r,'🎟️ '+r.players[p].name+'に好きなアイテムの無料使用権を1回付与！')}}
+function zjRoundItems(r){const a=r.items;if(!a)return;a.used=[0,0,0,0];a.tickets=[0,0,0,0];a.bags=[[],[],[],[]];a.effects=[{},{},{},{}];a.riichiCancelCount=0;a.riichiStealCount=0;a.palpunteUses=[0,0,0,0];if(r.round<2||!['both','last'].includes(a.mode))return;const seats=zjBottomSeats(r);if(!seats.length){log(r,'🎟️ 同率最下位が3人以上のため無料使用権はありません');return}for(const p of seats){a.tickets[p]=1;log(r,'🎟️ '+r.players[p].name+'に好きなアイテムの無料使用権を1回付与！')}}
 function zjPublicEffects(r){return r.items?.effects.map(e=>({openall:!!e.openall,oj:!!e.oj,mana2:!!e.mana2,doublepoints:!!e.doublepoints,frozen:e.frozen||0,freezeQueue:Array.isArray(e.freezeQueue)?e.freezeQueue.filter(v=>v.remaining>0).map(v=>({by:v.by,id:v.id,remaining:v.remaining})):[]}))||[{},{},{},{}]}
-function zjPublicItems(r,seat){const a=r.items;return a?{mode:a.mode,limit:a.limit,used:a.used,tickets:a.tickets,bags:a.bags[seat]||[],effects:a.effects[seat]||{},allEffects:zjPublicEffects(r),catalog:ZJ_ITEMS,riichiCancelCount:a.riichiCancelCount||0,riichiStealCount:a.riichiStealCount||0,version:2}:null}
+function zjPublicItems(r,seat){const a=r.items;return a?{mode:a.mode,limit:a.limit,used:a.used,tickets:a.tickets,bags:a.bags[seat]||[],effects:a.effects[seat]||{},allEffects:zjPublicEffects(r),catalog:ZJ_ITEMS,riichiCancelCount:a.riichiCancelCount||0,riichiStealCount:a.riichiStealCount||0,palpunteUses:a.palpunteUses||[0,0,0,0],version:2}:null}
 function zjEffect(r,who,id,target,description){if(ZJ_PASSIVE.has(id))return;const x=zjItemById(id);const payload={id,name:x?.[1]||id,actor:who,actorName:r.players[who].name,target,targetName:target==null?null:r.players[target].name,description,at:Date.now()};log(r,'🎁 '+payload.actorName+'：'+payload.name+(target==null?'':' → '+payload.targetName)+' / '+description);io.to(r.code).emit('itemEffect',payload)}
 function zjRandomIndices(n,len){return shuffle(Array.from({length:len},(_,i)=>i)).slice(0,n)}
 function zjSwapWall(r,p,n){const h=r.hands[p],w=r.wall;const count=Math.min(n,h.length,w.length);if(count<=0)return 0;for(const i of zjRandomIndices(count,h.length)){const old=h[i];h[i]=w.pop();w.push(old);shuffle(w)}h.sort((a,b)=>a-b);return count}
 function zjAvailable(r,p,id){const h=r.hands?.[p]||[],w=r.wall||[],a=r.items,e=a?.effects[p]||{};
  if(!h.length)return false;
+ if(id==='palpunte'&&r.round===r.maxRounds&&(a.palpunteUses?.[p]||0)>=1)return false;
  if(id==='riichiswap')return (a.riichiStealCount||0)<2&&!r.riichi[p]&&r.riichi.some((v,i)=>i!==p&&v);
  if(id==='oj')return !!zjTileId(r,'OJ')&&!e.oj;
  if(id==='mana2')return !!zjTileId(r,'mana2')&&!e.mana2;
@@ -525,6 +526,26 @@ function zjBreakRealRiichi(r,seat){
  }
  return false;
 }
+// 同一局でのパルプ○テ3回目に発生する身体への負担。牌の物理枚数を保存。
+// 8枚・9枚いずれも現在の手牌＋山札だけから異なる絵柄を選んで配り直す。
+function zjPalpunteExhaustion(r,seat){
+ const hand=r.hands?.[seat],wall=r.wall;
+ if(!Array.isArray(hand)||!Array.isArray(wall)||!hand.length)return {ok:false,distinct:0};
+ const originalLength=hand.length;
+ const pool=hand.concat(wall);
+ const available=[...new Set(pool)];
+ shuffle(available);
+ const chosen=available.slice(0,originalLength);
+ // 必要な種類数が足りない特殊な牌設定では、可能な限り別絵柄を優先する。
+ const left=pool.slice();
+ for(const tile of chosen){const idx=left.indexOf(tile);if(idx>=0)left.splice(idx,1)}
+ while(chosen.length<originalLength && left.length)chosen.push(left.shift());
+ if(chosen.length!==originalLength)return {ok:false,distinct:new Set(chosen).size};
+ hand.splice(0,hand.length,...chosen.sort((a,b)=>a-b));
+ wall.splice(0,wall.length,...left);shuffle(wall);
+ r.riichi[seat]=false;
+ return {ok:true,distinct:new Set(chosen).size,requested:originalLength};
+}
 function zjDoPalpunte(r,p){
  const h=r.hands,w=r.wall,n=4,idx=crypto.randomInt(ZJ_PALPUNTE.length),[kind,baseMessage]=ZJ_PALPUNTE[idx];let message=baseMessage;
  const transfer=(from,to,amount)=>{const value=Math.min(Math.max(0,r.scores[from]),amount);r.scores[from]-=value;r.scores[to]+=value};
@@ -572,6 +593,7 @@ function zjUse(r,p,data,s){
  const id=String(data?.id||''),x=zjItemById(id),target=data?.target,a=r.items;
  if(r.boxing)return s?.emit('errorMessage','リーチ強奪ミニゲームの進行中です');
  if(id==='riichiswap'&&(a.riichiStealCount||0)>=2)return s?.emit('errorMessage','リーチ強奪は1局に全員合計2回までです');
+ if(id==='palpunte'&&r.round===r.maxRounds&&(a.palpunteUses?.[p]||0)>=1)return s?.emit('errorMessage','パルプ○テは最終局に一人1回までです');
  if(!zjAllowed(r,p,id))return s?.emit('errorMessage','アイテムの使用条件を満たしていません');
  if(ZJ_TARGETED.has(id)&&(!Number.isInteger(target)||target===p||target<0||target>3||id==='riichiswap'&&!r.riichi[target]))return s?.emit('errorMessage','有効な対象を選んでください');
  const h=r.hands,w=r.wall,e=a.effects;let detail=x[3],victim=ZJ_TARGETED.has(id)?target:null;
@@ -593,7 +615,16 @@ function zjUse(r,p,data,s){
  else if(id==='triplefactory'){const counts=new Map();for(const t of w)counts.set(t,(counts.get(t)||0)+1);const candidates=[...counts].filter(([id,n])=>n>=3).map(([id])=>id);if(!candidates.length)return s?.emit('errorMessage','山に3枚ある牌がありません');const v=candidates[crypto.randomInt(candidates.length)],ids=zjRandomIndices(3,h[p].length);for(const i of ids){const wi=w.indexOf(v),old=h[p][i];h[p][i]=w.splice(wi,1)[0];w.push(old)}shuffle(w);h[p].sort((a,b)=>a-b);detail=(r.config.tiles[v-1]?.name||v)+'の暗刻を作成'}
  else if(id==='leaderfall'){const top=r.scores.indexOf(Math.max(...r.scores));r.scores[top]-=6000;for(let i=0;i<4;i++)if(i!==top)r.scores[i]+=2000;detail=r.players[top].name+'が6,000点失い他3人が2,000点獲得'}
  else if(id==='riichicancel'){a.riichiCancelCount=(a.riichiCancelCount||0)+1;let changed=0;for(let i=0;i<4;i++)if(r.riichi[i]){if(zjBreakRealRiichi(r,i))changed++;else r.riichi[i]=false}detail='完成した3枚組を崩してリーチ解除（交換'+changed+'人／この局 '+a.riichiCancelCount+'/2回）'}
- else if(id==='palpunte'){const outcome=zjDoPalpunte(r,p);detail=outcome.message}
+ else if(id==='palpunte'){
+  a.palpunteUses ||= [0,0,0,0];
+  a.palpunteUses[p]=(a.palpunteUses[p]||0)+1;
+  const outcome=zjDoPalpunte(r,p);detail=outcome.message;
+  if(r.round!==r.maxRounds&&a.palpunteUses[p]===3){
+   const penalty=zjPalpunteExhaustion(r,p);
+   detail+=' ／ ⚠️ 3回の詠唱で身体に負担！ '+r.players[p].name+'の手牌を'+(penalty.ok?penalty.distinct+'種類の異なる牌に交換！':'交換できなかった！');
+   if(penalty.ok && penalty.distinct<penalty.requested)detail+='（牌設定・山札の種類不足により一部重複）';
+  }
+ }
  else if(id==='doublepoints')e[p].doublepoints=true;
  else if(id==='handraid'){const n=Math.min(3,h[p].length,h[target].length),left=zjRandomIndices(n,h[p].length),right=zjRandomIndices(n,h[target].length);for(let k=0;k<n;k++)[h[p][left[k]],h[target][right[k]]]=[h[target][right[k]],h[p][left[k]]];h[p].sort((a,b)=>a-b);h[target].sort((a,b)=>a-b);detail='3枚ずつ強制交換'}
  else if(id==='selfreset'){r.riichi[p]=false;const count=zjSwapWall(r,p,5);detail=count+'枚を引き直し'}
