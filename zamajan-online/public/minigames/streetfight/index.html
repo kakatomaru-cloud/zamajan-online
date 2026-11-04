@@ -46,7 +46,14 @@ body.returned .returnNotice{display:grid}
  // Standalone launch has no original game screen; keep a replay control instead.
  document.body.classList.add('returned');
 }
-let lastA=0,lastB=0;function press(side){const now=performance.now();if(side==='a'){if(now-lastA<22)return;lastA=now}else{if(now-lastB<22)return;lastB=now}hit(side)}$('btnA').addEventListener('pointerdown',e=>{e.preventDefault();press('a')});$('btnB').addEventListener('pointerdown',e=>{e.preventDefault();press('b')});document.addEventListener('keydown',e=>{if(e.repeat)return;if(e.key.toLowerCase()==='a'){if(running){e.preventDefault();press('a')}}if(e.key.toLowerCase()==='l'&&$('mode').value==='two'){if(running){e.preventDefault();press('b')}}});function startWithCountdown(){
+let lastA=0,lastB=0;function press(side){const now=performance.now();if(side==='a'){if(now-lastA<22)return;lastA=now}else{if(now-lastB<22)return;lastB=now}hit(side)}$('btnA').addEventListener('pointerdown',e=>{e.preventDefault();press('a')});$('btnB').addEventListener('pointerdown',e=>{e.preventDefault();press('b')});// The retry button is visible only after the standalone match has returned.
+document.addEventListener('keydown',e=>{
+ if(e.code!=='Space'||e.repeat||!document.body.classList.contains('returned'))return;
+ if(window.parent!==window||window.opener)return;
+ const b=document.querySelector('.returnNotice button');
+ if(!b)return;e.preventDefault();b.click();
+});
+document.addEventListener('keydown',e=>{if(e.repeat)return;if(e.key.toLowerCase()==='a'){if(running){e.preventDefault();press('a')}}if(e.key.toLowerCase()==='l'&&$('mode').value==='two'){if(running){e.preventDefault();press('b')}}});function startWithCountdown(){
  if(running||counting)return;
  reset();counting=true;
  $('mode').disabled=true;$('start').disabled=true;

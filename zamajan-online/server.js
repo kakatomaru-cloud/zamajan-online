@@ -120,6 +120,18 @@ app.get('/api/deploy-status',async(req,res)=>{
  zjDeployStatusCache=result;zjDeployStatusUntil=Date.now()+60000;
  res.json(result);
 });
+
+// リーチ強奪のミニゲーム設定：管理者のみ変更可。ソース更新で消えない保存先。
+const ZJ_MINIGAME_IDS=['wolf','streetfight','red-demon','zama-rhythm'];
+const ZJ_MINIGAME_FILE=process.env.ZAMAJAN_MINIGAMES_FILE||path.join(path.dirname(SERVER_CONFIG_FILE),'riichi-minigames.json');
+let zjEnabledMinigames=['wolf'];
+try{const saved=JSON.parse(fs.readFileSync(ZJ_MINIGAME_FILE,'utf8'));if(Array.isArray(saved.enabled)){const valid=[...new Set(saved.enabled)].filter(x=>ZJ_MINIGAME_IDS.includes(x));if(valid.length)zjEnabledMinigames=valid}}catch(e){if(e.code!=='ENOENT')console.error('ミニゲーム設定取得:',e.message)}
+app.get('/api/riichi-minigames',(req,res)=>{res.set('Cache-Control','no-store');res.json({enabled:zjEnabledMinigames.slice(),choices:ZJ_MINIGAME_IDS})});
+app.post('/api/admin/riichi-minigames',express.json({limit:'8kb'}),(req,res)=>{
+ res.set('Cache-Control','no-store');if(!adminAuth(req,res))return;
+ const enabled=req.body?.enabled;if(!Array.isArray(enabled)||enabled.length<1||enabled.length>4||enabled.some(x=>typeof x!=='string'||!ZJ_MINIGAME_IDS.includes(x)))return res.status(400).json({error:'有効にするミニゲームを1つ以上選んでください'});
+ const valid=[...new Set(enabled)];try{fs.mkdirSync(path.dirname(ZJ_MINIGAME_FILE),{recursive:true,mode:0o700});const temp=ZJ_MINIGAME_FILE+'.tmp-'+process.pid;fs.writeFileSync(temp,JSON.stringify({enabled:valid,updatedAt:new Date().toISOString()},null,2),{mode:0o600});fs.renameSync(temp,ZJ_MINIGAME_FILE);zjEnabledMinigames=valid;res.json({ok:true,enabled:valid,appliesTo:'next minigame'})}catch(e){res.status(500).json({error:'保存に失敗しました: '+e.message})}
+});
 app.get('/api/shared-config',(req,res)=>{res.set('Cache-Control','no-store');res.json({available:!!sharedConfig,config:sharedConfig,updatedAt:sharedUpdatedAt,source:'KAGOYA'} )});
 app.post('/api/admin/save-server-config',express.json({limit:'14mb'}),(req,res)=>{
  res.set('Cache-Control','no-store');if(!adminAuth(req,res))return;
@@ -378,17 +390,16 @@ function zjReplaceHighThree(r,p){
 }
 // リーチ強奪：KAGOYAサーバーが開始時刻、連打数、勝敗を管理する。
 const ZJ_FIGHT_COUNTDOWN_MS=3000,ZJ_FIGHT_DURATION_MS=15000;
-// wolf is the initial mode. Change to 'random' to randomly choose between wolf and streetfight.
-const ZJ_RIICHI_MINIGAME_MODE='wolf';
+// 各リーチ強奪開始時に有効な候補からサーバー側でランダム抽選。
 function zjStartRiichiFight(r,p,target){
  if(r.boxing)return false;
  clearTimeout(r.timer);r.deadline=0;
  const now=Date.now();
- const mode=ZJ_RIICHI_MINIGAME_MODE==='random'?(crypto.randomInt(2)?'wolf':'streetfight'):ZJ_RIICHI_MINIGAME_MODE;
- const fight={id:crypto.randomUUID(),mode,actor:p,target,startsAt:now+ZJ_FIGHT_COUNTDOWN_MS,endsAt:now+ZJ_FIGHT_COUNTDOWN_MS+(mode==='wolf'?15000:10000),counts:[0,0],lastTap:[0,0],defenderCleared:false};
+ const choices=zjEnabledMinigames.length?zjEnabledMinigames:['wolf'];const mode=choices[crypto.randomInt(choices.length)];
+ const fight={id:crypto.randomUUID(),mode,actor:p,target,startsAt:now+ZJ_FIGHT_COUNTDOWN_MS,endsAt:now+ZJ_FIGHT_COUNTDOWN_MS+({wolf:15000,streetfight:10000,'red-demon':90000,'zama-rhythm':45000}[mode]||15000),counts:[0,0],lastTap:[0,0],defenderCleared:false,defenderReported:false,finalFrame:null,lastVideoAt:0};
  r.boxing=fight;
  io.to(r.code).emit('riichiFightStart',{id:fight.id,mode:fight.mode,actor:p,target,startsAt:fight.startsAt,endsAt:fight.endsAt,actorName:r.players[p].name,targetName:r.players[target].name});
- if(fight.mode==='streetfight'&&r.players[target].cpu){
+ if(false&&fight.mode==='streetfight'&&r.players[target].cpu){
   // CPU対戦：毎秒10～14打程度の疑似連打。通信イベントには依存しない。
   fight.botTimer=setInterval(()=>{if(r.boxing!==fight)return;const t=Date.now();if(t>=fight.startsAt&&t<fight.endsAt)fight.counts[1]+=crypto.randomInt(1,3)},130);
  }
@@ -398,17 +409,18 @@ function zjStartRiichiFight(r,p,target){
 }
 function zjFinishRiichiFight(r,fight){
  if(r.boxing!==fight||fight.resolved)return;
+ if(fight.mode==='streetfight'&&!fight.defenderReported){fight.defenderReported=true;fight.defenderCleared=fight.counts[1]>=30}
  fight.resolved=true;
  clearTimeout(fight.timer);clearInterval(fight.botTimer);r.boxing=null;
- if(fight.mode==='wolf'&&r.players[fight.target]?.cpu&&!fight.wolfReported)fight.defenderCleared=crypto.randomInt(2)===1;
- const success=fight.mode==='wolf'?!fight.defenderCleared:fight.counts[0]>fight.counts[1];
+ if(r.players[fight.target]?.cpu&&!fight.defenderReported)fight.defenderCleared=crypto.randomInt(2)===1;
+ const success=!fight.defenderCleared;
  if(success&&r.phase==='playing'&&r.hands?.[fight.actor]&&r.hands?.[fight.target]&&r.riichi[fight.target]){
   const a=fight.actor,b=fight.target,h=r.hands;
   const mine=h[a].slice(0,8),theirs=h[b].slice(0,8),extra=h[a].slice(8);
   h[a]=theirs.concat(extra);h[b]=mine;r.riichi[b]=false;r.riichi[a]=true;
  }
  const description=success?'リーチ強奪成功！':'リーチ強奪失敗（防衛または引き分け）';
- log(r,(fight.mode==='wolf'?'🏹 ':'🥊 ')+r.players[fight.actor].name+' vs '+r.players[fight.target].name+' '+fight.counts.join(' - ')+' '+description);
+ log(r,'🎮 '+r.players[fight.actor].name+' vs '+r.players[fight.target].name+' '+fight.counts.join(' - ')+' '+description);
  io.to(r.code).emit('riichiFightResult',{id:fight.id,actor:fight.actor,target:fight.target,counts:fight.counts,success});
  // 結果画像の表示中は手番を進めない。別のアイテム演出も重ねない。
  if(r.phase==='playing'){
@@ -419,8 +431,8 @@ function zjFinishRiichiFight(r,fight){
 }
 function zjRiichiFightPunch(r,p,id){
  const f=r.boxing,now=Date.now();
- if(!f||f.mode!=='streetfight'||f.id!==id||now<f.startsAt||now>=f.endsAt||![f.actor,f.target].includes(p))return;
- const index=p===f.actor?0:1;
+ if(!f||f.mode!=='streetfight'||f.id!==id||now<f.startsAt||now>=f.endsAt||p!==f.target)return;
+ const index=1;
  // 同時に到着した異常な大量イベントを制限（通常の連打は通過）。
  if(now-f.lastTap[index]<30)return;
  f.lastTap[index]=now;f.counts[index]++;
@@ -787,7 +799,11 @@ io.on('connection',s=>{
  s.on('join',({code,name,token}={})=>{const r=rooms.get(String(code));if(!r)return s.emit('errorMessage','ルームが見つかりません');join(s,r,name,token)});
  s.on('start',()=>{const r=rooms.get(s.data.room);if(!r||r.host!==s.data.token||r.phase!=='lobby')return;r.gameStartedAt=Date.now();r.lpAwarded=false;for(let i=0;i<4;i++)if(!r.players[i])r.players[i]={name:randomCpuName(r.players.filter(Boolean).map(p=>p.name)),cpu:true,socket:null,token:null};const err=roundStart(r);if(err)s.emit('errorMessage',err)});
  s.on('itemUse',data=>{const r=rooms.get(s.data.room);const p=s.data.seat;if(!r||!Number.isInteger(p)||r.players[p]?.token!==s.data.token||r.players[p]?.cpu)return;zjUse(r,p,data,s)});
- s.on('riichiWolfResult',({id,success}={})=>{const r=rooms.get(s.data.room),p=s.data.seat,f=r?.boxing,now=Date.now();if(!f||f.ending||f.resolved||f.mode!=='wolf'||f.id!==id||p!==f.target||r.players[p]?.token!==s.data.token||r.players[p]?.cpu||now<f.startsAt-1000||now>f.endsAt+2000||f.wolfReported)return;f.wolfReported=true;f.defenderCleared=success===true;zjFinishRiichiFight(r,f)});
+ s.on('riichiMinigameResult',({id,success}={})=>{const r=rooms.get(s.data.room),seat=s.data.seat,f=r?.boxing,now=Date.now();if(!f||f.ending||f.resolved||f.id!==id||seat!==f.target||r.players[seat]?.token!==s.data.token||r.players[seat]?.cpu||f.defenderReported||now<f.startsAt-1000||now>f.endsAt+5000)return;
+ f.defenderReported=true;f.defenderCleared=success===true;zjFinishRiichiFight(r,f);
+ });
+ s.on('riichiMinigameFrame',({id,frame}={})=>{const r=rooms.get(s.data.room),seat=s.data.seat,f=r?.boxing,now=Date.now();if(!f||f.ending||f.resolved||f.id!==id||seat!==f.target||r.players[seat]?.token!==s.data.token||r.players[seat]?.cpu||now-(f.lastVideoAt||0)<150)return;if(typeof frame!=='string'||frame.length>130000||!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(frame))return;f.lastVideoAt=now;f.finalFrame=frame;s.to(r.code).emit('riichiMinigameFrame',{id,frame});});
+ s.on('riichiWolfResult',({id,success}={})=>{const r=rooms.get(s.data.room),p=s.data.seat,f=r?.boxing,now=Date.now();if(!f||f.ending||f.resolved||f.mode!=='wolf'||f.id!==id||p!==f.target||r.players[p]?.token!==s.data.token||r.players[p]?.cpu||now<f.startsAt-1000||now>f.endsAt+2000||f.wolfReported)return;f.wolfReported=true;f.defenderReported=true;f.defenderCleared=success===true;zjFinishRiichiFight(r,f)});
  s.on('riichiWolfFrame',({id,frame}={})=>{const r=rooms.get(s.data.room),p=s.data.seat,f=r?.boxing,now=Date.now();if(!f||f.ending||f.mode!=='wolf'||f.id!==id||p!==f.target||r.players[p]?.token!==s.data.token||r.players[p]?.cpu||now<f.startsAt-3200||now>f.endsAt+1500)return;if(!frame||typeof frame!=='object'||now-(f.lastWolfFrame||0)<80)return;f.lastWolfFrame=now;const clean={id,seconds:Math.max(0,Math.min(15,Number(frame.seconds)||0)),kills:Math.max(0,Math.min(3,Number(frame.kills)||0)),misses:Math.max(0,Math.min(3,Number(frame.misses)||0)),pigY:Math.max(0,Math.min(1000,Number(frame.pigY)||0)),objects:Array.isArray(frame.objects)?frame.objects.slice(0,35).map(o=>({kind:['wolf','baby','bottle'].includes(o.kind)?o.kind:'wolf',variant:['red','yellow','green','fat'].includes(o.variant)?o.variant:'red',x:Number(o.x)||0,y:Number(o.y)||0,w:Number(o.w)||0,h:Number(o.h)||0})):[],arrows:Array.isArray(frame.arrows)?frame.arrows.slice(0,3).map(a=>({x:Number(a.x)||0,y:Number(a.y)||0,bounce:!!a.bounce})):[],enemyArrows:Array.isArray(frame.enemyArrows)?frame.enemyArrows.slice(0,25).map(a=>({x:Number(a.x)||0,y:Number(a.y)||0})):[]};io.to(r.code).emit('riichiWolfFrame',clean)});
 
  s.on('riichiFightPunch',({id}={})=>{const r=rooms.get(s.data.room),p=s.data.seat;if(r&&Number.isInteger(p)&&r.players[p]?.token===s.data.token&&!r.players[p]?.cpu)zjRiichiFightPunch(r,p,id)});
