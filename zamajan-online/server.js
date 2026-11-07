@@ -122,14 +122,14 @@ app.get('/api/deploy-status',async(req,res)=>{
 });
 
 // リーチ強奪のミニゲーム設定：管理者のみ変更可。ソース更新で消えない保存先。
-const ZJ_MINIGAME_IDS=['wolf','streetfight','red-demon','zama-rhythm'];
+const ZJ_MINIGAME_IDS=['wolf','streetfight','red-demon','zama-rhythm','zamazone'];
 const ZJ_MINIGAME_FILE=process.env.ZAMAJAN_MINIGAMES_FILE||path.join(path.dirname(SERVER_CONFIG_FILE),'riichi-minigames.json');
 let zjEnabledMinigames=['wolf'];
 try{const saved=JSON.parse(fs.readFileSync(ZJ_MINIGAME_FILE,'utf8'));if(Array.isArray(saved.enabled)){const valid=[...new Set(saved.enabled)].filter(x=>ZJ_MINIGAME_IDS.includes(x));if(valid.length)zjEnabledMinigames=valid}}catch(e){if(e.code!=='ENOENT')console.error('ミニゲーム設定取得:',e.message)}
 app.get('/api/riichi-minigames',(req,res)=>{res.set('Cache-Control','no-store');res.json({enabled:zjEnabledMinigames.slice(),choices:ZJ_MINIGAME_IDS})});
 app.post('/api/admin/riichi-minigames',express.json({limit:'8kb'}),(req,res)=>{
  res.set('Cache-Control','no-store');if(!adminAuth(req,res))return;
- const enabled=req.body?.enabled;if(!Array.isArray(enabled)||enabled.length<1||enabled.length>4||enabled.some(x=>typeof x!=='string'||!ZJ_MINIGAME_IDS.includes(x)))return res.status(400).json({error:'有効にするミニゲームを1つ以上選んでください'});
+ const enabled=req.body?.enabled;if(!Array.isArray(enabled)||enabled.length<1||enabled.length>ZJ_MINIGAME_IDS.length||enabled.some(x=>typeof x!=='string'||!ZJ_MINIGAME_IDS.includes(x)))return res.status(400).json({error:'有効にするミニゲームを1つ以上選んでください'});
  const valid=[...new Set(enabled)];try{fs.mkdirSync(path.dirname(ZJ_MINIGAME_FILE),{recursive:true,mode:0o700});const temp=ZJ_MINIGAME_FILE+'.tmp-'+process.pid;fs.writeFileSync(temp,JSON.stringify({enabled:valid,updatedAt:new Date().toISOString()},null,2),{mode:0o600});fs.renameSync(temp,ZJ_MINIGAME_FILE);zjEnabledMinigames=valid;res.json({ok:true,enabled:valid,appliesTo:'next minigame'})}catch(e){res.status(500).json({error:'保存に失敗しました: '+e.message})}
 });
 app.get('/api/shared-config',(req,res)=>{res.set('Cache-Control','no-store');res.json({available:!!sharedConfig,config:sharedConfig,updatedAt:sharedUpdatedAt,source:'KAGOYA'} )});
@@ -396,7 +396,7 @@ function zjStartRiichiFight(r,p,target){
  clearTimeout(r.timer);r.deadline=0;
  const now=Date.now();
  const choices=zjEnabledMinigames.length?zjEnabledMinigames:['wolf'];const mode=choices[crypto.randomInt(choices.length)];
- const fight={id:crypto.randomUUID(),mode,actor:p,target,startsAt:now+ZJ_FIGHT_COUNTDOWN_MS,endsAt:now+ZJ_FIGHT_COUNTDOWN_MS+({wolf:15000,streetfight:10000,'red-demon':90000,'zama-rhythm':45000}[mode]||15000),counts:[0,0],lastTap:[0,0],defenderCleared:false,defenderReported:false,finalFrame:null,lastVideoAt:0};
+ const fight={id:crypto.randomUUID(),mode,actor:p,target,startsAt:now+ZJ_FIGHT_COUNTDOWN_MS,endsAt:now+ZJ_FIGHT_COUNTDOWN_MS+({wolf:15000,streetfight:10000,'red-demon':90000,'zama-rhythm':45000,zamazone:60000}[mode]||15000),counts:[0,0],lastTap:[0,0],defenderCleared:false,defenderReported:false,finalFrame:null,lastVideoAt:0};
  r.boxing=fight;
  io.to(r.code).emit('riichiFightStart',{id:fight.id,mode:fight.mode,actor:p,target,startsAt:fight.startsAt,endsAt:fight.endsAt,actorName:r.players[p].name,targetName:r.players[target].name});
  if(false&&fight.mode==='streetfight'&&r.players[target].cpu){
