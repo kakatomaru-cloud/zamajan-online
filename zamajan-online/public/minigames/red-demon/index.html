@@ -238,4 +238,9 @@ window.addEventListener('keydown',ev=>{let k=map[ev.key];if(!k)return;ev.prevent
 canvas.addEventListener('contextmenu',ev=>ev.preventDefault());
 canvas.addEventListener('mousedown',ev=>{if(ev.button===0){ev.preventDefault();doAttack();}else if(ev.button===2){ev.preventDefault();doJump();}});
 retry.onclick=()=>{if(new URLSearchParams(location.search).get('riichi')!=='1')start()};init();requestAnimationFrame(loop);start()})();
+</script><script id="zj-minigame-ready-v2">
+(()=>{'use strict';const p=new URLSearchParams(location.search);const id=p.get('game');if(p.get('riichi')!=='1'||!id||window.parent===window)return;
+ const ready=()=>{try{window.parent.postMessage({type:'zamajan-minigame-ready',id},location.origin)}catch(e){}};
+ if(document.readyState==='complete')setTimeout(ready,100);else window.addEventListener('load',()=>setTimeout(ready,100),{once:true});
+})();
 </script></body></html>

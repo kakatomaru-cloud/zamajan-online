@@ -286,6 +286,7 @@ function tenpai(r,hand){
 
 // ZAMA-JAN CHAOS ITEMS v2 — online, authoritative server implementation.
 const ZJ_ITEMS=[
+ ['musicshuffle','🎵 BGMランダム変更',100,'100点で部屋全員のBGMを別の曲へランダム変更。'],
  ['dogtakeover','🐕 わんこ画面ジャック',7000,'使用者以外の3人の画面を実写犬が45秒間占領する。'],
  ['steal','💰 スコアスティール',6000,'相手から3,000点を自分へ移動する。'],
  ['openall','👁️ 全面透視',7000,'この局の終了まで他の3人の手牌を公開する。'],
@@ -396,7 +397,9 @@ function zjStartRiichiFight(r,p,target){
  clearTimeout(r.timer);r.deadline=0;
  const now=Date.now();
  const choices=zjEnabledMinigames.length?zjEnabledMinigames:['wolf'];const mode=choices[crypto.randomInt(choices.length)];
- const fight={id:crypto.randomUUID(),mode,actor:p,target,startsAt:now+ZJ_FIGHT_COUNTDOWN_MS,endsAt:now+ZJ_FIGHT_COUNTDOWN_MS+({wolf:15000,streetfight:10000,'red-demon':90000,'zama-rhythm':45000,zamazone:60000}[mode]||15000),counts:[0,0],lastTap:[0,0],defenderCleared:false,defenderReported:false,finalFrame:null,lastVideoAt:0};
+ const isEmbed=mode!=='streetfight';const duration=({wolf:15000,streetfight:10000,'red-demon':90000,'zama-rhythm':45000,zamazone:90000}[mode]||15000);
+ const delay=isEmbed?(mode==='zamazone'?40000:12000):ZJ_FIGHT_COUNTDOWN_MS;
+ const fight={id:crypto.randomUUID(),mode,actor:p,target,ready:false,duration,startsAt:now+delay,endsAt:now+delay+duration,counts:[0,0],lastTap:[0,0],defenderCleared:false,defenderReported:false,finalFrame:null,lastVideoAt:0};
  r.boxing=fight;
  io.to(r.code).emit('riichiFightStart',{id:fight.id,mode:fight.mode,actor:p,target,startsAt:fight.startsAt,endsAt:fight.endsAt,actorName:r.players[p].name,targetName:r.players[target].name});
  if(false&&fight.mode==='streetfight'&&r.players[target].cpu){
@@ -612,6 +615,7 @@ function zjUse(r,p,data,s){
  if(id==='dogtakeover'){detail='使用者以外の3人の画面を実写犬が45秒間占領！'}
  else if(id==='steal'){r.scores[target]-=3000;r.scores[p]+=3000;detail='3,000点を移動'}
  else if(id==='openall')e[p].openall=true;
+ else if(id==='musicshuffle'){const old=r.bgmTrack??0;r.bgmTrack=(old+1+crypto.randomInt(4))%5;detail='BGMをランダムで変更（100点）'}
  else if(id==='riichiswap'){
   if(a.tickets[p]>0)a.tickets[p]--;else if(a.bags[p].includes(id))a.bags[p].splice(a.bags[p].indexOf(id),1);else r.scores[p]-=x[2];
   a.used[p]++;a.riichiStealCount=(a.riichiStealCount||0)+1;zjStartRiichiFight(r,p,target);return;
@@ -799,6 +803,14 @@ io.on('connection',s=>{
  s.on('join',({code,name,token}={})=>{const r=rooms.get(String(code));if(!r)return s.emit('errorMessage','ルームが見つかりません');join(s,r,name,token)});
  s.on('start',()=>{const r=rooms.get(s.data.room);if(!r||r.host!==s.data.token||r.phase!=='lobby')return;r.gameStartedAt=Date.now();r.lpAwarded=false;for(let i=0;i<4;i++)if(!r.players[i])r.players[i]={name:randomCpuName(r.players.filter(Boolean).map(p=>p.name)),cpu:true,socket:null,token:null};const err=roundStart(r);if(err)s.emit('errorMessage',err)});
  s.on('itemUse',data=>{const r=rooms.get(s.data.room);const p=s.data.seat;if(!r||!Number.isInteger(p)||r.players[p]?.token!==s.data.token||r.players[p]?.cpu)return;zjUse(r,p,data,s)});
+ s.on('riichiMinigameReady',({id}={})=>{
+  const r=rooms.get(s.data.room),f=r?.boxing,seat=s.data.seat;
+  if(!f||f.id!==id||f.ending||f.resolved||f.ready||f.mode==='streetfight'||seat!==f.target||r.players[seat]?.token!==s.data.token)return;
+  f.ready=true;
+  const now=Date.now();f.startsAt=now+ZJ_FIGHT_COUNTDOWN_MS;f.endsAt=f.startsAt+f.duration;
+  clearTimeout(f.timer);f.timer=setTimeout(()=>zjFinishRiichiFight(r,f),f.endsAt-now+2000);
+  io.to(r.code).emit('riichiFightStart',{id:f.id,mode:f.mode,actor:f.actor,target:f.target,startsAt:f.startsAt,endsAt:f.endsAt,actorName:r.players[f.actor].name,targetName:r.players[f.target].name});
+ });
  s.on('riichiMinigameResult',({id,success}={})=>{const r=rooms.get(s.data.room),seat=s.data.seat,f=r?.boxing,now=Date.now();if(!f||f.ending||f.resolved||f.id!==id||seat!==f.target||r.players[seat]?.token!==s.data.token||r.players[seat]?.cpu||f.defenderReported||now<f.startsAt-1000||now>f.endsAt+5000)return;
  f.defenderReported=true;f.defenderCleared=success===true;zjFinishRiichiFight(r,f);
  });

@@ -64,4 +64,9 @@ window.addEventListener('keydown',e=>{if(['INPUT','SELECT'].includes(e.target.ta
 c.addEventListener('pointerdown',e=>{e.preventDefault();if(state!=='playing')return;const r=c.getBoundingClientRect(),x=(e.clientX-r.left)*W/r.width,y=(e.clientY-r.top)*H/r.height;const a=laneInfo(y),l=Math.floor((x-a.left)/a.width*laneCount);if(l>=0&&l<laneCount)hit(l)});
 audio.addEventListener('ended',()=>{if(state==='playing')finish()});document.addEventListener('visibilitychange',()=>{if(document.hidden&&!riichi&&state==='playing')pause()});setInterval(updateMiss,30);chosen();render();if(riichi){$('riichiLabel').textContent=observer?'観戦専用：操作できません':'防衛者：クリアするとリーチを守れます';$('track').value='ron_tsumo';$('length').value='45';$('track').disabled=true;$('length').disabled=true;$('lanes').disabled=true;$('choices').classList.add('hidden');$('start').classList.add('hidden');setTimeout(begin,300)}
 })();
+</script><script id="zj-minigame-ready-v2">
+(()=>{'use strict';const p=new URLSearchParams(location.search);const id=p.get('game');if(p.get('riichi')!=='1'||!id||window.parent===window)return;
+ const ready=()=>{try{window.parent.postMessage({type:'zamajan-minigame-ready',id},location.origin)}catch(e){}};
+ if(document.readyState==='complete')setTimeout(ready,100);else window.addEventListener('load',()=>setTimeout(ready,100),{once:true});
+})();
 </script></body></html>

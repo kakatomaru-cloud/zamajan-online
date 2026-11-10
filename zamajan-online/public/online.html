@@ -1281,14 +1281,21 @@ $('zjItemOpen').onclick=zjItemOpen;
 // リーチ強奪 ストリートファイト（勝敗は必ずサーバーで判定）
 const zjFightMusic=new Audio('/assets/riichi-fight/street.mp3');zjFightMusic.preload='auto';
 let zjFight=null,zjFightRAF=0,zjFightReturnTimer=null,zjFightLastVisual=0;
-const zjWolfCompleted=new Set();let zjMiniFrameTimer=null;
+const zjWolfCompleted=new Set();let zjMiniFrameTimer=null,zjMiniLoadTimer=null,zjMiniLoadRetries=0;
 function zjMySeat(){return Number.isInteger(state?.seat)?state.seat:(Number.isInteger(session?.seat)?session.seat:null)}
 const zjFightAssets=['stance.jpg','left_punch.jpg','right_punch.jpg','alternate.jpg'];
 let zjWolfLatestFrame=null;
 $('zjWolfFrame').addEventListener('load',()=>{if(zjWolfLatestFrame&&zjFight?.id===zjWolfLatestFrame.id&&zjMySeat()!==zjFight.target)$('zjWolfFrame').contentWindow?.postMessage({type:'zamajan-wolf-observe',frame:zjWolfLatestFrame},location.origin)});
-function zjWolfClose(){zjWolfLatestFrame=null;clearInterval(zjMiniFrameTimer);zjMiniFrameTimer=null;const m=$('zjWolfModal');m.classList.remove('show','observing');$('zjMiniObserveImg').removeAttribute('src');$('zjWolfFrame').removeAttribute('src');$('zjWolfFinal').classList.remove('show');$('zjWolfFinal').replaceChildren()}
+function zjWolfClose(){clearTimeout(zjMiniLoadTimer);zjMiniLoadTimer=null;zjMiniLoadRetries=0;zjWolfLatestFrame=null;clearInterval(zjMiniFrameTimer);zjMiniFrameTimer=null;const m=$('zjWolfModal');m.classList.remove('show','observing');$('zjMiniObserveImg').removeAttribute('src');$('zjWolfFrame').removeAttribute('src');$('zjWolfFinal').classList.remove('show');$('zjWolfFinal').replaceChildren()}
 window.addEventListener('message',ev=>{if(ev.origin!==location.origin||ev.source!==$('zjWolfFrame').contentWindow||ev.data?.type!=='zamajan-wolf-finished')return;if(!zjFight||zjFight.mode!=='wolf'||zjFight.done||zjMySeat()!==zjFight.target||zjWolfCompleted.has(zjFight.id))return;zjWolfCompleted.add(zjFight.id);socket.emit('riichiWolfResult',{id:zjFight.id,success:ev.data.success===true});});
-window.addEventListener('message',ev=>{if(ev.origin!==location.origin||ev.source!==$('zjWolfFrame').contentWindow||ev.data?.type!=='zamajan-minigame-finished')return;if(!zjFight||zjFight.done||zjMySeat()!==zjFight.target||zjWolfCompleted.has(zjFight.id))return;zjWolfCompleted.add(zjFight.id);socket.emit('riichiMinigameResult',{id:zjFight.id,success:ev.data.success===true})});
+window.addEventListener('message',ev=>{if(ev.origin!==location.origin||ev.source!==$('zjWolfFrame').contentWindow||ev.data?.type!=='zamajan-minigame-finished')return;if(!zjFight||zjFight.done||zjMySeat()!==zjFight.target||zjWolfCompleted.has(zjFight.id)||(ev.data.id&&ev.data.id!==zjFight.id))return;zjWolfCompleted.add(zjFight.id);socket.emit('riichiMinigameResult',{id:zjFight.id,success:ev.data.success===true})});
+window.addEventListener('message',ev=>{
+ if(ev.origin!==location.origin||ev.source!==$('zjWolfFrame').contentWindow||ev.data?.type!=='zamajan-minigame-ready')return;
+ if(!zjFight||zjFight.done||zjMySeat()!==zjFight.target||ev.data.id!==zjFight.id)return;
+ clearTimeout(zjMiniLoadTimer);zjMiniLoadTimer=null;
+ socket.emit('riichiMinigameReady',{id:zjFight.id});
+ try{$('zjWolfFrame').contentWindow.focus()}catch(e){}
+});
 function zjMiniStartCapture(id){clearInterval(zjMiniFrameTimer);zjMiniFrameTimer=setInterval(()=>{if(!zjFight||zjFight.id!==id||zjFight.done||zjMySeat()!==zjFight.target){clearInterval(zjMiniFrameTimer);return}try{const frame=$('zjWolfFrame').contentDocument;const canvas=frame?.getElementById('game');if(canvas?.width&&canvas?.height){const tmp=document.createElement('canvas');const maxW=640;tmp.width=maxW;tmp.height=Math.max(1,Math.round(maxW*canvas.height/canvas.width));tmp.getContext('2d').drawImage(canvas,0,0,tmp.width,tmp.height);socket.emit('riichiMinigameFrame',{id,frame:tmp.toDataURL('image/jpeg',.40)})}}catch(e){}},220)}
 socket.on('riichiMinigameFrame',data=>{if(zjFight?.id!==data.id||zjFight.done||zjMySeat()===zjFight.target)return;$('zjMiniObserveImg').src=data.frame});
 function zjFightClose(){zjWolfClose();
@@ -1303,8 +1310,8 @@ function zjFightUpdate(){
  $('zjFightActor').innerHTML='🔴 '+escape(f.actorName)+'<small>使用者 '+(f.counts?.[0]||0)+' パンチ</small>';
  $('zjFightTarget').innerHTML=escape(f.targetName)+' 🔵<small>防衛者 '+(f.counts?.[1]||0)+' パンチ</small>';
  const enabled=now>=f.startsAt&&now<f.endsAt&&!f.done;
- $('zjFightPunchA').disabled=true;
- $('zjFightPunchB').disabled=!enabled||state?.seat!==f.target;
+ $('zjFightPunchA').disabled=!enabled||zjMySeat()!==f.target;
+ $('zjFightPunchB').disabled=!enabled||zjMySeat()!==f.target;
  if(now<f.startsAt){$('zjFightCountdown').style.display='grid';$('zjFightCountdown').textContent=String(Math.max(1,Math.ceil((f.startsAt-now)/1000)));$('zjFightTime').textContent='10.0';}
  else if(!f.done){$('zjFightCountdown').style.display=now-f.startsAt<500?'grid':'none';$('zjFightCountdown').textContent='GO!';$('zjFightTime').textContent=(Math.max(0,left)/1000).toFixed(1);
   if(!f.musicStarted){f.musicStarted=true;zjFightMusic.currentTime=0;zjFightMusic.volume=.3;zjFightMusic.play().catch(()=>{$('zjFightUnmute').style.display='block'});}
@@ -1313,16 +1320,21 @@ function zjFightUpdate(){
  if(!f.done)zjFightRAF=requestAnimationFrame(zjFightUpdate);
 }
 function zjFightPunch(){
- const f=zjFight,now=Date.now();if(!f||f.done||now<f.startsAt||now>=f.endsAt||state?.seat!==f.target)return;
+ const f=zjFight,now=Date.now();if(!f||f.done||now<f.startsAt||now>=f.endsAt||zjMySeat()!==f.target)return;
  socket.emit('riichiFightPunch',{id:f.id});
- zjFightVisual(state.seat===f.actor?'left_punch.jpg':'right_punch.jpg');
+ zjFightVisual('right_punch.jpg');
  const id=++zjFightLastVisual;setTimeout(()=>{if(zjFight&&zjFight.id===f.id&&zjFightLastVisual===id&&!f.done)zjFightVisual('stance.jpg')},150);
 }
-$('zjFightPunchA').onclick=zjFightPunch;$('zjFightPunchB').onclick=zjFightPunch;
+// Pointerdown reacts on the first touch; click remains a keyboard/mouse fallback.
+let zjFightLastPointer=-1000;
+for(const button of [$('zjFightPunchA'),$('zjFightPunchB')]){
+ button.addEventListener('pointerdown',ev=>{if(button.disabled)return;ev.preventDefault();zjFightLastPointer=performance.now();zjFightPunch()},{passive:false});
+ button.onclick=()=>{if(performance.now()-zjFightLastPointer>400)zjFightPunch()};
+}
 $('zjFightUnmute').onclick=()=>{zjFightMusic.play().then(()=>$('zjFightUnmute').style.display='none').catch(()=>{})};
-window.addEventListener('keydown',ev=>{if(ev.repeat||!zjFight||ev.target?.matches?.('input,textarea,select'))return;if(state?.seat===zjFight.target&&ev.key.toLowerCase()==='l'){ev.preventDefault();zjFightPunch()}});
+window.addEventListener('keydown',ev=>{if(ev.repeat||!zjFight||ev.target?.matches?.('input,textarea,select'))return;if(zjMySeat()===zjFight.target&&['l','a'].includes(ev.key.toLowerCase())){ev.preventDefault();zjFightPunch()}});
 socket.on('riichiFightStart',f=>{
- if(zjFight?.id===f.id)return;
+ if(zjFight?.id===f.id){zjFight.startsAt=f.startsAt;zjFight.endsAt=f.endsAt;return;}
  zjFightClose();onlineBgm.pause();zjFight={...f,counts:[0,0],done:false,musicStarted:false};
  if(['wolf','red-demon','zama-rhythm','zamazone'].includes(f.mode)){
   zjWolfLatestFrame=null;const observer=zjMySeat()!==f.target;
@@ -1330,12 +1342,19 @@ socket.on('riichiFightStart',f=>{
   if(observer){$('zjMiniObserveImg').removeAttribute('src')}else{
    const folder={wolf:'wolf-archery','red-demon':'red-demon','zama-rhythm':'zama-rhythm',zamazone:'zamazone'}[f.mode];
    const params='riichi=1&game='+encodeURIComponent(f.id)+'&observer=0';
-   $('zjWolfFrame').src='/minigames/'+folder+'/index.html?'+params;
-   $('zjWolfFrame').onload=()=>zjMiniStartCapture(f.id);
+   const frame=$('zjWolfFrame');
+   const launchUrl='/minigames/'+folder+'/index.html?'+params;
+   frame.onload=()=>{if(zjFight?.id===f.id){zjMiniStartCapture(f.id);try{frame.contentWindow.focus()}catch(e){}}};
+   zjMiniLoadRetries=0;
+   function watchBoot(){clearTimeout(zjMiniLoadTimer);zjMiniLoadTimer=setTimeout(()=>{
+    if(!zjFight||zjFight.id!==f.id||zjFight.done||zjMySeat()!==f.target)return;
+    if(zjMiniLoadRetries++<1){frame.src=launchUrl+'&retry=1';watchBoot();}
+   },f.mode==='zamazone'?24000:9000)}
+   frame.src=launchUrl;watchBoot();
   }
   return;
  }
- $('zjFightRoot').classList.add('show');$('zjFightResultOverlay').classList.remove('show');$('zjFightArena').classList.remove('zj-fight-finished');$('zjFightUnmute').style.display='none';$('zjFightNote').textContent=state?.seat===f.target?'Lキーか右ボタンで30回以上連打して防衛！':'観戦中：防衛者の連打を見るだけです';
+ $('zjFightRoot').classList.add('show');$('zjFightResultOverlay').classList.remove('show');$('zjFightArena').classList.remove('zj-fight-finished');$('zjFightUnmute').style.display='none';$('zjFightNote').textContent=zjMySeat()===f.target?'A・Lキーまたは左右どちらのボタンでも連打可能！':'観戦中：防衛者の連打を見るだけです';
  zjFightVisual('stance.jpg');zjFightUpdate();
 });
 window.addEventListener('message',ev=>{if(ev.origin!==location.origin||ev.source!==$('zjWolfFrame').contentWindow||ev.data?.type!=='zamajan-wolf-frame'||!zjFight||zjFight.done||zjMySeat()!==zjFight.target||ev.data.id!==zjFight.id)return;socket.emit('riichiWolfFrame',{id:zjFight.id,frame:ev.data.frame});});

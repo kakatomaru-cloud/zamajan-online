@@ -163,4 +163,9 @@ document.getElementById('start').addEventListener('click',()=>{if(!isObserver&&!
 if(isObserver){bgm.pause();state='watching';shade.classList.remove('hidden');title.textContent='リーチ防衛を観戦中';desc.textContent='相手の操作画面を同期しています。操作はできません。';document.getElementById('rules').classList.add('hidden');document.getElementById('start').classList.add('hidden');document.querySelector('.ctrl').style.display='none';}else setTimeout(launch,200);
 window.addEventListener('message',ev=>{if(!isObserver||ev.origin!==location.origin||ev.data?.type!=='zamajan-wolf-observe')return;const f=ev.data.frame;if(!f||f.id!==fightId)return;state='watching';shade.classList.add('hidden');pigY=f.pigY;seconds=f.seconds;kills=f.kills;misses=f.misses;objects=f.objects.map(o=>({...o,sway:0}));arrows=f.arrows.map(a=>({...a,vx:a.bounce?570:-710}));enemyArrows=f.enemyArrows;draw();});
 })();
+</script><script id="zj-minigame-ready-v2">
+(()=>{'use strict';const p=new URLSearchParams(location.search);const id=p.get('game');if(p.get('riichi')!=='1'||!id||window.parent===window)return;
+ const ready=()=>{try{window.parent.postMessage({type:'zamajan-minigame-ready',id},location.origin)}catch(e){}};
+ if(document.readyState==='complete')setTimeout(ready,100);else window.addEventListener('load',()=>setTimeout(ready,100),{once:true});
+})();
 </script></body></html>
