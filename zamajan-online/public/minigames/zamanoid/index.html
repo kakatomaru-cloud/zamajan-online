@@ -55,7 +55,20 @@ function brickCollision(ball){for(let i=bricks.length-1;i>=0;i--){let b=bricks[i
 function takeHit(){if(active('shield')){power.shield=0;flashToast('🛡 シールドが守った！');sound(440,.16,'triangle',.08);return;}lives--;explode(paddleX,arena.b-20,'#ff6b9d',28);balls=balls.filter(b=>b.stuck);if(lives<=0){endGame(false);return}resetBalls();flashToast('MISS! 残機 '+lives)}
 function endGame(win){if(ZJ_RIICHI)zjReport(win===true);state=win?'win':'over';hi=Math.max(hi,score);try{localStorage.setItem('zamanoid-high',String(hi))}catch(e){}document.getElementById('veil').hidden=false;document.getElementById('panelTitle').textContent=win?'STAGE CLEAR!':'GAME OVER';document.getElementById('panelText').innerHTML=`スコア <b>${String(score).padStart(7,'0')}</b> ／ ハイスコア <b>${String(hi).padStart(7,'0')}</b><br>${win?'モアイを撃破！ ZAMAPAR制覇！':'もう一度挑戦してZAMAPARを崩そう！'}`;document.getElementById('start').textContent='▶ もう一度プレイ';sound(win?660:160,.45,win?'triangle':'sawtooth',.10,win?450:-95)}
 function shootMissile(){if(state!=='play'||!active('missile')||time<missileTimer)return;missileTimer=time+.35;paddles().forEach(p=>[-p.w*.33,p.w*.33].forEach(offset=>missiles.push({x:p.x+offset,y:arena.b-38,vy:-620})));sound(530,.11,'sawtooth',.075,300)}
-function move(dt){let dest=paddleX,keyboard=(keys.has('arrowright')||keys.has('d')?1:0)-(keys.has('arrowleft')||keys.has('a')?1:0);if(keyboard!==0)dest=paddleX+keyboard*860*dt;else if(pointerX!==null)dest=pointerX;paddleVelocity=(dest-paddleX)/Math.max(dt,.001);paddleX=clamp(dest,arena.l+75,arena.r-75)}
+function move(dt){
+  let dest=paddleX;
+  const keyboard=(keys.has('arrowright')||keys.has('d')?1:0)-(keys.has('arrowleft')||keys.has('a')?1:0);
+  if(keyboard!==0){
+    // Keyboard / on-screen direction buttons take control. Never return to a stale pointer location.
+    pointerX=null;
+    dest=paddleX+keyboard*860*dt;
+  }else if(pointerX!==null){
+    dest=pointerX;
+  }
+  dest=clamp(dest,arena.l+75,arena.r-75);
+  paddleVelocity=(dest-paddleX)/Math.max(dt,.001);
+  paddleX=dest;
+}
 function step(dt){if(state!=='play')return;time+=dt;shakes=Math.max(0,shakes-24*dt);if(toastTime>0){toastTime-=dt;if(toastTime<=0)document.getElementById('toast').classList.remove('show')}
 move(dt);boss.phase+=dt;boss.x=380+Math.sin(boss.phase*.83)*150;boss.y=216+Math.sin(boss.phase*1.6)*17;boss.flash=Math.max(0,boss.flash-dt);boss.active=true;
 // First let players clear at least 70% of the letter blocks without enemy shots.
@@ -120,11 +133,40 @@ for(const p of paddles())drawPaddle(p);for(const b of balls)drawBall(b);for(cons
 if(active('shield')){glow(paddleX,arena.b-58,170,'#4dc8ff',.24);line(arena.l,arena.b-5,arena.r,arena.b-5,'#6cfdff',4)}ctx.restore();drawHud();ctx.restore()}
 function loop(now){let dt=Math.min(.045,(now-last)/1000);last=now;if(state==='play'){let chunks=Math.ceil(dt/.012);for(let i=0;i<chunks&&state==='play';i++)step(dt/chunks);}render();requestAnimationFrame(loop)}
 function pos(e){const b=canvas.getBoundingClientRect();return (e.clientX-b.left)*W/b.width}
-canvas.addEventListener('pointermove',e=>{pointerX=clamp(pos(e),arena.l+75,arena.r-75)});canvas.addEventListener('pointerdown',e=>{pointerX=clamp(pos(e),arena.l+75,arena.r-75);try{canvas.setPointerCapture(e.pointerId)}catch(_){ }launch()});
-window.addEventListener('keydown',e=>{let k=e.key.toLowerCase();if([' ','arrowleft','arrowright'].includes(k))e.preventDefault();keys.add(k);if(k===' '||k==='enter')launch();if(k==='p')togglePause();if(k==='x')shootMissile()});window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
+let activeTouchPointer=null;
+canvas.addEventListener('pointermove',e=>{
+  // Mouse hover intentionally steers. Touch/pen only steer while dragging the canvas.
+  if(e.pointerType==='mouse'||activeTouchPointer===e.pointerId){
+    pointerX=clamp(pos(e),arena.l+75,arena.r-75);
+  }
+});
+canvas.addEventListener('pointerdown',e=>{
+  if(e.pointerType!=='mouse')activeTouchPointer=e.pointerId;
+  pointerX=clamp(pos(e),arena.l+75,arena.r-75);
+  try{canvas.setPointerCapture(e.pointerId)}catch(_){ }
+  launch();
+});
+function releasePointer(e){
+  if(activeTouchPointer===e.pointerId){activeTouchPointer=null;pointerX=null;}
+  try{if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId)}catch(_){ }
+}
+canvas.addEventListener('pointerup',releasePointer);
+canvas.addEventListener('pointercancel',releasePointer);
+canvas.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse' && activeTouchPointer===null)pointerX=null;});
+window.addEventListener('blur',()=>{pointerX=null;activeTouchPointer=null;keys.clear();});
+window.addEventListener('keydown',e=>{
+  let k=e.key.toLowerCase();
+  if([' ','arrowleft','arrowright'].includes(k))e.preventDefault();
+  if(['arrowleft','arrowright','a','d'].includes(k)){pointerX=null;activeTouchPointer=null;}
+  keys.add(k);
+  if(k===' '||k==='enter')launch();
+  if(k==='p')togglePause();
+  if(k==='x')shootMissile();
+});
+window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
 function togglePause(){if(ZJ_RIICHI)return;if(state==='play'){state='pause';flashToast('⏸ PAUSE')}else if(state==='pause'){state='play';flashToast('▶ RESUME')}}
 document.getElementById('start').onclick=()=>{if(!ZJ_RIICHI)startGame()};document.getElementById('pause').onclick=togglePause;document.getElementById('restart').onclick=()=>{if(!ZJ_RIICHI)startGame()};document.getElementById('mute').onclick=()=>{muted=!muted;document.getElementById('mute').textContent=muted?'🔇 SOUND OFF':'🔊 SOUND ON'};
-function hold(id,key,extra){let e=document.getElementById(id);e.addEventListener('pointerdown',ev=>{ev.preventDefault();keys.add(key);extra?.();});for(let name of ['pointerup','pointerleave','pointercancel'])e.addEventListener(name,()=>keys.delete(key));}
+function hold(id,key,extra){let e=document.getElementById(id);e.addEventListener('pointerdown',ev=>{ev.preventDefault();if(key==='arrowleft'||key==='arrowright'){pointerX=null;activeTouchPointer=null;}keys.add(key);extra?.();});for(let name of ['pointerup','pointerleave','pointercancel'])e.addEventListener(name,()=>keys.delete(key));}
 hold('left','arrowleft');hold('right','arrowright');document.getElementById('launch').onclick=launch;document.getElementById('rocket').onclick=shootMissile;
 resetBalls();makeBricks();requestAnimationFrame(loop);zjGameReady=true;if(ZJ_RIICHI){document.getElementById('start').disabled=true;document.getElementById('pause').disabled=true;document.getElementById('restart').disabled=true;document.getElementById('panelTitle').textContent='リーチ防衛・ザマノイド';document.getElementById('panelText').textContent='開始時刻を同期しています。モアイを撃破すれば防衛成功！';zjSend('zamajan-minigame-ready');}
 window.ZAMANOID_DEBUG=()=>({state,score,lives,balls:balls.length,bricks:bricks.length,boss:{...boss},power:{...power},effects:effects.length,missiles:missiles.length});
