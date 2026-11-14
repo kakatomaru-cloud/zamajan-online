@@ -805,6 +805,174 @@ document.addEventListener('keydown',e=>{if(e.code==='Space'&&mode==='intro'&&!ri
 
 showPanel('ZAMAZONE', '<p style="font-size:32px;color:#ffe88e;font-weight:900;letter-spacing:5px">PUSH START</p><p>6つのエリアをめぐり、各エリアの基地6基とボスを撃破せよ！</p><p>SPACE / ゲームパッドのSTARTボタンで開始</p><p>操作: 矢印・WASD移動 / J・Xショット / K・Zボム</p>', '▶ PUSH START', start);
 if(riichiMode){setTimeout(()=>{if(mode==='intro')start()},3000)}
+
+/* ZAMAZONE shop controls, distinct boss attack patterns, stage art v3 */
+const stageBackdrop={};
+for(let n=2;n<=6;n++){let im=new Image();im.src='assets/area'+n+'_background.webp';stageBackdrop[n]=im;}
+
+// Keep foreground bases/enemies independent of the clean scenery image.
+drawAreaBackground=function(){
+ const art=stageBackdrop[stage];
+ if(art&&art.complete&&art.naturalWidth){
+   const drift=(camera*.082)%260;
+   ctx.imageSmoothingEnabled=false;
+   ctx.drawImage(art,-drift,82,W+drift+40,H-82);
+   // Ground plane binds bases visually to the game world.
+   const accent=THEMES[stage-1].accent;
+   ctx.fillStyle=stage===2?'#8d472e':stage===3?'#093b65':stage===4?'#4a829c':stage===5?'#121533':'#091434';
+   ctx.fillRect(0,ground+15,W,H-ground);
+   ctx.fillStyle=accent; ctx.globalAlpha=.55;ctx.fillRect(0,ground+15,W,5);ctx.globalAlpha=1;
+   if(stage===3){ctx.fillStyle='rgba(88,235,255,.17)';ctx.fillRect(0,82,W,H-82);}
+   if(stage===4){for(let i=0;i<55;i++){const x=(i*157+themeTick*(12+i%7*7))%W,y=110+(i*93)%530;oval(x,y,2+i%2,2+i%2,'#e6ffff');}}
+   if(stage===5||stage===6){for(let i=0;i<18;i++){const x=(i*73-camera*.18+3000)%W;ctx.fillStyle=i%2?'#fa59ed':'#38eaff';ctx.globalAlpha=.25+.18*Math.sin(themeTick*2+i);ctx.fillRect(x,ground-25-(i%4)*16,18,3);}ctx.globalAlpha=1;}
+   return;
+ }
+ // Canvas fallback when media is unavailable
+ const t=THEMES[stage-1],g=ctx.createLinearGradient(0,82,0,H);t.bg.forEach((c,i)=>g.addColorStop(i/2,c));ctx.fillStyle=g;ctx.fillRect(0,82,W,H-82);
+};
+
+// Detailed, modular military architecture. Same physics hitboxes, no baked-in scenery characters.
+drawBase=function(b){
+ if(stage===1){_drawBase(b);return;}
+ if(!b.alive)return;
+ const x=screenX(b.x),y=b.y+(b.flying?Math.sin(b.phase*3)*8:0);
+ if(x<-170||x>W+170)return;
+ const c=THEMES[stage-1].accent,t=b.phase;
+ ctx.save();ctx.translate(x,y);ctx.shadowColor=c;ctx.shadowBlur=10;ctx.lineJoin='round';
+ // Real lift equipment for floating bases; heavy four-leg anchor for grounded bases.
+ if(b.flying){for(let side of [-1,1]){
+   ctx.save();ctx.translate(side*59,-15);ctx.rotate(side*(.13+Math.sin(t*11)*.10));ctx.fillStyle='#243b52';ctx.fillRect(side<0?-64:0,-14,64,29);
+   ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(side*60,-24);ctx.lineTo(side*60,23);ctx.closePath();ctx.fill();ctx.restore();
+ }
+ for(let i=-1;i<=1;i++){oval(i*32,54,12,20+Math.sin(t*13+i)*6,'#6cf8ff');oval(i*32,56,5,12,'#fff3b1');}
+ }else{
+   ctx.fillStyle='#182f47';ctx.fillRect(-59,27,23,28);ctx.fillRect(36,27,23,28);
+   ctx.fillStyle=c;ctx.fillRect(-62,50,30,7);ctx.fillRect(32,50,30,7);
+ }
+ const baseColor=['#a76a3c','#126686','#acddec','#1b244c','#151e48'][stage-2];
+ ctx.fillStyle='#0b172d';ctx.beginPath();ctx.roundRect(-62,-70,124,120,14);ctx.fill();
+ ctx.fillStyle=baseColor;ctx.beginPath();ctx.roundRect(-55,-67,110,108,12);ctx.fill();
+ ctx.strokeStyle=c;ctx.lineWidth=4;ctx.stroke();ctx.shadowBlur=0;
+ // Layered plating, ports, illuminated windows.
+ for(let i=-2;i<=2;i++){ctx.fillStyle=i%2?'#20334b':'#102036';ctx.fillRect(i*19-8,-35,16,24);ctx.fillStyle=c;ctx.fillRect(i*19-5,-30,10,7);}
+ if(stage===2){
+   ctx.fillStyle='#e9bd74';ctx.beginPath();ctx.moveTo(-56,-68);ctx.lineTo(0,-119);ctx.lineTo(56,-68);ctx.fill();
+   ctx.strokeStyle='#ffe7ab';ctx.lineWidth=4;ctx.stroke();
+   for(let j=0;j<4;j++){ctx.fillStyle='#985c34';ctx.fillRect(-46+j*24,-60,18,7);}
+   ctx.fillStyle='#75432b';ctx.fillRect(-15,8,30,34);ctx.fillStyle='#ffc46b';ctx.fillRect(-9,14,18,5);
+ }else if(stage===3){
+   ctx.fillStyle='#9af4f1';ctx.beginPath();ctx.arc(0,-69,31,Math.PI,0);ctx.fill();
+   ctx.strokeStyle='#e2ffff';ctx.lineWidth=3;ctx.stroke();
+   for(let a=-1;a<=1;a++){oval(a*31,28,12,21,'#52d4ea');oval(a*31,24,6,14,'#e3ffff');}
+   ctx.fillStyle='#113e70';ctx.fillRect(-48,12,96,12);
+ }else if(stage===4){
+   for(let j=-2;j<=2;j++){ctx.fillStyle='#d7fbff';ctx.beginPath();ctx.moveTo(j*22-13,-65);ctx.lineTo(j*22,-104-8*(j%2));ctx.lineTo(j*22+13,-65);ctx.fill();}
+   ctx.strokeStyle='#8adfff';ctx.lineWidth=3;ctx.stroke();ctx.fillStyle='#f7ffff';ctx.fillRect(-43,24,85,8);
+ }else if(stage===5){
+   ctx.fillStyle='#1d1646';ctx.fillRect(-52,-91,104,27);ctx.strokeStyle='#ff6ed8';ctx.lineWidth=5;ctx.strokeRect(-50,-89,100,23);
+   ctx.fillStyle='#fce27a';ctx.fillRect(-34,-84,68,10);ctx.fillStyle='#ff4cc8';ctx.fillRect(-44,7,88,7);
+   for(let k=-1;k<=1;k++){ctx.fillStyle='#292257';ctx.fillRect(k*35-7,-113,14,24);}
+ }else{
+   for(let j=0;j<3;j++){ctx.strokeStyle=j%2?'#ff5cdb':'#40ffd1';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,-24,31+j*12,t*.4+j,t*.4+j+Math.PI*1.3);ctx.stroke();}
+   ctx.fillStyle='#30efdc';ctx.fillRect(-61,-90,122,8);ctx.fillStyle='#ee60e3';ctx.fillRect(-30,29,60,9);
+ }
+ // Each base has its own small optical target.
+ oval(0,-9,19,18,'#111a39');oval(0,-10,14,13,'#f3ffff');oval(Math.sin(t*2)*4,-10,8,9,c);oval(0,-12,3,4,'#080d22');
+ if(b.flash>0){ctx.fillStyle='rgba(255,255,255,.7)';ctx.fillRect(-52,-64,104,105);}
+ ctx.fillStyle='#10142d';ctx.fillRect(-43,52,86,8);ctx.fillStyle=c;ctx.fillRect(-41,54,82*Math.max(0,b.hp)/b.maxHp,4);ctx.restore();
+};
+
+// Shop keyboard, controller and mouse share the same DOM button click path.
+let shopSelection=0,shopPadLatch=false,shopPadNav=0;
+const shopCSS=document.createElement('style');shopCSS.textContent=`
+#panel.shop [data-buy].shop-selected,#panel.shop .shop-exit-selected{outline:4px solid #fff29a!important;outline-offset:3px;box-shadow:0 0 18px #ffe456aa!important;transform:scale(1.03)}
+#panel.shop .shop-row:has([data-buy].shop-selected){background:rgba(90,195,255,.20);border-radius:10px}
+.shop-controls-hint{font-weight:700;color:#ffefab;text-align:center;margin:8px 0;font-size:15px}
+`;document.head.appendChild(shopCSS);
+const refreshShopOld=refreshShop;
+refreshShop=function(){refreshShopOld();
+ const list=contentEl.querySelector('.shop-list');
+ if(list){const hint=document.createElement('div');hint.className='shop-controls-hint';hint.textContent='↑↓ 選択　ENTER / A 購入　ESC / B 店を出る';list.before(hint);}
+ shopSelection=Math.max(0,Math.min(goods.length,shopSelection)); shopHighlight();
+};
+function shopButtons(){return [...contentEl.querySelectorAll('button[data-buy]'),mainAction];}
+function shopHighlight(){if(mode!=='shop')return;const bs=shopButtons();shopSelection=(shopSelection+bs.length)%bs.length;
+ bs.forEach((b,i)=>{b.classList.toggle('shop-selected',i===shopSelection&&i<bs.length-1);b.classList.toggle('shop-exit-selected',i===shopSelection&&i===bs.length-1);});
+ const target=bs[shopSelection];if(target){target.scrollIntoView({block:'nearest',inline:'nearest'});}
+}
+const _shop2=shop;
+shop=function(){shopSelection=0;_shop2();if(mode==='shop'){shopHighlight();}};
+function shopNav(step){if(mode!=='shop')return;shopSelection=(shopSelection+step+goods.length+1)%(goods.length+1);shopHighlight();sound(520,.035,'square',.017);}
+function shopConfirm(){if(mode!=='shop')return;let a=shopButtons()[shopSelection];if(a&&!a.disabled){a.click();sound(790,.045,'triangle',.022);}else sound(150,.09,'sawtooth',.024);}
+function shopExit(){if(mode==='shop')curtainExit();}
+document.addEventListener('keydown',e=>{if(mode!=='shop')return;
+ const c=e.code;
+ if(['ArrowUp','ArrowDown','KeyW','KeyS','Enter','NumpadEnter','Space','Escape','Backspace','KeyB','KeyZ'].includes(c)){e.preventDefault();e.stopImmediatePropagation();}
+ if((c==='ArrowUp'||c==='KeyW')&&!e.repeat)shopNav(-1);
+ else if((c==='ArrowDown'||c==='KeyS')&&!e.repeat)shopNav(1);
+ else if(['Enter','NumpadEnter','Space','KeyZ'].includes(c)&&!e.repeat)shopConfirm();
+ else if(['Escape','Backspace','KeyB'].includes(c)&&!e.repeat)shopExit();
+},true);
+// Edges, not held controls, prevent repeated purchase and accidental instant exit.
+function pollShopPad(){
+ if(mode==='shop'&&navigator.getGamepads){
+  const p=[...navigator.getGamepads()].find(x=>x&&x.connected);
+  if(p){const b=n=>p.buttons[n]&&p.buttons[n].pressed;
+   const nav=(p.axes[1]||0)>.45||b(13)?1:(p.axes[1]||0)<-.45||b(12)?-1:0;
+   if(nav!==0&&shopPadNav===0)shopNav(nav);shopPadNav=nav;
+   const buy=!!b(0),leave=!!b(1);
+   if(buy&&!shopPadLatch)shopConfirm();if(leave&&!shopPadLatch)shopExit();
+   shopPadLatch=buy||leave;
+  }else{shopPadLatch=false;shopPadNav=0;}
+ }else{shopPadLatch=false;shopPadNav=0;}
+ requestAnimationFrame(pollShopPad);
+}requestAnimationFrame(pollShopPad);
+
+// Different enemy bullet vocabularies per named boss, rather than one identical sequence.
+const BOSS_SETS={
+  2:['fan','tentacles','rain','beam','orbs'],
+  3:['sandwall','fan','sniper','spiral','tentacles'],
+  4:['bubblefield','orbs','spiral','tentacles','rain'],
+  5:['blizzard','rain','fan','beam','crystal'],
+  6:['crossfire','orbs','sniper','beam','rain'],
+  7:['circuit','spiral','crossfire','beam','orbs'],
+  8:['chaos','circuit','spiral','tentacles','beam','rain']
+};
+// Stage 6 normal is mana7; stage 6 last phase is mana8.
+function bossNameNumber(){return stage===6?(lastBossPhase?8:7):stage+1;}
+const beginBossBase=beginBossAttack;
+beginBossAttack=function(){if(riichiMode||stage===1)return beginBossBase();
+ if(!boss||!boss.alive)return;
+ boss.attackIndex=(boss.attackIndex||0)+1;
+ const list=BOSS_SETS[bossNameNumber()];const pattern=list[(boss.attackIndex-1)%list.length];
+ if(['fan','tentacles','rain','beam','orbs'].includes(pattern)){
+    const prevIndex=boss.attackIndex;
+    boss.attackIndex=({fan:1,tentacles:2,rain:3,beam:4,orbs:5})[pattern]-1;
+    beginBossBase();boss.attackIndex=prevIndex;
+    return;
+ }
+ boss.attack={kind:pattern,clock:0,shots:0,hitClock:0};
+ sound(250+stage*70,.14,'sawtooth',.045);
+};
+const updateBossBase=updateBossAttacks;
+function fireBossBullet(vx,vy,kind='energy',x=boss.x,y=boss.y,life=5){enemyBullets.push({x:wrapX(x),y,vx,vy,life,kind});}
+updateBossAttacks=function(dt){
+ if(!boss||!boss.alive||!boss.attack)return updateBossBase(dt);
+ const a=boss.attack;
+ if(!['sandwall','sniper','spiral','bubblefield','blizzard','crystal','crossfire','circuit','chaos'].includes(a.kind))return updateBossBase(dt);
+ a.clock+=dt; a.hitClock-=dt;
+ if(a.kind==='sandwall'&&a.clock>.3&&a.shots<4){a.clock=0;a.shots++;for(let i=0;i<5;i++)fireBossBullet(-245,-95+i*50,'sand');}
+ else if(a.kind==='sniper'&&a.clock>.55&&a.shots<5){a.clock=0;a.shots++;const delta=nearDelta(player.x,boss.x),ang=Math.atan2(player.y-boss.y,delta);fireBossBullet(Math.cos(ang)*360,Math.sin(ang)*360,stage===5?'neon':'sand');}
+ else if(a.kind==='spiral'&&a.clock>.17&&a.shots<26){a.clock=0;a.shots++;const ang=a.shots*.56;for(let q=0;q<2;q++)fireBossBullet(Math.cos(ang+q*Math.PI)*210,Math.sin(ang+q*Math.PI)*210,stage===3?'bubble':'plasma');}
+ else if(a.kind==='bubblefield'&&a.clock>.3&&a.shots<8){a.clock=0;a.shots++;for(let i=0;i<3;i++){const ang=(i-1)*.65;fireBossBullet(-200*Math.cos(ang),170*Math.sin(ang)+30,'bubble',boss.x,boss.y+(i-1)*42);}}
+ else if(a.kind==='blizzard'&&a.clock>.3&&a.shots<10){a.clock=0;a.shots++;for(let i=0;i<3;i++)fireBossBullet(-130-(i*30),120+10*i,'ice',wrapX(camera-430+i*250+a.shots*130),-20);}
+ else if(a.kind==='crystal'&&a.clock>.65&&a.shots<5){a.clock=0;a.shots++;const dy=player.y-boss.y;for(let i=-2;i<=2;i++)fireBossBullet(-270,dy*.55+i*45,'ice');}
+ else if(a.kind==='crossfire'&&a.clock>.42&&a.shots<8){a.clock=0;a.shots++;for(let i=0;i<4;i++){const ang=i*Math.PI/2+a.shots*.23;fireBossBullet(Math.cos(ang)*270,Math.sin(ang)*270,'neon');}}
+ else if(a.kind==='circuit'&&a.clock>.4&&a.shots<9){a.clock=0;a.shots++;for(let i=0;i<5;i++){const offset=i*45;fireBossBullet(-250,0,'plasma',boss.x,boss.y-90+offset);}}
+ else if(a.kind==='chaos'&&a.clock>.13&&a.shots<24){a.clock=0;a.shots++;for(let j=0;j<3;j++){const ang=a.shots*.34+j*Math.PI*2/3;fireBossBullet(Math.cos(ang)*240,Math.sin(ang)*240,'plasma');}}
+ if((a.shots>=({sandwall:4,sniper:5,spiral:26,bubblefield:8,blizzard:10,crystal:5,crossfire:8,circuit:9,chaos:24}[a.kind]||8))&&a.clock>.6){boss.attack=null;boss.attackDelay=.75;}
+};
+
 requestAnimationFrame(loop);
 })();
 </script><script id="zj-minigame-ready-v2">(()=>{'use strict';const p=new URLSearchParams(location.search);const id=p.get('game');if(p.get('riichi')!=='1'||!id||window.parent===window)return;const ready=()=>{try{window.parent.postMessage({type:'zamajan-minigame-ready',id},location.origin)}catch(e){}};if(document.readyState==='complete')setTimeout(ready,100);else window.addEventListener('load',()=>setTimeout(ready,100),{once:true});})();</script></body></html>
