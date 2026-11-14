@@ -83,7 +83,7 @@ function updatePlayerMotion(dt){
  if((mode==='bossIntro')||(mode==='play'&&boss&&boss.alive))player.dir=1;
  else if(mx<0)player.dir=-1;
  else if(mx>0)player.dir=1;
- if(boss&&boss.alive){ camera=boss.arenaCamera ?? camera;player.x=wrapX(camera+clamp(nearDelta(player.x,camera),-505,155)); }else camera=wrapX(camera+nearDelta(player.x,camera)*Math.min(1,dt*3.8));
+ if(boss&&boss.alive){ camera=boss.arenaCamera ?? camera;player.x=wrapX(camera+clamp(nearDelta(player.x,camera),-505,505)); }else camera=wrapX(camera+nearDelta(player.x,camera)*Math.min(1,dt*3.8));
  return {mx,my,left,right,up,down};
 }
 function updateCoins(dt,collectDist=47){
@@ -2184,6 +2184,90 @@ if(new URLSearchParams(location.search).get('preview')==='1'||window.__ZAMA_TEST
   testBoss(n){launchDebugBoss(n);return {stage,rig:boss?.z?.n,wing:boss?.wings?.length,mode};},
   get(){return {stage,mode,player,boss,items:v2Purchased,tab:v2Tab,shops:V2_ITEMS.map((x,i)=>[x[0],v2Cost(i)])};}
  };
+}
+
+
+// ===== 2026-11-15: continuous bomb input, safe shop entry, boss collision and speed background =====
+let zfixShopEnteredAt=-1, zfixBossElapsed=0, zfixBombCount=0;
+const zfixShopOriginal=shop;
+shop=function(...a){
+ const before=mode;const result=zfixShopOriginal(...a);
+ if(before!=='shop' && mode==='shop'){
+   zfixShopEnteredAt=performance.now();
+   // Require all controller inputs to be released once after entry.
+   shopPadLatch=true;shopPadNav=0;
+ }
+ return result;
+};
+const zfixShopExitOriginal=shopExit;
+shopExit=function(){if(mode!=='shop'||performance.now()-zfixShopEnteredAt<950)return;return zfixShopExitOriginal();};
+const zfixCurtainExitOriginal=curtainExit;
+curtainExit=function(){if(mode==='shop'&&performance.now()-zfixShopEnteredAt<950)return;return zfixCurtainExitOriginal();};
+document.addEventListener('keydown',e=>{
+ if(mode!=='shop')return;
+ if(performance.now()-zfixShopEnteredAt<950){
+  e.preventDefault();e.stopImmediatePropagation();
+ }
+},true);
+
+// Unlimited standard bombs, automatically repeated at 0.5s intervals while K/Z/B is held.
+// Shop bomb refills are treated as charges for enhanced explosions instead of disabling the normal weapon.
+const zfixPrevBomb=bomb;
+bomb=function(){
+ if(mode!=='play'||!player||player.bombDelay>0)return;
+ const charges=player.v2BombStock??0;
+ const originalPower=player.bombLevel;
+ // Temporarily bypass the previous 3-ammo limiter. Purchased charges provide extra power.
+ const boosted=charges>0;
+ player.v2BombStock=undefined;
+ if(boosted)player.bombLevel=originalPower+1;
+ try{zfixPrevBomb(); if(player.bombDelay>0)zfixBombCount++;}
+ finally{
+   player.bombLevel=originalPower;
+   player.v2BombStock=boosted?charges-1:0;
+ }
+};
+function zfixSpeedBackground(){
+ if(!boss||!boss.alive||mode==='shop')return;
+ const speed=zfixBossElapsed*250;
+ ctx.save();ctx.beginPath();ctx.rect(0,82,W,ground-82);ctx.clip();
+ // Layered fast-moving scenery streaks, only during boss encounters.
+ for(let layer=0;layer<3;layer++){
+  const alpha=[.13,.20,.29][layer],vel=[.27,.65,1][layer];
+  ctx.strokeStyle=stage===2?'rgba(255,231,149,'+alpha+')':stage===3?'rgba(137,246,255,'+alpha+')':stage===4?'rgba(255,255,255,'+alpha+')':stage===5?'rgba(255,125,220,'+alpha+')':stage===6?'rgba(107,255,205,'+alpha+')':'rgba(245,255,255,'+alpha+')';
+  ctx.lineWidth=1+layer;
+  for(let i=0;i<14;i++){
+   const x=((i*139-speed*vel)% (W+200) +(W+200))%(W+200)-100;
+   const y=115+((i*73+layer*35)%(ground-155));
+   ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+25+layer*25,y);ctx.stroke();
+  }
+ }
+ ctx.restore();
+}
+const zfixBeforeBg=drawAreaBackground;
+drawAreaBackground=function(){zfixBeforeBg();zfixSpeedBackground();};
+const zfixBeforePastel=drawScreenshotScenery;
+drawScreenshotScenery=function(){const result=zfixBeforePastel();if(stage===1)zfixSpeedBackground();return result;};
+
+const zfixBeforeUpdate=update;
+update=function(dt){
+ zfixBeforeUpdate(dt);
+ if((mode==='play'||mode==='bossIntro')&&boss?.alive){
+  zfixBossElapsed+=dt;
+  // Boss' solid body hurts on contact but never blocks horizontal traversal.
+  // Ellipse leaves a safe route under the boss, allowing players to fly past it.
+  if(mode==='play'&&player.inv<=0){
+   const dx=nearDelta(player.x,boss.x),dy=player.y-boss.y;
+   const rx=stage===1?86:stage===2?115:stage===3?104:stage===4?124:stage===5?116:stage===6?125:90;
+   const ry=stage===1?69:stage===3?84:stage===4?77:75;
+   if(dx*dx/(rx*rx)+dy*dy/(ry*ry)<1)damage('boss');
+  }
+ }else zfixBossElapsed=0;
+};
+if(window.ZamaV2QA){
+ window.ZamaV2QA.regression=()=>({mode,stage,shopAge:performance.now()-zfixShopEnteredAt,holdBomb:player?.bombDelay,stock:player?.v2BombStock,scrollClock:zfixBossElapsed,boss:!!boss?.alive,playerX:player?.x,camera});
+ window.ZamaV2QA.testShopEntry=()=>{if(!player)initial();mode='play';shopReenter=0;shopBalloon={x:player.x,y:210,age:3,targetY:210};shop();return {mode,shopAge:performance.now()-zfixShopEnteredAt,padLatch:shopPadLatch}};
+ window.ZamaV2QA.testHeldBomb=(n=60)=>{if(!player)initial();mode='play';boss=null;player.v2BombStock=0;player.bombDelay=0;pressed.add('k');const before=bombs.length;for(let i=0;i<n;i++)update(1/60);pressed.delete('k');return {created:zfixBombCount,active:bombs.length-before,delay:player.bombDelay,stock:player.v2BombStock}};
 }
 
 // Debug menu from V2 remains enabled; as required riichi bypasses it.
