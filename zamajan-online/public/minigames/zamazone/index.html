@@ -792,7 +792,7 @@ function pollGamepads(){
   if(ax<-.3||b(14))now.add('ArrowLeft');if(ax>.3||b(15))now.add('ArrowRight');
   if(ay<-.3||b(12))now.add('ArrowUp');if(ay>.3||b(13))now.add('ArrowDown');
   if(b(0)||b(2)||b(5))now.add('shoot');if(b(1)||b(3)||b(4))now.add('bomb');
-  if(b(9)&&!gamepadWasStart){if(mode==='intro'||mode==='clear'||mode==='lose'||mode==='win'){start();}else if(mode==='pause'){start();}}
+  if(b(9)&&!gamepadWasStart){if(mode==='intro'&&!riichiMode){playFromArea(selectedArea);}else if(mode==='intro'||mode==='clear'||mode==='lose'||mode==='win'){start();}else if(mode==='pause'){start();}}
   gamepadWasStart=b(9);
  }else gamepadWasStart=false;
  for(const v of gamepadButtons)if(!now.has(v))pressed.delete(v);
@@ -972,6 +972,324 @@ updateBossAttacks=function(dt){
  else if(a.kind==='chaos'&&a.clock>.13&&a.shots<24){a.clock=0;a.shots++;for(let j=0;j<3;j++){const ang=a.shots*.34+j*Math.PI*2/3;fireBossBullet(Math.cos(ang)*240,Math.sin(ang)*240,'plasma');}}
  if((a.shots>=({sandwall:4,sniper:5,spiral:26,bubblefield:8,blizzard:10,crystal:5,crossfire:8,circuit:9,chaos:24}[a.kind]||8))&&a.clock>.6){boss.attack=null;boss.attackDelay=.75;}
 };
+
+
+
+/* ZAMAZONE patch 2026-11-14: shop fit, continue, distinct boss mechanics */
+const zamaFitStyle=document.createElement('style');
+zamaFitStyle.textContent=`
+#panelBackdrop{overflow:hidden!important;}
+#panel.shop{display:flex!important;flex-direction:column!important;width:min(1020px,97%)!important;
+ max-height:96%!important;overflow:hidden!important;padding:10px 12px 8px!important;gap:4px!important;}
+#panel.shop h2{flex:0 0 auto!important;margin:0 0 4px!important;font-size:clamp(16px,2vw,25px)!important;line-height:1.15!important;}
+#panel.shop #panelContent{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;padding:2px 4px 3px!important;}
+#panel.shop .shop-board{grid-template-columns:minmax(95px,20%) minmax(0,1fr)!important;gap:8px!important;
+ padding:7px!important;align-items:start!important;min-width:0!important;}
+#panel.shop .shop-clerk{align-self:start!important;gap:5px!important;position:sticky;top:0;}
+#panel.shop .shop-clerk img{height:100px!important;max-width:130px!important;width:auto!important;object-fit:contain!important;}
+#panel.shop .shop-clerk .speech{padding:6px!important;font-size:11px!important;line-height:1.25!important;}
+#panel.shop .shop-list{min-width:0!important;gap:4px!important;}
+#panel.shop .shop-row{grid-template-columns:35px minmax(0,1fr) 92px 92px!important;
+ min-height:43px!important;gap:5px!important;padding:3px 5px!important;}
+#panel.shop .shop-row .equip-icon{font-size:20px!important;}
+#panel.shop .shop-row .equip-name{font-size:clamp(11px,1.5vw,15px)!important;}
+#panel.shop .shop-row .equip-note{font-size:10px!important;line-height:1.2!important;}
+#panel.shop .shop-row .price{font-size:13px!important;text-align:right!important;}
+#panel.shop .shop-row button{min-width:0!important;padding:6px 3px!important;font-size:12px!important;white-space:nowrap;}
+#panel.shop .shop-balance{position:sticky;bottom:0;background:#14102eea;margin:5px 0 0!important;
+ padding:7px!important;text-align:center!important;font-size:clamp(12px,1.7vw,16px)!important;}
+#panel.shop #mainAction{flex:0 0 auto!important;align-self:center!important;margin:2px auto!important;padding:6px 22px!important;max-height:39px!important;}
+#panel.shop .shop-controls-hint{margin:3px 0!important;font-size:12px!important;}
+.zama-continue{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:12px auto 4px;max-width:480px;}
+.zama-continue button{background:#14264c;color:#fff2b5;border:2px solid #8bd3ff;border-radius:10px;
+ padding:7px 4px;font-weight:800;cursor:pointer;min-height:39px;}
+.zama-continue button:disabled{opacity:.35;filter:grayscale(1);cursor:not-allowed;}
+.zama-continue button:focus-visible{outline:3px solid yellow;}
+.zama-continue .zama-head{grid-column:1/-1;color:#fff6ae;font-weight:900;}
+@media(max-width:660px){#panel.shop{padding:4px!important;border-width:3px!important;}
+ #panel.shop .shop-board{grid-template-columns:1fr!important;padding:3px!important;}
+ #panel.shop .shop-clerk{position:static;display:none!important;}
+ #panel.shop .shop-row{grid-template-columns:26px minmax(0,1fr) 62px 65px!important;gap:2px!important;min-height:34px!important;}
+ #panel.shop .shop-row .equip-name{font-size:10px!important;}
+ #panel.shop .shop-row .equip-note{display:none!important;}
+ #panel.shop .shop-row .price{font-size:10px!important;}
+ #panel.shop .shop-row button{font-size:10px!important;padding:4px 1px!important;}
+}
+`;document.head.appendChild(zamaFitStyle);
+
+// Progress is saved only for the single player game, never during Riichi challenge.
+const progressKey='zamazone.six.area.unlocked.v1';
+function getUnlocked(){try{return clamp(Number(localStorage.getItem(progressKey))||1,1,6)}catch(e){return 1}}
+function unlockArea(n){if(riichiMode)return;try{localStorage.setItem(progressKey,String(Math.max(getUnlocked(),clamp(n,1,6))))}catch(e){}}
+let selectedArea=getUnlocked();
+function playFromArea(n){
+ if(riichiMode)return;
+ n=Math.round(clamp(n,1,getUnlocked()));
+ start(); // initializes all game arrays and keeps compatibility with the host game
+ if(n>1){stage=n;setupStage(false);mode='play';selectMusic('stage');}
+ selectedArea=n;closePanel();
+ msg('AREA '+n+'　'+THEMES[n-1].name+' 開始！',2.5);
+}
+function addContinueMenu(){
+ if(riichiMode||!(mode==='intro'||mode==='lose'||mode==='clear'))return;
+ const existing=contentEl.querySelector('.zama-continue');if(existing)existing.remove();
+ const div=document.createElement('div');div.className='zama-continue';
+ const unlocked=getUnlocked();
+ div.innerHTML='<div class="zama-head">CONTINUE　解放済みの面からスタート（保存：AREA '+unlocked+'）</div>'+
+  Array.from({length:6},(_,i)=>'<button type="button" data-zama-area="'+(i+1)+'" '+(i+1>unlocked?'disabled':'')+'>AREA '+(i+1)+'</button>').join('');
+ div.querySelectorAll('button[data-zama-area]').forEach(b=>b.addEventListener('click',()=>playFromArea(Number(b.dataset.zamaArea))));
+ contentEl.appendChild(div);
+ const quick=document.createElement('button');quick.type='button';quick.className='zama-quick-continue';
+ quick.textContent='▶ CONTINUE — AREA '+unlocked;quick.style.cssText='width: min(92%,420px);padding:9px;background:#285e8d;color:white;border:2px solid #ffe98d;border-radius:11px;margin:7px auto;font-size:17px;font-weight:900;cursor:pointer;display:block';
+ quick.onclick=()=>playFromArea(unlocked);contentEl.appendChild(quick);
+}
+const showPanelBeforeContinue=showPanel;
+showPanel=function(title,html,button,fn){showPanelBeforeContinue(title,html,button,fn);addContinueMenu()};
+// Initial title was created before this patch finished loading.
+if(mode==='intro')addContinueMenu();
+// Keyboard shortcuts and standard D-pad/A controls on the title selection.
+document.addEventListener('keydown',e=>{
+ if(riichiMode||mode!=='intro')return;
+ const n=/^Digit([1-6])$/.exec(e.code);
+ if(n&&Number(n[1])<=getUnlocked()){e.preventDefault();selectedArea=Number(n[1]);playFromArea(selectedArea);}
+ else if(e.code==='KeyC'){e.preventDefault();playFromArea(getUnlocked());}
+},true);
+let continuePadPrev={up:false,down:false,a:false};
+function titlePadPoll(){
+ if(!riichiMode&&mode==='intro'&&navigator.getGamepads){
+  const p=[...navigator.getGamepads()].find(v=>v?.connected);
+  if(p){
+   const b=i=>!!p.buttons[i]?.pressed;
+   const up=b(12)||(p.axes[1]||0)<-.55,down=b(13)||(p.axes[1]||0)>.55,a=b(0);
+   if(up&&!continuePadPrev.up)selectedArea=selectedArea<=1?getUnlocked():selectedArea-1;
+   if(down&&!continuePadPrev.down)selectedArea=selectedArea>=getUnlocked()?1:selectedArea+1;
+   if((up&&!continuePadPrev.up)||(down&&!continuePadPrev.down)){
+    document.querySelectorAll('[data-zama-area]').forEach(el=>{el.style.outline=Number(el.dataset.zamaArea)===selectedArea?'3px solid #ffe664':''});
+   }
+   if(a&&!continuePadPrev.a)playFromArea(selectedArea);
+   continuePadPrev={up,down,a};
+  }else continuePadPrev={up:false,down:false,a:false};
+ }
+ requestAnimationFrame(titlePadPoll);
+}requestAnimationFrame(titlePadPoll);
+
+let stageShiftClock=0,stageShiftTarget=1;
+const beforeStageFinished=updateAfterBoss;
+updateAfterBoss=function(dt){
+ if(!riichiMode&&mode==='bossDeath'&&stage<6&&winTimer<=dt+.01){
+  unlockArea(stage+1);stageShiftTarget=stage+1;stageShiftClock=2.25;
+  mode='nextStage';boss=null;enemyBullets.length=0;bullets.length=0;bombs.length=0;
+  selectMusic(null);sound(760,.19,'triangle',.06);return;
+ }
+ if(!riichiMode&&mode==='bossDeath'&&stage===6){unlockArea(6)}
+ beforeStageFinished(dt);
+};
+const beforeStageUpdate=update;
+update=function(dt){
+ if(mode==='nextStage'){
+  stageShiftClock-=dt;
+  if(stageShiftClock<=0){stage=stageShiftTarget;setupStage(false);mode='play';player.inv=2;
+   selectMusic('stage');msg('AREA '+stage+' — '+THEMES[stage-1].name,2.2);}
+  return;
+ }
+ beforeStageUpdate(dt);
+};
+const beforeStageDraw=draw;
+draw=function(){beforeStageDraw();if(mode==='nextStage'){
+ ctx.save();ctx.fillStyle='#080a21';ctx.fillRect(0,0,W,H);
+ const t=2.25-stageShiftClock;const flash=.52+.48*Math.sin(t*9);
+ ctx.fillStyle='#192b68';for(let i=0;i<18;i++){ctx.fillRect((i*131+t*170)%W,0,5,H)}
+ ctx.textAlign='center';ctx.shadowColor='#55caff';ctx.shadowBlur=24;
+ ctx.fillStyle='#fff4b5';ctx.font='900 94px system-ui';ctx.fillText('NEXT STAGE',W/2,H/2-30);
+ ctx.fillStyle='rgba(150,230,255,'+flash+')';ctx.font='bold 37px system-ui';ctx.fillText('AREA '+stageShiftTarget+' — '+THEMES[stageShiftTarget-1].name,W/2,H/2+50);
+ ctx.shadowBlur=0;ctx.fillStyle='#ffdf78';ctx.fillRect(W/2-190,H/2+96,380*clamp(t/2.25,0,1),8);ctx.restore();
+ }};
+
+// Unique mechanical moves; no pattern name is shared by different bosses.
+const bossMoveSets={
+ 3:['sand-vortex','stone-claw','scarab-fan','dune-eruption','pyramid-crush'],
+ 4:['bubble-mine','jelly-whip','tidal-ring','abyss-torpedo','pressure-pulse'],
+ 5:['ice-lance','frost-wing','crystal-barrage','glacier-ram','snowquake'],
+ 6:['neon-arc','street-drone','train-rush','billboard-smash','searchlight'],
+ 7:['datacube-grid','magnetic-arm','matrix-dash','binary-rain','circuit-burst'],
+ 8:['singularity-core','omni-claws','chaos-prism','event-horizon','fracture-wave','annihilation-laser']
+};
+const bossPalettes={
+ 3:{core:'#ffcc57',mid:'#ff7a23',edge:'#542110',glow:'#fff7b4'},
+ 4:{core:'#a0f9ff',mid:'#3264ff',edge:'#1e205c',glow:'#e4faff'},
+ 5:{core:'#ffffff',mid:'#83baff',edge:'#2945a1',glow:'#e6ffff'},
+ 6:{core:'#ff90d9',mid:'#fc286b',edge:'#51117b',glow:'#fff0bb'},
+ 7:{core:'#74ffae',mid:'#13dfff',edge:'#213a86',glow:'#e3fff1'},
+ 8:{core:'#ffe67a',mid:'#ff358e',edge:'#5b0c74',glow:'#ffffff'}
+};
+const oldBeginBossUnique=beginBossAttack;
+beginBossAttack=function(){
+ if(riichiMode||stage===1)return oldBeginBossUnique();
+ if(!boss||!boss.alive)return;
+ const n=bossNameNumber(),set=bossMoveSets[n];
+ boss.attackIndex=(boss.attackIndex||0)+1;
+ const name=set[(boss.attackIndex-1)%set.length];
+ boss.attack={kind:name,clock:0,shots:0,emitted:0,originX:boss.x,originY:boss.y,physical:false};
+ boss.bodyMove=name;
+ sound(220+40*n,.14,'sawtooth',.03);
+};
+const oldUpdateBossUnique=updateBossAttacks;
+function emitUnique(ang,speed,offsetY=0,offsetX=0,extra={}){
+ const n=bossNameNumber(),c=bossPalettes[n];
+ enemyBullets.push({x:wrapX(boss.x+offsetX),y:boss.y+offsetY,vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,life:5.3,kind:'mana'+n,visualColor:c.mid,...extra});
+}
+function fireAimUnique(count,spread,speed,extra={}){
+ const aim=Math.atan2(player.y-boss.y,nearDelta(player.x,boss.x));
+ for(let i=0;i<count;i++)emitUnique(aim+(i-(count-1)/2)*spread,speed,0,-25,extra);
+}
+function fireOrbitUnique(count,speed,phase=0){for(let i=0;i<count;i++)emitUnique(phase+i*2*Math.PI/count,speed)}
+function emitRainUnique(count,speed,variant=0){for(let i=0;i<count;i++){
+ const x=wrapX((boss.arenaCamera??camera)-440+i*(900/Math.max(count-1,1))+variant*13);
+ enemyBullets.push({x,y:84-(i%3)*38,vx:variant%2?24:-20,vy:speed,life:6,kind:'mana'+bossNameNumber()});
+}}
+updateBossAttacks=function(dt){
+ if(riichiMode||stage===1)return oldUpdateBossUnique(dt);
+ if(!boss||!boss.alive)return;
+ if(!boss.attack){boss.attackDelay=(boss.attackDelay??.75)-dt;
+  if(boss.attackDelay<=0)beginBossAttack();return;}
+ const a=boss.attack,name=a.kind,n=bossNameNumber(),pal=bossPalettes[n];
+ a.clock+=dt;a.emitted-=dt;
+ const cap=n===8?3.8:3.1;
+ function every(period,fn){if(a.emitted<=0){a.emitted=period;fn();a.shots++;sound(170+n*42,.07,'triangle',.025);}}
+ // Stage 2 mana3 - earth/wind mechanics
+ if(name==='sand-vortex')every(.36,()=>{for(let i=0;i<3;i++)emitUnique(-Math.PI+(a.shots+i)*.29,175+(i*28));});
+ else if(name==='stone-claw'){a.physical=true;every(.68,()=>fireAimUnique(2,.28,225));}
+ else if(name==='scarab-fan')every(.53,()=>fireOrbitUnique(7,175,a.clock*.65));
+ else if(name==='dune-eruption')every(.49,()=>emitRainUnique(5,240,a.shots));
+ else if(name==='pyramid-crush'){a.physical=true;every(.8,()=>fireAimUnique(3,.2,255));}
+ // Stage 3 mana4 - flow, buoyant bubbles, tentacle strikes
+ else if(name==='bubble-mine')every(.4,()=>fireOrbitUnique(4,100,a.shots*.2));
+ else if(name==='jelly-whip'){a.physical=true;every(.8,()=>fireAimUnique(2,.65,185));}
+ else if(name==='tidal-ring')every(.63,()=>fireOrbitUnique(9,150,a.shots*.25));
+ else if(name==='abyss-torpedo')every(.37,()=>fireAimUnique(1,0,360));
+ else if(name==='pressure-pulse'){a.physical=true;every(.75,()=>fireOrbitUnique(6,205,a.clock));}
+ // Stage 4 mana5 - ice, snow and horizontal body charges
+ else if(name==='ice-lance')every(.43,()=>fireAimUnique(5,.13,280));
+ else if(name==='frost-wing'){a.physical=true;every(.58,()=>fireOrbitUnique(6,200,a.clock));}
+ else if(name==='crystal-barrage')every(.36,()=>emitRainUnique(6,320,a.shots));
+ else if(name==='glacier-ram'){a.physical=true;every(.87,()=>fireAimUnique(2,.45,255));}
+ else if(name==='snowquake')every(.5,()=>emitRainUnique(8,230,a.shots));
+ // Stage 5 mana6 - city hazards and moving structures
+ else if(name==='neon-arc')every(.34,()=>{for(let i=0;i<4;i++)emitUnique((i-.8)*.65+Math.PI,210);});
+ else if(name==='street-drone')every(.41,()=>fireOrbitUnique(5,205,a.clock*.4));
+ else if(name==='train-rush'){a.physical=true;every(.55,()=>fireAimUnique(3,.07,315));}
+ else if(name==='billboard-smash'){a.physical=true;every(.74,()=>emitRainUnique(4,290,a.shots));}
+ else if(name==='searchlight')every(.64,()=>fireAimUnique(5,.27,230));
+ // Stage 6 mana7: cybernetic attacks
+ else if(name==='datacube-grid')every(.39,()=>{for(let i=0;i<6;i++)emitUnique(Math.PI+(i-2.5)*.19,265,(i-3)*33);});
+ else if(name==='magnetic-arm'){a.physical=true;every(.53,()=>fireAimUnique(2,.52,240));}
+ else if(name==='matrix-dash'){a.physical=true;every(.39,()=>fireOrbitUnique(6,240,a.clock*.6));}
+ else if(name==='binary-rain')every(.29,()=>emitRainUnique(8,285,a.shots));
+ else if(name==='circuit-burst')every(.63,()=>fireOrbitUnique(12,220,a.clock));
+ // mana8 exclusive final mechanics
+ else if(name==='singularity-core')every(.22,()=>fireOrbitUnique(8,165,a.clock*2));
+ else if(name==='omni-claws'){a.physical=true;every(.58,()=>fireAimUnique(6,.17,290));}
+ else if(name==='chaos-prism')every(.27,()=>{fireAimUnique(3,.38,335);fireOrbitUnique(5,180,a.clock);});
+ else if(name==='event-horizon')every(.26,()=>emitRainUnique(9,360,a.shots));
+ else if(name==='fracture-wave'){a.physical=true;every(.22,()=>fireOrbitUnique(7,290,a.shots*.21));}
+ else if(name==='annihilation-laser'){a.physical=true;every(.49,()=>fireAimUnique(6,.09,350));}
+ if(a.clock>cap){boss.attack=null;boss.attackDelay=n===8?.33:.52;}
+};
+// Each boss has animated articulated appendages which also have active collision.
+function bossArms(){
+ if(!boss||!boss.alive||stage===1)return [];
+ const n=bossNameNumber(),a=boss.attack,t=boss.phase;
+ const active=a&&a.physical&&a.clock>.55&&a.clock<2.7;
+ const count=n===3?2:n===4?6:n===5?4:n===6?3:n===7?4:8;
+ const reach=active?(n===8?225:190):(n===4?130:115);
+ const q=[];
+ for(let i=0;i<count;i++){
+  const theta=i*2*Math.PI/count+Math.sin(t*(n%3+1)+i)*.27;
+  const r=reach*(active?(1+.16*Math.sin(t*8+i)):1);
+  const sx=screenX(boss.x)+Math.cos(theta)*66,sy=boss.y+Math.sin(theta)*58;
+  const ex=screenX(boss.x)+Math.cos(theta)*r,ey=boss.y+Math.sin(theta)*r;
+  q.push({sx,sy,ex,ey,active,theta,idx:i});
+ }
+ return q;
+}
+const oldTentacleUnique=updateTentacleCollision;
+updateTentacleCollision=function(){oldTentacleUnique();if(riichiMode||stage===1||!boss?.attack?.physical)return;
+ const a=boss.attack;
+ if(a.clock<.55||a.clock>2.7||a.clock-(a.lastHit||-2)<.4)return;
+ for(const limb of bossArms()){
+  if(distToSegment(screenX(player.x),player.y,limb.sx,limb.sy,limb.ex,limb.ey)<27){
+    a.lastHit=a.clock;damage('tentacle');break;
+  }
+ }
+};
+const beforeDrawBossUnique=drawBoss;
+drawBoss=function(){
+ if(riichiMode||stage===1)return beforeDrawBossUnique();
+ if(!boss||!boss.alive)return;
+ const n=bossNameNumber(),p=bossPalettes[n],t=boss.phase;
+ ctx.save();
+ // layered articulated body with luminous joints, scales and visual depth
+ for(const l of bossArms()){
+  const dx=l.ex-l.sx,dy=l.ey-l.sy;
+  const jointX=l.sx+dx*.51+Math.sin(t*4+l.idx)*20,jointY=l.sy+dy*.51+Math.cos(t*5+l.idx)*17;
+  ctx.lineCap='round';ctx.lineJoin='round';ctx.shadowColor=p.mid;ctx.shadowBlur=15;
+  ctx.strokeStyle=p.edge;ctx.lineWidth=n===8?34:25;
+  ctx.beginPath();ctx.moveTo(l.sx,l.sy);ctx.lineTo(jointX,jointY);ctx.lineTo(l.ex,l.ey);ctx.stroke();
+  ctx.strokeStyle=l.active?p.glow:p.mid;ctx.lineWidth=n===8?16:11;ctx.stroke();
+  ctx.shadowBlur=0;oval(jointX,jointY,14,14,p.glow);
+  ctx.save();ctx.translate(l.ex,l.ey);ctx.rotate(l.theta);
+  ctx.fillStyle=p.edge;ctx.beginPath();ctx.moveTo(-18,-17);ctx.lineTo(31,0);ctx.lineTo(-18,17);ctx.closePath();ctx.fill();
+  ctx.fillStyle=l.active?p.glow:p.core;ctx.fillRect(-8,-4,22,8);ctx.restore();
+ }
+ ctx.save();
+ // animated scaling/tilting without moving collision center
+ const x=screenX(boss.x),y=boss.y;
+ ctx.translate(x,y);ctx.rotate(Math.sin(t*2.7)*.06);const pump=1+Math.sin(t*3.5)*.045;
+ ctx.scale(pump,pump);ctx.translate(-x,-y);
+ beforeDrawBossUnique();ctx.restore();
+ // iris and armor lighting with radial pulse
+ ctx.globalAlpha=.5+.23*Math.sin(t*7);ctx.strokeStyle=p.glow;ctx.lineWidth=4;
+ ctx.beginPath();ctx.ellipse(x,y,86+Math.sin(t*5)*5,82+Math.cos(t*4)*4,0,0,Math.PI*2);ctx.stroke();
+ ctx.globalAlpha=1;ctx.restore();
+};
+const beforeEffectsUnique=drawBossAttackEffects;
+drawBossAttackEffects=function(){beforeEffectsUnique();if(!boss?.attack||stage===1||riichiMode)return;
+ const a=boss.attack,p=bossPalettes[bossNameNumber()];
+ ctx.save();ctx.textAlign='center';ctx.font='900 24px system-ui';ctx.fillStyle=p.core;ctx.strokeStyle='#101229';ctx.lineWidth=4;
+ const label=a.kind.toUpperCase().replace(/-/g,' ');
+ ctx.strokeText(label,screenX(boss.x),boss.y-189);ctx.fillText(label,screenX(boss.x),boss.y-189);
+ // body strike telegraph
+ if(a.physical&&a.clock<.55){ctx.globalAlpha=.4;ctx.strokeStyle=p.glow;ctx.lineWidth=4;
+  for(const arm of bossArms()){ctx.beginPath();ctx.moveTo(arm.sx,arm.sy);ctx.lineTo(arm.ex,arm.ey);ctx.stroke();}}
+ ctx.restore();
+};
+// Replace the original palette only for stage 2+, using per-mana projectile hues.
+const beforeProjectilesUnique=drawProjectiles;
+drawProjectiles=function(){beforeProjectilesUnique();if(stage===1||riichiMode||!boss?.alive)return;
+ const pal=bossPalettes[bossNameNumber()];
+ for(const b of enemyBullets){if(!b.kind||!b.kind.startsWith('mana'))continue;
+  const x=screenX(b.x),r=bossNameNumber()===8?15:12;
+  ctx.save();ctx.shadowColor=pal.mid;ctx.shadowBlur=16;
+  oval(x,b.y,r+4,r+4,pal.edge);oval(x,b.y,r,r,pal.mid);oval(x-3,b.y-3,5,5,pal.glow);ctx.restore();
+ }
+};
+// High-contrast architecture and foreground enemies, to separate them from the scenery.
+const baseBeforeContrast=drawBase;
+drawBase=function(b){baseBeforeContrast(b);if(stage===1||!b.alive)return;
+ const x=screenX(b.x),y=b.y+(b.flying?Math.sin(b.phase*3)*8:0),p=bossPalettes[stage+1];
+ if(x<-150||x>W+150)return;ctx.save();ctx.translate(x,y);
+ ctx.shadowColor='#ffffff';ctx.shadowBlur=9;
+ ctx.strokeStyle='#071326';ctx.lineWidth=6;ctx.strokeRect(-59,-70,118,112);
+ ctx.strokeStyle=p.glow;ctx.lineWidth=2;ctx.strokeRect(-54,-65,108,102);
+ for(let i=0;i<3;i++){ctx.fillStyle=i===1?p.glow:p.mid;ctx.fillRect(-41+i*27,-44,16,10);}
+ ctx.shadowBlur=0;ctx.restore();};
+const enemyBeforeContrast=drawEnemy;
+drawEnemy=function(e){enemyBeforeContrast(e);if(stage===1)return;
+ const x=screenX(e.x),y=e.y+Math.sin(e.phase*5)*3,p=bossPalettes[stage+1];
+ ctx.save();ctx.translate(x,y);ctx.strokeStyle='#090e23';ctx.lineWidth=7;
+ ctx.shadowColor=p.glow;ctx.shadowBlur=8;ctx.beginPath();ctx.ellipse(0,0,40,29,0,0,Math.PI*2);ctx.stroke();
+ ctx.shadowBlur=0;ctx.strokeStyle=p.glow;ctx.lineWidth=3;ctx.stroke();
+ ctx.fillStyle=p.glow;ctx.fillRect(2,-12,9,5);ctx.restore();};
 
 requestAnimationFrame(loop);
 })();
