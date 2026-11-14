@@ -219,7 +219,7 @@ function explode(b){
   if(Math.hypot(nearDelta(e.x,b.x),e.y-b.y)<radius+25){gain(e.x,e.y,35);pop(e.x,e.y,'#ffe2ac',12,1);return false;}
   return true;
  });
- if(boss&&boss.alive&&boss.inv<=0&&Math.hypot(nearDelta(boss.x,b.x),boss.y-b.y)<radius+60){boss.hp-=2*b.big;boss.hitFlash=.46;boss.inv=.42}
+ if(boss&&boss.alive&&!riichiMode&&stage>=2){applyRigBomb(b,radius);}else if(boss&&boss.alive&&boss.inv<=0&&Math.hypot(nearDelta(boss.x,b.x),boss.y-b.y)<radius+60){boss.hp-=2*b.big;boss.hitFlash=.46;boss.inv=.42}
 }
 function segmentNear(px,py,ax,ay,bx,by,r){
  const dx=bx-ax,dy=by-ay,den=dx*dx+dy*dy||1;
@@ -369,10 +369,10 @@ function update(dt){
  boss.hitFlash=Math.max(0,(boss.hitFlash||0)-dt);
  boss.y=248+Math.sin(boss.phase*1.5)*52;
  updateBossAttacks(dt);updateTentacleCollision();
- if(Math.hypot(nearDelta(player.x,boss.x),player.y-boss.y)<92)damage('boss');
+ if((riichiMode||stage===1)&&Math.hypot(nearDelta(player.x,boss.x),player.y-boss.y)<92)damage('boss');
  if(boss.hp<=0){defeatBoss()}
 }
- for(const b of bullets){b.x=wrapX(b.x+b.vx*dt);b.y+=b.vy*dt;b.life-=dt;for(const base of bases){if(base.alive&&!(b.kind==='laser'&&b.hitTargets?.has(base))&&Math.abs(nearDelta(b.x,base.x))<(base.flying?64:52)+(b.radius||0)&&Math.abs(b.y-base.y)<(base.flying?52:65)+(b.radius||0)){hitBase(base,b.dmg);if(b.kind==='laser'){(b.hitTargets??=new Set()).add(base)}else b.life=0;break}}if(b.life>0&&boss&&boss.alive&&boss.inv<=0&&boss.hitFlash<=0&&Math.hypot(nearDelta(b.x,boss.x),b.y-boss.y)<75+(b.radius||0)){boss.hp-=b.dmg;boss.hitFlash=.46;boss.inv=.42;if(b.kind!=='laser')b.life=0;pop(b.x,b.y,'#d7ffff',8,1);sound(220,.09,'square',.06)}if(b.life>0)for(const e of enemies){if(e.hp>0&&!(b.kind==='laser'&&b.hitTargets?.has(e))&&Math.hypot(nearDelta(b.x,e.x),b.y-e.y)<24+(b.radius||0)){e.hp-=b.dmg;if(b.kind==='laser'){(b.hitTargets??=new Set()).add(e)}else b.life=0;pop(e.x,e.y,'#fff',7,.5);if(e.hp<=0)gain(e.x,e.y,45);break}}}bullets=bullets.filter(b=>b.life>0&&b.y>0&&b.y<ground+50);enemies=enemies.filter(e=>e.hp>0);
+ for(const b of bullets){b.x=wrapX(b.x+b.vx*dt);b.y+=b.vy*dt;b.life-=dt;for(const base of bases){if(base.alive&&!(b.kind==='laser'&&b.hitTargets?.has(base))&&Math.abs(nearDelta(b.x,base.x))<(base.flying?64:52)+(b.radius||0)&&Math.abs(b.y-base.y)<(base.flying?52:65)+(b.radius||0)){hitBase(base,b.dmg);if(b.kind==='laser'){(b.hitTargets??=new Set()).add(base)}else b.life=0;break}}if(b.life>0&&boss&&boss.alive&&!riichiMode&&stage>=2){applyRigShot(b);}else if(b.life>0&&boss&&boss.alive&&boss.inv<=0&&boss.hitFlash<=0&&Math.hypot(nearDelta(b.x,boss.x),b.y-boss.y)<75+(b.radius||0)){boss.hp-=b.dmg;boss.hitFlash=.46;boss.inv=.42;if(b.kind!=='laser')b.life=0;pop(b.x,b.y,'#d7ffff',8,1);sound(220,.09,'square',.06)}if(b.life>0)for(const e of enemies){if(e.hp>0&&!(b.kind==='laser'&&b.hitTargets?.has(e))&&Math.hypot(nearDelta(b.x,e.x),b.y-e.y)<24+(b.radius||0)){e.hp-=b.dmg;if(b.kind==='laser'){(b.hitTargets??=new Set()).add(e)}else b.life=0;pop(e.x,e.y,'#fff',7,.5);if(e.hp<=0)gain(e.x,e.y,45);break}}}bullets=bullets.filter(b=>b.life>0&&b.y>0&&b.y<ground+50);enemies=enemies.filter(e=>e.hp>0);
  for(const b of bombs){const ox=b.x,oy=b.y;b.x=wrapX(b.x+b.vx*dt);b.y+=b.vy*dt;b.vy+=660*dt;b.life-=dt;if(bombCollision(b,ox,oy)||b.y>=ground-8||b.life<=0){b.y=Math.min(b.y,ground);explode(b);b.life=0}}bombs=bombs.filter(b=>b.life>0);
  for(const b of enemyBullets){b.x=wrapX(b.x+b.vx*dt);b.y+=b.vy*dt;b.life-=dt;if(Math.hypot(nearDelta(b.x,player.x),b.y-player.y)<25){damage('bullet');b.life=0}}enemyBullets=enemyBullets.filter(b=>b.life>0&&b.y<ground+30);
  updateCoins(dt,47);
@@ -1603,5 +1603,295 @@ drawBossDebris=function(){
  const progress=Math.min(1,d.elapsed/d.duration);
  window.ZamaBossRig.render(ctx,screenX(d.x),d.y,d.n,d.elapsed*1.8,{action:'death',progress});
 };
+
+// === ZAMAZONE: boss design document v1 battle / original rigged artwork ===
+// mana2 and riichi steal mode intentionally remain unchanged.
+const REBOSS={
+3:{name:'スカラベ・ガルム',color:'#ffc66d',warn:.95,tech:[['sand-compress','砂壁圧縮',.85,2.0,2.0],['arm-stamp','巨腕スタンプ',.95,1.65,2.35],['quicksand','流砂の陥没',1.0,1.8,1.45],['obelisk','神殿石碑落とし',.9,1.8,1.65],['scarabs','聖甲虫解放',.7,2.0,1.9]]},
+4:{name:'ネプチューン・ベル',color:'#7efbfc',tech:[['current','潮流反転',1.0,2.1,1.6],['tentacle-net','触手の網',.8,1.9,2.0],['bubble-cage','泡の檻',.85,2.2,1.5],['whirlpool','渦潮吸引',1.1,2.0,1.8],['water-jet','深海ジェット',.9,1.45,1.8]]},
+5:{name:'クリスタ・ノルド',color:'#b5efff',tech:[['mirror','氷鏡の反射',1.2,1.25,1.9],['ice-wings','羽根氷剣',.8,1.9,1.7],['frozen-floor','凍結床',.9,2.0,1.4],['icicles','結晶断頭',1.0,1.6,1.7],['ice-rush','天輪突撃',1.1,1.6,2.0]]},
+6:{name:'ナイト・シティア',color:'#ff7ce4',tech:[['neon-gates','ネオン遮断',.9,1.8,1.55],['monorail','暴走モノレール',1.2,1.15,1.9],['crane','クレーン捕獲',.9,1.7,1.8],['billboard','広告塔スイング',.85,2.0,1.6],['blackout','停電トラップ',.9,1.8,1.8]]},
+7:{name:'プロトコル・ゼロ',color:'#71ffc3',tech:[['cables','回路接続',.85,1.8,1.6],['panels','パネル書換',1.0,1.5,1.6],['magnetic','磁力クランプ',.85,1.5,2.0],['copies','偽装コピー',.75,1.9,1.6],['overclock','オーバークロック',1.1,1.7,2.0]]},
+8:{name:'ラスト・マザー',color:'#ff5fb7',tech:[['six-arms','六腕拘束',1.2,2.0,2.1],['gravity','重力環反転',1.2,2.0,1.5],['armor-throw','装甲投擲',.9,2.1,1.8],['rifts','虚空の切断',1.1,1.45,1.9],['doom-beam','終焉の閃光',1.35,1.5,2.45],['fragments','崩壊の手招き',1.3,2.1,2.0]]}
+};
+const rigImages={};
+for(const n of [3,4,5,6,7,8]){
+ rigImages[n]={}; for(const part of ['body','ring','limb','module','crest','shard']){const im=new Image();im.src=`assets/newboss/mana${n}_${part}.png`;rigImages[n][part]=im;}
+}
+const rigClamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+function bossPartSpecs(n){
+ if(n===3)return [[-129,62,2,'arm'],[129,62,2,'arm']];
+ if(n===4)return [[-55,126,1,'tip'],[0,142,1,'tip'],[55,126,1,'tip']];
+ if(n===5)return [[-146,-12,2,'wing'],[146,-12,2,'wing']];
+ if(n===6)return [[-112,86,3,'generator'],[110,86,3,'generator']];
+ if(n===7)return [[-183,-65,2,'node'],[184,39,2,'node'],[-115,134,2,'node'],[132,-129,2,'node']];
+ return [[-145,0,3,'armor'],[145,0,3,'armor'],[-93,123,2,'tentacle'],[105,126,2,'tentacle']];
+}
+function createRigState(n){return {n,state:'IDLE',t:0,seq:0,last:-1,attack:null,hazards:[],parts:bossPartSpecs(n).map(([x,y,hp,type],i)=>({x,y,hp,maxHp:hp,type,i,flash:0,dead:false})),expose:0,inv:0,recoil:0,deaths:[], elapsed:0, coreDamage:0,telegraphLabel:'',viewX:0,viewY:0};}
+const oldSpawnDoc=spawnBoss;
+spawnBoss=function(){oldSpawnDoc();if(!riichiMode&&stage>=2&&boss){boss.z=createRigState(bossNameNumber());boss.hp=bossNameNumber()===8?44:32;boss.maxHp=boss.hp;boss.attack=null;boss.attackDelay=1;}};
+function rigReady(){return !riichiMode&&stage>=2&&boss?.z&&boss.alive;}
+function getPartPos(p){const z=boss.z, t=z.elapsed;
+ if(z.n===7){const ang=t*(p.i%2?-.52:.43)+p.i*1.58;return {x:p.x+Math.cos(ang)*19,y:p.y+Math.sin(ang)*22};}
+ if(z.n===4)return {x:p.x+Math.sin(t*1.9+p.i)*19,y:p.y+Math.cos(t*1.8+p.i)*19};
+ if(z.n===5)return {x:p.x,y:p.y+Math.sin(t*1.4+p.i)*13};
+ return {x:p.x+Math.sin(t*1.2+p.i)*7,y:p.y+Math.cos(t*1.5+p.i)*8};
+}
+function rigPartWorld(p){const q=getPartPos(p);return {x:screenX(boss.x)+q.x,y:boss.y+q.y};}
+function partCount(z){return z.parts.filter(p=>p.dead).length;}
+function exposed(z){if(z.n===7)return partCount(z)>=3;
+ if(z.n===8)return partCount(z)>=3&&(z.state==='RECOVERY'||z.expose>0);
+ if(z.n===3)return partCount(z)>=2 || z.expose>0;
+ if(z.n===4)return partCount(z)>=3 || z.expose>0;
+ if(z.n===5)return partCount(z)>=1&&(z.state==='RECOVERY'||z.expose>0);
+ if(z.n===6)return partCount(z)>=2 && (z.state==='RECOVERY'||z.expose>0);
+ return z.expose>0;
+}
+function applyRigShot(b){if(!rigReady())return false; const z=boss.z;const sx=screenX(b.x),sy=b.y;
+ if(b.kind==='laser' && b.hitTargets?.has(boss))return false;
+ for(const p of z.parts){if(p.dead)continue;const q=rigPartWorld(p);
+  if(Math.hypot(q.x-sx,q.y-sy)<(z.n===7?36:z.n===8?43:46)+(b.radius||0)){
+    if(p.flash>0)return true;
+    p.hp-=Math.max(1,b.dmg||1);p.flash=.23;z.recoil=.18;pop(b.x,b.y,REBOSS[z.n].color,8,.65);sound(340,.09,'square',.06);
+    if(p.hp<=0){p.dead=true;z.expose=Math.max(z.expose,z.n===7?0:1.6);pop(wrapX(boss.x+nearDelta(b.x,boss.x)),b.y,'#ffe7b5',22,1.1);sound(130,.24,'sawtooth',.09);}
+    if(b.kind==='laser')(b.hitTargets??=new Set()).add(boss);else b.life=0;
+    return true;
+  }
+ }
+ const center={x:screenX(boss.x),y:boss.y};
+ if(Math.hypot(center.x-sx,center.y-sy)<(z.n===8?82:64)+(b.radius||0)){
+   if(exposed(z)&&z.inv<=0){boss.hp-=Math.min(3,b.dmg||1);z.inv=z.n===8?.75:.65;z.recoil=.36;boss.hitFlash=.37;pop(b.x,b.y,'#ffffff',10,1);sound(230,.12,'square',.08);if(b.kind==='laser')(b.hitTargets??=new Set()).add(boss);else b.life=0;}
+   else if(b.kind!=='laser'){b.life=0;pop(b.x,b.y,'#bdc8d8',3,.25);}return true;
+ }
+ return false;
+}
+function applyRigBomb(b,rad){if(!rigReady())return false; const z=boss.z;
+ let hit=false;for(const p of z.parts){if(p.dead)continue;const q=rigPartWorld(p);if(Math.hypot(screenX(b.x)-q.x,b.y-q.y)<rad){p.hp-=2*b.big;p.flash=.25;hit=true;if(p.hp<=0){p.dead=true;z.expose=1.8;}}}
+ if(Math.hypot(nearDelta(b.x,boss.x),b.y-boss.y)<rad+58&&exposed(z)&&z.inv<=0){boss.hp-=2*b.big;z.inv=.7;z.recoil=.3;hit=true;}return hit;
+}
+// Hazards occupy screen-space. Telegraph visuals share the exact collision regions.
+function rzRect(z,x,y,w,h,col,active=true){z.hazards.push({type:'rect',x,y,w,h,col,active});}
+function rzCircle(z,x,y,r,col,active=true){z.hazards.push({type:'circle',x,y,r,col,active});}
+function rzLine(z,x,y,X,Y,r,col,active=true){z.hazards.push({type:'line',x,y,X,Y,r,col,active});}
+function hazardHit(h,px,py){if(!h.active)return false;if(h.type==='rect')return px>h.x-18&&px<h.x+h.w+18&&py>h.y-18&&py<h.y+h.h+18;if(h.type==='circle')return Math.hypot(px-h.x,py-h.y)<h.r+19;return segmentNear(px,py,h.x,h.y,h.X,h.Y,h.r+18);}
+function makeHazards(z,a,t,warning){const col=REBOSS[z.n].color;z.hazards.length=0;
+ const PX=screenX(player.x), PY=player.y,BX=screenX(boss.x), BY=boss.y;
+ const p=t/(a[3]||1),q=Math.sin(Math.PI*Math.min(1,p));const id=a[0], active=!warning;
+ // Each attack below is a dedicated gameplay mechanic; no common aimed/ring/rain-bullet helper.
+ switch(id){
+ case 'sand-compress':{let move=warning?0:Math.min(1,p)*150;rzRect(z,55+move,160,80,400,col,active);rzRect(z,1115-move,160,80,400,col,active);break;}
+ case 'arm-stamp':{const x=z.lockX??PX;rzRect(z,x-52,warning?ground-80:ground-135,104,active?125:70,col,active);if(active)rzRect(z,Math.max(55,x-210*p),ground-35,Math.min(410,210*p),23,col,true);break;}
+ case 'quicksand':{for(const x of [220,600,970])rzRect(z,x-60,ground-90,120,70,col,active);break;}
+ case 'obelisk':{for(let i=0;i<3;i++){const x=260+i*340;rzRect(z,x,warning?105:105+Math.min(1,(p-i*.18)*2)*370,70,145,col,active&&p>i*.18); }break;}
+ case 'scarabs':{for(let i=0;i<3;i++){const x=BX-95-i*70-Math.sin(t*2+i)*40, y=BY-60+i*55+Math.cos(t*2.5+i)*35;rzCircle(z,x,y,24,col,active); }break;}
+ case 'current':{if(active){player.x=wrapX(player.x+(PX<BX?1:-1)*65/60); }rzRect(z,150,120,105,420,col,false);break;}
+ case 'tentacle-net':{for(let i=0;i<3;i++){const sy=120+i*126,ex=350+Math.sin(t*3+i)*85;rzLine(z,BX-80,BY+30+i*30,ex,sy,12,col,active); }break;}
+ case 'bubble-cage':{for(let i=0;i<4;i++){const x=155+i*260,y=590-Math.min(1,p)*330+Math.sin(t*2+i)*14;rzCircle(z,x,y,47,col,active); }break;}
+ case 'whirlpool':{if(active){const sx=screenX(player.x),dx=BX-sx,dy=BY-player.y;player.x=wrapX(player.x+rigClamp(dx,-80,80)*.015);player.y=rigClamp(player.y+rigClamp(dy,-60,60)*.013,80,ground-37);}rzCircle(z,BX,BY,warning?65:Math.max(68,105*q),col,false);break;}
+ case 'water-jet':{const ay=z.lockY??PY;rzLine(z,BX-85,ay,50,ay,18,col,active);break;}
+ case 'mirror':{const mid={x:760,y:250};rzLine(z,BX,BY,mid.x,mid.y,11,col,active);rzLine(z,mid.x,mid.y,210,Math.max(135,mid.y-150),11,col,active);break;}
+ case 'ice-wings':{for(let i=0;i<4;i++){const x=BX-20-i*90-p*170,y=BY+Math.sin(t*2+i)*65;rzCircle(z,x,y,29,col,active); }break;}
+ case 'frozen-floor':{for(let i=0;i<3;i++)rzRect(z,160+i*330,ground-40,185,33,col,false);if(active&&PY>ground-80&&[160,490,820].some(x=>PX>=x&&PX<x+185))player.x=wrapX(player.x+player.vx*.025);break;}
+ case 'icicles':{for(let i=0;i<6;i++){const x=110+i*195,y=110+rigClamp((p-i*.12)*540,0,500);rzRect(z,x,y,30,84,col,active&&p>i*.12);}break;}
+ case 'ice-rush':{let y=BY,xx=BX-520*Math.sin(Math.PI*Math.min(1,p));rzRect(z,xx-70,y-65,140,130,col,active);break;}
+ case 'neon-gates':{for(const x of [180,515,850])rzRect(z,x,115,115,465,col,active);break;}
+ case 'monorail':{const x=-240+Math.min(1,p)*1700;rzRect(z,x,ground-115,290,75,col,active);break;}
+ case 'crane':{const tx=z.lockX??PX;rzLine(z,BX-105,BY-70,tx,rigClamp(PY,140,ground-90),23,col,active);break;}
+ case 'billboard':{const xx=BX-150+Math.sin(p*Math.PI*2)*230;rzRect(z,xx,225,165,125,col,active);break;}
+ case 'blackout':{for(let i=0;i<4;i++){const x=110+i*295;rzRect(z,x,125,78,395,col,active);}break;}
+ case 'cables':{for(let i=0;i<z.parts.length;i++){const aa=z.parts[i],bb=z.parts[(i+1)%z.parts.length],pa=rigPartWorld(aa),pb=rigPartWorld(bb);if(!aa.dead&&!bb.dead)rzLine(z,pa.x,pa.y,pb.x,pb.y,9,col,active);}break;}
+ case 'panels':{for(let i=0;i<4;i++){const xx=130+i*270;rzRect(z,xx,130,88,420,col,active);}break;}
+ case 'magnetic':{const ttx=warning?0:Math.min(1,p)*185;rzCircle(z,BX-245+ttx,BY,45,col,active);rzCircle(z,BX+245-ttx,BY,45,col,active);break;}
+ case 'copies':{for(let i=0;i<3;i++)rzCircle(z,210+i*330,225+50*Math.sin(t*2+i),55,col,false);break;}
+ case 'overclock':{for(const part of z.parts){if(part.dead)continue;const pp=rigPartWorld(part);rzCircle(z,pp.x+Math.sin(t*7+part.i)*65,pp.y+Math.cos(t*6+part.i)*40,32,col,active);}break;}
+ case 'six-arms':{for(let i=0;i<6;i++){const ang=(i-3)*.6 + Math.sin(t*1.6+i)*.45;rzLine(z,BX,BY,BX+Math.cos(ang)*290,BY+Math.sin(ang)*245,16,col,active);}break;}
+ case 'gravity':{if(active){const dist=BX-PX,dy=BY-PY;const sg=p<.5?1:-1;player.x=wrapX(player.x+sg*rigClamp(dist,-95,95)*.015);player.y=rigClamp(player.y+sg*rigClamp(dy,-95,95)*.015,80,ground-37);}rzCircle(z,BX,BY,Math.abs(140*q),col,false);break;}
+ case 'armor-throw':{for(let i=0;i<2;i++){const x=BX+(i?-1:1)*(130+210*Math.sin(Math.PI*p)),y=BY+Math.sin(t*3+i)*45;rzCircle(z,x,y,46,col,active);}break;}
+ case 'rifts':{for(let i=0;i<4;i++){const x=150+i*250;rzRect(z,x,125,42,425,col,active&&p>i*.14);}break;}
+ case 'doom-beam':{const yy=z.lockY??PY;rzRect(z,50,yy-35,1180,70,col,active);break;}
+ case 'fragments':{for(let i=0;i<10;i++){const ang=i*Math.PI/5+t*1.7;const x=BX+Math.cos(ang)*220,y=BY+Math.sin(ang)*140;rzCircle(z,x,y,25,col,active);}break;}
+ }
+}
+function advanceRig(z,dt){z.elapsed+=dt;z.t+=dt;z.inv=Math.max(0,z.inv-dt);z.recoil=Math.max(0,z.recoil-dt);z.expose=Math.max(0,z.expose-dt);for(const pp of z.parts)pp.flash=Math.max(0,pp.flash-dt);
+ let attack=z.attack;
+ if(z.state==='IDLE'){
+   z.hazards=[];if(z.t>=.65){const list=REBOSS[z.n].tech;let ix=z.seq++%list.length;if(ix===z.last)ix=(ix+1)%list.length;if(z.n===8&&boss.hp>boss.maxHp*.25&&ix===5)ix=0;z.last=ix;z.attack=list[ix];z.state='TELEGRAPH';z.t=0;z.lockX=screenX(player.x);z.lockY=player.y;msg('⚠ '+z.attack[1],z.attack[2]+.15);sound(470,.1,'triangle',.03);}
+ }else if(z.state==='TELEGRAPH'){
+   makeHazards(z,z.attack,0,true);if(z.t>=z.attack[2]){z.state='ATTACK';z.t=0;sound(175,.15,'sawtooth',.06);}
+ }else if(z.state==='ATTACK'){
+   makeHazards(z,z.attack,z.t,false);
+   if(z.t>=z.attack[3]){z.state='RECOVERY';z.t=0;z.hazards=[];z.expose=Math.max(z.expose,z.attack[4]);}
+ }else if(z.state==='RECOVERY'){
+   z.hazards=[];if(z.t>=z.attack[4]){z.state='IDLE';z.t=0;z.attack=null;}
+ }
+ // Attack hit detection. The same geometry is used to render and hit test.
+ if(z.state==='ATTACK')for(const h of z.hazards){if(hazardHit(h,screenX(player.x),player.y)){damage('boss-gimmick');break;}}
+}
+const rigOldIntro=updateBossIntro;
+updateBossIntro=function(dt){rigOldIntro(dt);if(rigReady()){boss.z.elapsed+=dt;boss.z.state='INTRO';boss.z.t=4.6-(boss.intro||0);if(mode==='play'){boss.z.state='IDLE';boss.z.t=0;}}};
+const oldSpawnAttackRig=beginBossAttack;
+beginBossAttack=function(){if(!rigReady())return oldSpawnAttackRig();};
+const oldBossAttackRig=updateBossAttacks;
+updateBossAttacks=function(dt){if(!rigReady())return oldBossAttackRig(dt);const z=boss.z;boss.attack=null;boss.y=({3:435,4:235,5:225,6:335,7:260,8:255})[z.n]||260;advanceRig(z,dt);};
+const oldTentacleRig=updateTentacleCollision;
+updateTentacleCollision=function(){if(!rigReady())oldTentacleRig();};
+function drawNewPart(n,k,x,y,w,h,rotation=0,alpha=1){const im=rigImages[n]?.[k];if(!im?.complete||!im.naturalWidth)return;ctx.save();ctx.translate(x,y);ctx.rotate(rotation);ctx.globalAlpha*=alpha;ctx.imageSmoothingEnabled=false;ctx.drawImage(im,-w/2,-h/2,w,h);ctx.restore();}
+function paintBossRig(n,x,y,z,death=0){const t=z.elapsed||0, atk=z.attack?.[0]||'', dangerous=z.state==='ATTACK', warning=z.state==='TELEGRAPH';
+ const v=z.t||0;const jerk=z.recoil>0?Math.sin(v*37)*9:0;
+ const hit= z.recoil>0;const tint=REBOSS[n].color;
+ ctx.save();ctx.translate(x+jerk,y);if(hit){ctx.shadowColor='#ff3865';ctx.shadowBlur=26;}else{ctx.shadowColor=tint;ctx.shadowBlur=8;}
+ const total=death?1:0;
+ const tilt=Math.sin(t*.8)*.025;
+ if(n===3){ // heavy ground guardian: digging shoulder/elbow claws
+  ctx.translate(0,70);drawNewPart(n,'ring',0,25,220,165,Math.sin(t*.25)*.18,.50);
+  for(let i=0;i<2;i++){const p=z.parts[i];if(p?.dead&&!death)continue;const side=i===0?-1:1;
+   ctx.save();ctx.translate(side*135,4);ctx.scale(side,1);
+   const slam=atk==='arm-stamp' && (warning||dangerous)?-.9+Math.min(1,v)*1.35:Math.sin(t*.9+i*2)*.13;
+   ctx.rotate(slam);drawNewPart(n,'limb',0,52,113,193,0,p?.flash>0?.6:1);ctx.restore();}
+  drawNewPart(n,'body',0,-45,325,208,tilt);drawNewPart(n,'crest',0,-134,108,82,Math.sin(t*.9)*.05);
+ }else if(n===4){ // jellyfish: independent seven undulating tentacles
+  ctx.translate(0,-33);for(let i=0;i<7;i++){const side=(i-3)*30;const p=z.parts[i%3];if(p?.dead&&i%3===p.i)continue;
+   const stretch=atk==='tentacle-net'&&dangerous?1.28:1;
+   ctx.save();ctx.translate(side,55);ctx.rotate(Math.sin(t*(1.4+i*.12)+i)*.27+(i-3)*.055);
+   drawNewPart(n,'limb',0,98,60,210*stretch,Math.sin(t*1.8+i)*.12,p?.flash>0?.6:1);ctx.restore();}
+  drawNewPart(n,'body',0,-45,278,205,Math.sin(t*.36)*.06);drawNewPart(n,'crest',0,-139,80,63,Math.sin(t)*.11);
+ }else if(n===5){ // crystal halo, rotating eight independent wing blades
+  ctx.translate(0,-30);drawNewPart(n,'ring',0,3,275,220,-t*.21);
+  for(let i=0;i<8;i++){const side=i<4?-1:1,p=z.parts[side===-1?0:1];if(p?.dead)continue;const rank=i%4;
+   ctx.save();ctx.translate(side*(78+rank*30),-14+(rank-1.5)*22);
+   ctx.scale(side,1);ctx.rotate(-.85+rank*.28+Math.sin(t*1.5+rank)*.10);
+   drawNewPart(n,'limb',0,-52,98,150,0,p?.flash>0?.55:1);ctx.restore();}
+  drawNewPart(n,'body',0,0,234,166,.025*Math.sin(t*.7));
+ }else if(n===6){ // city is structurally stable: light windows, articulated cranes
+  ctx.translate(0,-12);for(let i=0;i<2;i++){let p=z.parts[i],side=i===0?-1:1;if(p?.dead)continue;
+   ctx.save();ctx.translate(side*117,-34);ctx.scale(side,1);ctx.rotate(.35*Math.sin(t*1.7+i)+(atk==='crane'?.5:0));drawNewPart(n,'limb',20,40,97,175,0,p?.flash>0?.6:1);ctx.restore();}
+  drawNewPart(n,'body',0,-15,345,260,0);
+  // windows blink independently instead of rotating boss body
+  ctx.save();ctx.globalAlpha=.55+.3*Math.sin(t*8);ctx.fillStyle='#ffc868';for(let i=0;i<6;i++)ctx.fillRect(-103+i*36,-87+(i%3)*13,10,11);ctx.restore();
+  drawNewPart(n,'crest',0,-115,135,70,.04*Math.sin(t*.9));
+ }else if(n===7){ // core mostly fixed, 4 orbit nodes independently moving
+  ctx.save();ctx.strokeStyle='#42ffab';ctx.lineWidth=6;for(const p of z.parts){if(p.dead)continue;const q=getPartPos(p);ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(q.x*.45,Math.sin(t+p.i)*45,q.x,q.y);ctx.stroke();}ctx.restore();
+  drawNewPart(n,'ring',0,0,262,237,t*.22);
+  drawNewPart(n,'body',0,0,190,180,Math.sin(t*.3)*.022);
+  for(const p of z.parts){if(p.dead)continue;const q=getPartPos(p);drawNewPart(n,'module',q.x,q.y,102,118,t*(p.i%2?-.6:.45),p.flash>0?.5:1);}
+ }else{ // giant body with 6 distinct asymmetric, jointed tentacles and separate armor
+  ctx.save();ctx.rotate(t*.22);drawNewPart(n,'ring',0,0,420,330,-t*.33,.7);ctx.restore();
+  for(let i=0;i<6;i++){const ang=-.8+i*.3,side=i<3?-1:1;
+   ctx.save();ctx.translate(side*(55+(i%3)*35),42+((i%3)*30));
+   ctx.rotate(ang*.5*side+Math.sin(t*(1+i*.11)+i)*.32+(atk==='six-arms'&&dangerous?.55:0));
+   drawNewPart(n,'limb',side*26,85,100,210,0);ctx.restore();}
+  for(let i=0;i<2;i++){const p=z.parts[i],side=i?-1:1;if(p?.dead)continue;ctx.save();ctx.translate(side*146,-43);ctx.rotate(side*(.3+Math.sin(t*1.1+i)*.09));drawNewPart(n,'module',0,0,123,137,0,p.flash>0?.6:1);ctx.restore();}
+  drawNewPart(n,'body',0,0,306,285,Math.sin(t*.8)*.02);drawNewPart(n,'crest',0,-150,123,100,Math.sin(t*.9)*.11);
+ }
+ if(death||z.state==='DEATH'){ctx.globalAlpha=.35+.25*Math.sin(t*11);ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(0,0,18+30*(death||0),0,Math.PI*2);ctx.fill();}
+ ctx.restore();
+}
+const oldDrawRigDoc=drawBoss;
+drawBoss=function(){if(!rigReady())return oldDrawRigDoc();const z=boss.z;paintBossRig(z.n,screenX(boss.x),boss.y,z);};
+function drawHazardsRig(){if(!rigReady())return;const z=boss.z;const tele=z.state==='TELEGRAPH';const active=z.state==='ATTACK';if(!tele&&!active)return;
+ ctx.save();const t=z.elapsed;const col=REBOSS[z.n].color;
+ for(const h of z.hazards){ctx.globalAlpha=active?.55:.29+.15*Math.sin(t*13);ctx.fillStyle=col;ctx.strokeStyle=active?'#ffdc9f':'#fff';ctx.lineWidth=active?4:3;ctx.setLineDash(tele?[12,10]:[]);
+  if(h.type==='rect'){ctx.fillRect(h.x,h.y,h.w,h.h);ctx.strokeRect(h.x,h.y,h.w,h.h);}
+  else if(h.type==='circle'){ctx.beginPath();ctx.arc(h.x,h.y,h.r,0,Math.PI*2);ctx.fill();ctx.stroke();}
+  else{ctx.lineCap='round';ctx.beginPath();ctx.moveTo(h.x,h.y);ctx.lineTo(h.X,h.Y);ctx.lineWidth=(h.r||8)*2;ctx.stroke();}
+  // Dedicated visual grammar per attack. Keep the underlying warning and damage geometry identical.
+  const name=z.attack?.[0]||'';
+  ctx.save();ctx.globalAlpha=active?.92:.50;ctx.shadowBlur=active?15:0;ctx.shadowColor=col;
+  if(h.type==='rect'){
+    if(/sand-compress|quicksand/.test(name)){
+      ctx.fillStyle='#b17b3c';for(let yy=h.y+12;yy<h.y+h.h-8;yy+=25)for(let xx=h.x+11;xx<h.x+h.w-8;xx+=22){ctx.fillRect(xx,yy,9,6)}
+      ctx.strokeStyle='#ffe7b5';ctx.lineWidth=3;for(let y=h.y+15;y<h.y+h.h;y+=40){ctx.beginPath();ctx.moveTo(h.x,y);ctx.quadraticCurveTo(h.x+h.w/2,y+14,h.x+h.w,y);ctx.stroke();}
+    }else if(name==='obelisk'){
+      ctx.fillStyle='#8d623c';ctx.fillRect(h.x+10,h.y+8,Math.max(5,h.w-20),Math.max(5,h.h-16));ctx.strokeStyle='#fce6a7';ctx.lineWidth=3;
+      for(let yy=h.y+25;yy<h.y+h.h-12;yy+=34){ctx.beginPath();ctx.moveTo(h.x+12,yy);ctx.lineTo(h.x+h.w-12,yy);ctx.stroke();}
+    }else if(name==='icicles'){
+      ctx.fillStyle='#e2fcff';ctx.beginPath();ctx.moveTo(h.x+2,h.y);ctx.lineTo(h.x+h.w-2,h.y);ctx.lineTo(h.x+h.w/2,h.y+h.h);ctx.closePath();ctx.fill();
+      ctx.strokeStyle='#61d5fd';ctx.stroke();
+    }else if(/neon-gates|blackout|panels/.test(name)){
+      ctx.fillStyle=active?'#321446':'#1a3558';ctx.fillRect(h.x+5,h.y+5,h.w-10,h.h-10);
+      ctx.fillStyle=active?'#ffe16b':'#44d9ff';for(let yy=h.y+20;yy<h.y+h.h-12;yy+=29){ctx.fillRect(h.x+16,yy,Math.max(10,h.w-32),9);}
+    }else if(name==='monorail'){
+      ctx.fillStyle='#3c316d';ctx.fillRect(h.x,h.y+8,h.w,Math.max(10,h.h-20));ctx.fillStyle='#ffbe77';
+      for(let xx=h.x+24;xx<h.x+h.w-5;xx+=46)ctx.fillRect(xx,h.y+18,26,27);
+      ctx.fillStyle='#e3e4ff';ctx.fillRect(h.x+5,h.y+h.h-12,h.w-10,8);
+    }else if(name==='billboard'){
+      ctx.fillStyle='#22104a';ctx.fillRect(h.x,h.y,h.w,h.h);ctx.strokeStyle='#ff75e6';ctx.lineWidth=6;ctx.strokeRect(h.x+4,h.y+4,h.w-8,h.h-8);
+      ctx.font='bold 25px system-ui';ctx.textAlign='center';ctx.fillStyle='#ffe7ff';ctx.fillText('ZAMA',h.x+h.w/2,h.y+h.h/2+7);
+    }else if(name==='frozen-floor'){
+      ctx.fillStyle='#bdf6ff';ctx.fillRect(h.x,h.y,h.w,h.h);ctx.strokeStyle='#ffffff';for(let xx=h.x+15;xx<h.x+h.w;xx+=46){ctx.beginPath();ctx.moveTo(xx,h.y);ctx.lineTo(xx+23,h.y+h.h);ctx.stroke();}
+    }else if(name==='rifts'){
+      ctx.fillStyle='#380e58';ctx.fillRect(h.x,h.y,h.w,h.h);ctx.strokeStyle='#f58cff';ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(h.x+h.w/2,h.y+8);ctx.lineTo(h.x+h.w/2,h.y+h.h-8);ctx.stroke();
+    }else if(name==='doom-beam'){
+      ctx.fillStyle='#ff9cfc';ctx.fillRect(h.x,h.y+h.h*.28,h.w,h.h*.44);ctx.fillStyle='#fff';ctx.fillRect(h.x,h.y+h.h*.42,h.w,h.h*.16);
+    }
+  } else if(h.type==='circle'){
+    if(/bubble-cage|whirlpool/.test(name)){
+      ctx.strokeStyle='#d6ffff';ctx.lineWidth=4;ctx.beginPath();ctx.arc(h.x,h.y,Math.max(4,h.r-7),0,Math.PI*2);ctx.stroke();
+      ctx.fillStyle='#ecffff';ctx.beginPath();ctx.arc(h.x-h.r*.3,h.y-h.r*.3,Math.max(3,h.r*.18),0,Math.PI*2);ctx.fill();
+    }else if(/ice-wings|armor-throw/.test(name)){
+      ctx.fillStyle=col;ctx.beginPath();for(let i=0;i<8;i++){const a=i*Math.PI/4+(z.elapsed*2),r=i%2?h.r*.7:h.r*1.2;ctx.lineTo(h.x+Math.cos(a)*r,h.y+Math.sin(a)*r)}ctx.closePath();ctx.fill();
+    }else if(/scarabs|overclock|magnetic|fragments/.test(name)){
+      ctx.strokeStyle='#fff9c9';ctx.lineWidth=4;ctx.beginPath();ctx.arc(h.x,h.y,h.r*.65,0,Math.PI*2);ctx.stroke();
+      ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(h.x,h.y-h.r*.5);ctx.lineTo(h.x+h.r*.45,h.y);ctx.lineTo(h.x,h.y+h.r*.5);ctx.lineTo(h.x-h.r*.45,h.y);ctx.fill();
+    }
+  }else{
+    if(/tentacle-net|six-arms|crane|cables/.test(name)){
+      ctx.strokeStyle=active?'#ffe4fd':col;ctx.lineWidth=10;ctx.beginPath();ctx.moveTo(h.x,h.y);ctx.quadraticCurveTo((h.x+h.X)/2,(h.y+h.Y)/2+45*Math.sin(z.elapsed*3),h.X,h.Y);ctx.stroke();
+      ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(h.X,h.Y,9,0,Math.PI*2);ctx.fill();
+    }else if(/mirror|water-jet/.test(name)){
+      ctx.strokeStyle='#ffffff';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(h.x,h.y);ctx.lineTo(h.X,h.Y);ctx.stroke();
+    }
+  }
+  ctx.restore();
+ }
+ ctx.setLineDash([]);ctx.globalAlpha=1;ctx.restore();
+}
+const oldDrawEffectsDoc=drawBossAttackEffects;
+drawBossAttackEffects=function(){if(!rigReady())return oldDrawEffectsDoc();drawHazardsRig();};
+const oldDrawHudDoc=drawHUD;
+drawHUD=function(){oldDrawHudDoc();if(!rigReady())return;const z=boss.z;const col=REBOSS[z.n].color;
+ ctx.save();ctx.fillStyle='#111632e5';ctx.fillRect(340,144,600,38);ctx.textAlign='center';ctx.font='bold 20px system-ui';ctx.fillStyle=col;
+ const counter=z.n===7?`ノード ${partCount(z)}/3`:`装甲 ${partCount(z)}/${z.parts.length}`;
+ ctx.fillText(`${REBOSS[z.n].name}　${counter}　${exposed(z)?'弱点 OPEN':'弱点 LOCK'}`,640,170);
+ if(z.attack&&z.state!=='IDLE'){ctx.font='bold 23px system-ui';ctx.fillStyle=z.state==='TELEGRAPH'?'#fff1a0':col;ctx.fillText(`${z.state==='TELEGRAPH'?'予兆':'攻撃'}：${z.attack[1]}`,640,206);}
+ ctx.restore();};
+const oldDefeatDoc=defeatBoss;
+defeatBoss=function(){if(rigReady()){boss.z.state='DEATH';boss.z.deathTime=0;boss.z.deathPX=screenX(boss.x);boss.z.deathPY=boss.y;
+ boss.z.deathParts=[...boss.z.parts.map(p=>({x:p.x,y:p.y,rot:rnd(-5,5),vx:rnd(-95,95),vy:rnd(-180,-40),img:'module'})),...Array.from({length:8},(_,i)=>({x:rnd(-110,110),y:rnd(-80,90),rot:rnd(-4,4),vx:rnd(-180,180),vy:rnd(-190,-50),img:i%2?'shard':'limb'}))];
+ }oldDefeatDoc();};
+const originalDebrisDoc=drawBossDebris;
+drawBossDebris=function(){if(stage===1||riichiMode||!boss?.z)return originalDebrisDoc();if(mode!=='bossDeath'&&mode!=='endingSlow')return;const z=boss.z,n=z.n;
+ const t=bossDeathPresentation?.elapsed??0,duration=n===8?4.5:3.4,p=rigClamp(t/duration,0,1);if(!z.deathParts)return;
+ const x=screenX(boss.x),y=boss.y;ctx.save();ctx.globalAlpha=rigClamp(1-p*.9,0,1);drawNewPart(n,'body',x,y+(p*120),260*(1-p*.20),200*(1-p*.20),Math.sin(p*7)*.25,1-p*.85);
+ for(const part of z.deathParts){let tt=p*duration;drawNewPart(n,part.img,x+part.x+part.vx*tt,y+part.y+part.vy*tt+180*tt*tt,90,105,part.rot*tt,1-p*.55);}
+ if(n===8&&p>.70){ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(x,y,24+145*(p-.7),0,Math.PI*2);ctx.fill();}ctx.restore();
+};
+// Preview/debug access: exact same state and rig transforms are available to standalone QA.
+window.ZAMAZONE_BOSS_REDESIGN={design:REBOSS,images:rigImages,build:createRigState,rig:paintBossRig,drawHazards:drawHazardsRig,applyShot:applyRigShot};
+
+// Local-only QA controls. No effect in normal game or riichi steal mode.
+
+if(new URLSearchParams(location.search).get('preview')==='1'){
+ window.ZAMAZONE_BOSS_QA={
+  show(n){n=Number(n);if(!REBOSS[n])return false;if(!player)initial();stage=n===8?6:n-1;lastBossPhase=n===8;camera=1800;
+    boss={x:wrapX(camera+335),y:255,hp:n===8?44:32,maxHp:n===8?44:32,alive:true,inv:0,phase:0,spin:0,arenaCamera:camera,attack:null,hitFlash:0,attackDelay:1,fire:1};boss.z=createRigState(n);
+    player.x=wrapX(camera-400);player.y=310;player.hp=player.maxHp;player.inv=999;player.dir=1;enemies=[];enemyBullets=[];bullets=[];bombs=[];bases=[];shopBalloon=null;spawnClock=99;mode='play';panelWrap.classList.add('hidden');selectMusic('boss');return true;},
+  attack(i){if(!rigReady())return;const z=boss.z;z.attack=REBOSS[z.n].tech[Number(i)%REBOSS[z.n].tech.length];z.state='TELEGRAPH';z.t=0;z.lockX=screenX(player.x);z.lockY=player.y;},
+  hit(){if(!rigReady())return;const z=boss.z;z.recoil=.4;boss.hitFlash=.4;for(const p of z.parts)p.flash=.25;},
+  expose(){if(!rigReady())return;for(const p of boss.z.parts)p.dead=true;boss.z.expose=10;boss.z.state='RECOVERY';boss.z.t=0;boss.z.attack=REBOSS[boss.z.n].tech[0];},
+  destroy(){if(!rigReady())return;defeatBoss();},
+  get(){if(!boss?.z)return null;return {n:boss.z.n,state:boss.z.state,attack:boss.z.attack?.[1],parts:boss.z.parts.map(p=>({type:p.type,hp:p.hp,dead:p.dead})),hp:boss.hp,stage};},
+  simulate(sec){if(!rigReady())return null;for(let i=0;i<Math.ceil(sec/.025);i++)updateBossAttacks(.025);return {state:boss.z.state,hazards:boss.z.hazards.length,attack:boss.z.attack?.[0]};}
+
+ };
+ const bar=document.createElement('div');bar.id='zamaPreviewControls';bar.style.cssText='position:fixed;z-index:99999;top:8px;left:8px;right:8px;max-width:680px;background:#101936ed;border:2px solid #ffd980;border-radius:12px;color:white;padding:9px;font:14px system-ui;box-shadow:0 6px 20px #0007;display:flex;flex-wrap:wrap;gap:7px;align-items:center';
+ const label=document.createElement('strong');label.textContent='ボス技・アニメ確認';bar.appendChild(label);
+ const sel=document.createElement('select');sel.style.cssText='background:#273c6a;color:white;padding:7px;border-radius:8px';for(const n of [3,4,5,6,7,8]){const option=document.createElement('option');option.value=n;option.textContent='mana'+n+' '+REBOSS[n].name;sel.appendChild(option);}bar.appendChild(sel);
+ const move=document.createElement('select');move.style.cssText=sel.style.cssText;bar.appendChild(move);
+ function fill(){move.innerHTML='';const n=+sel.value;REBOSS[n].tech.forEach((a,i)=>{const option=document.createElement('option');option.value=i;option.textContent=(i+1)+'. '+a[1];move.appendChild(option);});window.ZAMAZONE_BOSS_QA.show(n);}
+ function makeBtn(label,action){const b=document.createElement('button');b.textContent=label;b.style.cssText='padding:7px 10px;border-radius:8px;background:#614184;color:white;border:1px solid #bb9feb;cursor:pointer';b.addEventListener('click',action);bar.appendChild(b);}
+ makeBtn('攻撃を見る',()=>window.ZAMAZONE_BOSS_QA.attack(+move.value));makeBtn('被弾',()=>window.ZAMAZONE_BOSS_QA.hit());makeBtn('弱点OPEN',()=>window.ZAMAZONE_BOSS_QA.expose());makeBtn('撃破',()=>window.ZAMAZONE_BOSS_QA.destroy());
+ sel.addEventListener('change',fill);document.body.appendChild(bar);fill();
+}
 
 })();</script><script id="zj-minigame-ready-v2">(()=>{'use strict';const p=new URLSearchParams(location.search);const id=p.get('game');if(p.get('riichi')!=='1'||!id||window.parent===window)return;const ready=()=>{try{window.parent.postMessage({type:'zamajan-minigame-ready',id},location.origin)}catch(e){}};if(document.readyState==='complete')setTimeout(ready,100);else window.addEventListener('load',()=>setTimeout(ready,100),{once:true});})();</script></body></html>

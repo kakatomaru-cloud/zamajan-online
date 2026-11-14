@@ -1,0 +1,260 @@
+{
+  "3": {
+    "id": "mana3",
+    "name": "Scarabe Garm",
+    "body": "temple",
+    "assets": {
+      "body": "assets/newboss/mana3_body.png",
+      "ring": "assets/newboss/mana3_ring.png",
+      "limb": "assets/newboss/mana3_limb.png",
+      "module": "assets/newboss/mana3_module.png",
+      "crest": "assets/newboss/mana3_crest.png",
+      "shard": "assets/newboss/mana3_shard.png"
+    },
+    "hitBoxes": {
+      "eye": {
+        "r": 34
+      },
+      "module": {
+        "r": 35
+      }
+    },
+    "pivot": {
+      "body": [
+        110,
+        96
+      ],
+      "limb": [
+        45,
+        30
+      ],
+      "module": [
+        55,
+        62
+      ],
+      "crest": [
+        55,
+        70
+      ]
+    },
+    "designSize": [
+      390,
+      250
+    ]
+  },
+  "4": {
+    "id": "mana4",
+    "name": "Neptune Bell",
+    "body": "jelly",
+    "assets": {
+      "body": "assets/newboss/mana4_body.png",
+      "ring": "assets/newboss/mana4_ring.png",
+      "limb": "assets/newboss/mana4_limb.png",
+      "module": "assets/newboss/mana4_module.png",
+      "crest": "assets/newboss/mana4_crest.png",
+      "shard": "assets/newboss/mana4_shard.png"
+    },
+    "hitBoxes": {
+      "eye": {
+        "r": 34
+      },
+      "module": {
+        "r": 35
+      }
+    },
+    "pivot": {
+      "body": [
+        110,
+        96
+      ],
+      "limb": [
+        45,
+        30
+      ],
+      "module": [
+        55,
+        62
+      ],
+      "crest": [
+        55,
+        70
+      ]
+    },
+    "designSize": [
+      280,
+      390
+    ]
+  },
+  "5": {
+    "id": "mana5",
+    "name": "Crysta Nord",
+    "body": "ice",
+    "assets": {
+      "body": "assets/newboss/mana5_body.png",
+      "ring": "assets/newboss/mana5_ring.png",
+      "limb": "assets/newboss/mana5_limb.png",
+      "module": "assets/newboss/mana5_module.png",
+      "crest": "assets/newboss/mana5_crest.png",
+      "shard": "assets/newboss/mana5_shard.png"
+    },
+    "hitBoxes": {
+      "eye": {
+        "r": 34
+      },
+      "module": {
+        "r": 35
+      }
+    },
+    "pivot": {
+      "body": [
+        110,
+        96
+      ],
+      "limb": [
+        45,
+        30
+      ],
+      "module": [
+        55,
+        62
+      ],
+      "crest": [
+        55,
+        70
+      ]
+    },
+    "designSize": [
+      430,
+      210
+    ]
+  },
+  "6": {
+    "id": "mana6",
+    "name": "Night Citya",
+    "body": "city",
+    "assets": {
+      "body": "assets/newboss/mana6_body.png",
+      "ring": "assets/newboss/mana6_ring.png",
+      "limb": "assets/newboss/mana6_limb.png",
+      "module": "assets/newboss/mana6_module.png",
+      "crest": "assets/newboss/mana6_crest.png",
+      "shard": "assets/newboss/mana6_shard.png"
+    },
+    "hitBoxes": {
+      "eye": {
+        "r": 34
+      },
+      "module": {
+        "r": 35
+      }
+    },
+    "pivot": {
+      "body": [
+        110,
+        96
+      ],
+      "limb": [
+        45,
+        30
+      ],
+      "module": [
+        55,
+        62
+      ],
+      "crest": [
+        55,
+        70
+      ]
+    },
+    "designSize": [
+      360,
+      300
+    ]
+  },
+  "7": {
+    "id": "mana7",
+    "name": "Protocol Zero",
+    "body": "network",
+    "assets": {
+      "body": "assets/newboss/mana7_body.png",
+      "ring": "assets/newboss/mana7_ring.png",
+      "limb": "assets/newboss/mana7_limb.png",
+      "module": "assets/newboss/mana7_module.png",
+      "crest": "assets/newboss/mana7_crest.png",
+      "shard": "assets/newboss/mana7_shard.png"
+    },
+    "hitBoxes": {
+      "eye": {
+        "r": 34
+      },
+      "module": {
+        "r": 35
+      }
+    },
+    "pivot": {
+      "body": [
+        110,
+        96
+      ],
+      "limb": [
+        45,
+        30
+      ],
+      "module": [
+        55,
+        62
+      ],
+      "crest": [
+        55,
+        70
+      ]
+    },
+    "designSize": [
+      440,
+      250
+    ]
+  },
+  "8": {
+    "id": "mana8",
+    "name": "Last Mother",
+    "body": "cosmic",
+    "assets": {
+      "body": "assets/newboss/mana8_body.png",
+      "ring": "assets/newboss/mana8_ring.png",
+      "limb": "assets/newboss/mana8_limb.png",
+      "module": "assets/newboss/mana8_module.png",
+      "crest": "assets/newboss/mana8_crest.png",
+      "shard": "assets/newboss/mana8_shard.png"
+    },
+    "hitBoxes": {
+      "eye": {
+        "r": 34
+      },
+      "module": {
+        "r": 35
+      }
+    },
+    "pivot": {
+      "body": [
+        110,
+        96
+      ],
+      "limb": [
+        45,
+        30
+      ],
+      "module": [
+        55,
+        62
+      ],
+      "crest": [
+        55,
+        70
+      ]
+    },
+    "designSize": [
+      520,
+      370
+    ]
+  }
+}
