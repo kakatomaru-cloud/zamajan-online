@@ -1,0 +1,40 @@
+name: Patch ZAMAZONE staging SHOP and HUD
+on:
+  push:
+    branches: [chatgpt-staging]
+    paths:
+      - 'scripts/apply_zamazone_shop_hud.py'
+      - '.github/workflows/zamazone_staging_patch.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt-staging
+          persist-credentials: true
+      - name: Apply SHOP and boss HP fix
+        run: python3 scripts/apply_zamazone_shop_hud.py
+      - name: Validate HTML syntax and image assets
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('zamajan-online/public/minigames/zamazone')
+          html=(p/'index.html').read_text()
+          assert 'SHOP12FIX-20261115' in html
+          for i in range(12):
+              assert (p/'assets'/f'v2_shop_{i:02}.png').exists(), i
+          print('SHOP 12 images and patch found')
+          PY
+      - name: Commit update only to staging
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add zamajan-online/public/minigames/zamazone/index.html
+          if ! git diff --cached --quiet; then
+            git commit -m "fix(zamazone): show all 12 shop items and compact boss HUD"
+            git push origin HEAD:chatgpt-staging
+          fi
