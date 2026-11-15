@@ -33,6 +33,7 @@ jobs:
             a=s.index(marker);b=s.index(anchor,a);s=s[:a]+code+'\n'+s[b:]
           else:s=s.replace(anchor,code+'\n'+anchor,1)
           p.write_text(s,encoding='utf-8')
+          assert (p.parent/'assets/scarab_boss_12poses.webp').exists()
           for i in range(12):
             assert (p.parent/'assets'/('mana3_frame%02d.png'%i)).exists()
           print('coherent 12-pose renderer installed')
@@ -68,7 +69,7 @@ jobs:
             const data=await p.evaluate(()=>window.ZAMAZONE_STAGE2_CONNECTED_BOSS_QA?.());
             console.log('POSE_QA',JSON.stringify(data));
             await p.screenshot({path:'stage2-cohesive-boss.png',fullPage:true});
-            if(!data||data.loadedFrames!==12||data.parts.length!==6)throw Error('frame or hitbox initialization failed');
+            if(!data||!data.actualSpriteSheetLoaded||data.loadedFrames!==12||data.parts.length!==6)throw Error('actual generated image, frame or hitbox initialization failed');
             if(errors.length)throw Error('runtime errors: '+errors.join('|'));
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
