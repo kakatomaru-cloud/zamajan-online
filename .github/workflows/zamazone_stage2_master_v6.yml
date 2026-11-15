@@ -1,0 +1,122 @@
+name: Stage 2 Master Artwork Integration QA
+on:
+  push:
+    branches: [chatgpt-staging]
+    paths:
+      - 'scripts/zamazone_stage2_master_v6.js'
+      - 'zamajan-online/public/minigames/zamazone/stage2_master_art_bundle.zip'
+      - '.github/workflows/zamazone_stage2_master_v6.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  verify-delivery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt-staging
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Unpack original concept art and integrate runtime
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile
+          root=Path('zamajan-online/public/minigames/zamazone')
+          z=root/'stage2_master_art_bundle.zip'
+          with zipfile.ZipFile(z) as pkg:
+            bad=pkg.testzip()
+            assert not bad,bad
+            assert len([k for k in pkg.namelist() if k.endswith('.webp')])==84
+            pkg.extractall(root/'assets')
+          p=root/'index.html';s=p.read_text(encoding='utf-8')
+          code=Path('scripts/zamazone_stage2_master_v6.js').read_text(encoding='utf-8')
+          anchor='if(!riichiMode)showDebugTitle();\n})();</script><script id="zj-minigame-ready-v2">'
+          mark='// STAGE2_MASTER_ASSET_RIG_V6_20261115'
+          assert anchor in s
+          if mark in s:
+             a=s.index(mark);b=s.index(anchor,a);s=s[:a]+code+'\n'+s[b:]
+          else:s=s.replace(anchor,code+'\n'+anchor,1)
+          p.write_text(s,encoding='utf-8')
+          print('MASTER_STAGE2_ART_INTEGRATED',len(s))
+          PY
+      - name: Check webp validity, alpha transparency and JavaScript syntax
+        run: |
+          python3 -m pip install --quiet Pillow
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          import re
+          root=Path('zamajan-online/public/minigames/zamazone')
+          out=root/'assets/stage2_master'
+          images=list(out.glob('*.webp'))
+          assert len(images)==84,len(images)
+          for img in images:
+             with Image.open(img) as im:
+                im.verify()
+          for name in ['torso','claw_L0','claw_R0','wing_L0','wing_R0','tail_0','eye_0','base_air_0','enemy_beetle_0','enemy_ray_0','enemy_balloon_0']:
+             with Image.open(out/(name+'.webp')) as im:
+                assert im.mode in ['RGBA','LA'] or 'transparency' in im.info,(name,im.mode)
+          s=(root/'index.html').read_text(encoding='utf-8')
+          assert 'STAGE2_MASTER_ASSET_RIG_V6_20261115' in s
+          assert 'SHOP12FIX-20261115' in s
+          for i,p in enumerate(re.findall(r'<script[^>]*>(.*?)</script>',s,re.S)):
+             if p.strip():Path('/tmp/stage2-v6-'+str(i)+'.js').write_text(p,encoding='utf-8')
+          print('ART_SPRITES_VALIDATED',len(images))
+          PY
+          for f in /tmp/stage2-v6-*.js; do node --check "$f"; done
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Functional and visual smoke tests
+        run: |
+          python3 -m http.server 8765 --directory zamajan-online/public >/tmp/stage2-http.log 2>&1 &
+          sleep 3
+          node <<'JS'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const b=await chromium.launch({headless:true,args:['--no-sandbox']});
+            const page=await b.newPage({viewport:{width:1552,height:960}});
+            const errors=[];const missing=[];
+            page.on('pageerror',e=>errors.push(e.message));
+            page.on('response',r=>{if(r.status()>=400&&r.url().includes('stage2_master'))missing.push(r.url());});
+            await page.goto('http://localhost:8765/minigames/zamazone/index.html',{waitUntil:'domcontentloaded',timeout:90000});
+            await page.waitForSelector('#zb-debug-open',{timeout:30000});
+            await page.click('#zb-debug-open');
+            await page.click('[data-dbg-boss="3"]');
+            await page.waitForTimeout(5500);
+            const boss=await page.evaluate(()=>window.ZAMAZONE_STAGE2_MASTER_QA?.());
+            console.log('BOSS_QA',JSON.stringify(boss));
+            if(!boss||boss.stage!==2||boss.total!==boss.ready||boss.parts.length!==6||!boss.assets.boss)throw Error('Boss artwork or rig incomplete');
+            if(missing.length||errors.length)throw Error('Load/JS errors '+missing.slice(0,3)+' '+errors.slice(0,3));
+            await page.screenshot({path:'stage2-master-boss.png',fullPage:true});
+            await page.evaluate(()=>window.ZAMAZONE_STAGE2_REPAIR_PREVIEW_AREA());
+            await page.waitForTimeout(950);
+            const area=await page.evaluate(()=>window.ZAMAZONE_STAGE2_MASTER_QA?.());
+            if(!area||area.stage!==2||!area.assets.background||!area.assets.base||!area.assets.enemy)throw Error('Area art not ready '+JSON.stringify(area));
+            if(errors.length)throw Error('Runtime errors '+errors.slice(0,4).join(' / '));
+            console.log('NORMAL_AREA_QA',JSON.stringify(area));
+            await page.screenshot({path:'stage2-master-area.png',fullPage:true});
+            await b.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage2-master-visual-results
+          path: |
+            stage2-master-boss.png
+            stage2-master-area.png
+      - name: Commit tested asset integration to staging only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add zamajan-online/public/minigames/zamazone/index.html zamajan-online/public/minigames/zamazone/assets/stage2_master/
+          if ! git diff --cached --quiet; then
+             git commit -m 'feat(stage2): deliver original concept sprite frames and coordinated hitboxes'
+             git push origin HEAD:chatgpt-staging
+          fi
