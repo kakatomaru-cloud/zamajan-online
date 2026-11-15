@@ -1,0 +1,101 @@
+name: Stage 2 Delivery Art QA
+on:
+  push:
+    branches: [chatgpt-staging]
+    paths:
+      - 'scripts/zamazone_stage2_delivery_v5.js'
+      - '.github/workflows/zamazone_stage2_delivery_v5.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt-staging
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Integrate art-direction update
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('zamajan-online/public/minigames/zamazone/index.html')
+          src=Path('scripts/zamazone_stage2_delivery_v5.js').read_text(encoding='utf-8')
+          s=p.read_text(encoding='utf-8')
+          anchor='if(!riichiMode)showDebugTitle();\n})();</script><script id="zj-minigame-ready-v2">'
+          marker='// STAGE2_DELIVERY_ART_DIRECTION_V5_20261115'
+          assert anchor in s
+          if marker in s:
+            a=s.index(marker);b=s.index(anchor,a);s=s[:a]+src+'\n'+s[b:]
+          else:s=s.replace(anchor,src+'\n'+anchor,1)
+          p.write_text(s,encoding='utf-8')
+          print('Stage2 art renderer installed:',marker in s)
+          PY
+      - name: Validate required images and JS syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          root=Path('zamajan-online/public/minigames/zamazone')
+          s=(root/'index.html').read_text(encoding='utf-8')
+          assert 'STAGE2_DELIVERY_ART_DIRECTION_V5_20261115' in s
+          a=root/'assets/stage2_concept'
+          assert len(list(a.glob('*.webp')))>=39
+          for name in ['boss_body','boss_claw_L0','boss_claw_R0','boss_wing_L0','boss_wing_R0','boss_tail0','boss_eye0','base_ground0','base_air0','enemy_beetle0','enemy_ray0','enemy_balloon0','bg_sky','bg_far','bg_mid','bg_near']:
+            assert (a/(name+'.webp')).is_file(),name
+          for i,j in enumerate(re.findall(r'<script[^>]*>(.*?)</script>',s,re.S)):
+            if j.strip():Path('/tmp/v5-script-'+str(i)+'.js').write_text(j,encoding='utf-8')
+          PY
+          for f in /tmp/v5-script-*.js; do node --check "$f"; done
+      - name: Set up Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Test stage2 normal area and boss separately
+        run: |
+          python3 -m http.server 8765 --directory zamajan-online/public >/tmp/zama-http.log 2>&1 &
+          sleep 2
+          node <<'JS'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const b=await chromium.launch({headless:true,args:['--no-sandbox']});
+            const page=await b.newPage({viewport:{width:1552,height:960}});
+            const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            await page.goto('http://localhost:8765/minigames/zamazone/index.html',{waitUntil:'domcontentloaded',timeout:90000});
+            await page.waitForSelector('#zb-debug-open');
+            await page.click('#zb-debug-open');
+            await page.click('[data-dbg-boss="3"]');
+            await page.waitForTimeout(4800);
+            const boss=await page.evaluate(()=>window.ZAMAZONE_STAGE2_DELIVERY_QA?.());
+            if(!boss||!boss.backgrounds||boss.bosses.length!==6||!boss.images.boss||boss.loaded!==boss.total)throw Error('boss art integration: '+JSON.stringify(boss));
+            await page.screenshot({path:'stage2-v5-boss.png',fullPage:true});
+            await page.evaluate(()=>window.ZAMAZONE_STAGE2_REPAIR_PREVIEW_AREA());
+            await page.waitForTimeout(1300);
+            const ordinary=await page.evaluate(()=>window.ZAMAZONE_STAGE2_DELIVERY_QA?.());
+            if(!ordinary||ordinary.stage!==2||!ordinary.images.base||!ordinary.images.enemy)throw Error('ordinary stage sprites '+JSON.stringify(ordinary));
+            await page.screenshot({path:'stage2-v5-area.png',fullPage:true});
+            if(errors.length)throw Error('Page exceptions: '+errors.slice(0,5).join(' / '));
+            console.log('STAGE2_V5_VERIFIED',JSON.stringify({boss,ordinary}));
+            await b.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage2-v5-visual-qa
+          path: |
+            stage2-v5-boss.png
+            stage2-v5-area.png
+      - name: Commit validated build to staging only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add zamajan-online/public/minigames/zamazone/index.html
+          if ! git diff --cached --quiet; then
+            git commit -m 'feat(zamazone): stage2 layered concept visuals QA pass'
+            git push origin HEAD:chatgpt-staging
+          fi
