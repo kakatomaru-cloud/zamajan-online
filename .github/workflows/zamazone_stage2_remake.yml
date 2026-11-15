@@ -4,6 +4,7 @@ on:
     branches: [chatgpt-staging]
     paths:
       - 'scripts/zamazone_stage2_remake.js'
+      - 'scripts/zamazone_stage2_attacks.js'
       - '.github/workflows/zamazone_stage2_remake.yml'
   workflow_dispatch:
 permissions:
@@ -29,7 +30,13 @@ jobs:
               assert anchor in text, 'Could not find original game-script insertion anchor'
               text=text.replace(anchor,code+'\n'+anchor,1)
               p.write_text(text,encoding='utf-8')
-          print('stage2 reference',marker in text, 'game bytes',len(text))
+          extra=Path('scripts/zamazone_stage2_attacks.js').read_text(encoding='utf-8')
+          if 'STAGE2_SCARAB_ATTACKS_20261115' not in text:
+              anchor='if(!riichiMode)showDebugTitle();\n})();</script><script id="zj-minigame-ready-v2">'
+              assert anchor in text
+              text=text.replace(anchor,extra+'\n'+anchor,1)
+              p.write_text(text,encoding='utf-8')
+          print('stage2 reference',marker in text,'attacks','STAGE2_SCARAB_ATTACKS_20261115' in text,'game bytes',len(text))
           PY
       - name: Syntax and assets check
         run: |
@@ -38,7 +45,7 @@ jobs:
           import re
           root=Path('zamajan-online/public/minigames/zamazone')
           html=(root/'index.html').read_text(encoding='utf-8')
-          for token in ['STAGE2_SCARAB_REMAKE_20261115','ZAMA_BOSS_A_PARTS_V3_20261115','SHOP12FIX-20261115']:
+          for token in ['STAGE2_SCARAB_REMAKE_20261115','STAGE2_SCARAB_ATTACKS_20261115','ZAMA_BOSS_A_PARTS_V3_20261115','SHOP12FIX-20261115']:
               assert token in html, token
           assert (root/'assets/area2_background.webp').exists()
           for i in range(12):assert (root/'assets'/f'v2_shop_{i:02}.svg').exists()
