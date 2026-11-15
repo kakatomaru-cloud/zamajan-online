@@ -1,0 +1,108 @@
+name: Repair Stage 2 broken rendering
+on:
+  push:
+    branches: [chatgpt-staging]
+    paths:
+      - 'scripts/zamazone_stage2_repair_v4.js'
+      - '.github/workflows/zamazone_stage2_repair.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt-staging
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Replace broken Stage 2 compositing with cleaned rendering
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('zamajan-online/public/minigames/zamazone/index.html')
+          code=Path('scripts/zamazone_stage2_repair_v4.js').read_text(encoding='utf-8')
+          s=p.read_text(encoding='utf-8')
+          if 'STAGE2_REPAIR_VISUAL_AND_COLLISION_V4_20261115' not in s:
+              anchor='if(!riichiMode)showDebugTitle();\n})();</script><script id="zj-minigame-ready-v2">'
+              assert anchor in s, 'Game script insertion point missing'
+              s=s.replace(anchor,code+'\n'+anchor,1)
+              p.write_text(s,encoding='utf-8')
+          print('Stage2 repair installed',len(s))
+          PY
+      - name: Validate JS syntax and transparent rig art
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('zamajan-online/public/minigames/zamazone')
+          s=(p/'index.html').read_text(encoding='utf-8')
+          assert 'STAGE2_REPAIR_VISUAL_AND_COLLISION_V4_20261115' in s
+          for name in ['core','wingL','wingR','armL','armR','tail']:
+              path=p/'assets/boss_rig'/('mana3_'+name+'.png')
+              assert path.is_file() and path.stat().st_size>10000, path
+          for i,code in enumerate(re.findall(r'<script[^>]*>(.*?)</script>',s,re.S)):
+              if code.strip():Path('/tmp/zama-validate-'+str(i)+'.js').write_text(code,encoding='utf-8')
+          PY
+          for file in /tmp/zama-validate-*.js; do node --check "$file"; done
+      - name: Install browser for visual smoke test
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Verify Stage 2 rendered background and boss
+        run: |
+          python3 -m http.server 8765 --directory zamajan-online/public >/tmp/zama-stage2-server.log 2>&1 &
+          sleep 3
+          node <<'JS'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+            const page=await browser.newPage({viewport:{width:1552,height:930}});
+            const errors=[];
+            page.on('pageerror',err=>errors.push(err.message));
+            await page.goto('http://localhost:8765/minigames/zamazone/index.html',{waitUntil:'domcontentloaded',timeout:100000});
+            await page.waitForSelector('#zb-debug-open',{timeout:25000});
+            await page.click('#zb-debug-open');
+            await page.click('[data-dbg-boss="3"]');
+            await page.waitForTimeout(5800);
+            const result=await page.evaluate(()=>{
+              const qa=window.ZAMAZONE_STAGE2_REPAIR_QA?.();
+              const c=document.querySelector('canvas');
+              if(!c||!qa)return {error:'missing canvas or debug API',qa};
+              const ctx=c.getContext('2d');
+              const px=(x,y)=>[...ctx.getImageData(x,y,1,1).data].slice(0,3);
+              const stripes=[];
+              for(let y=175;y<620;y+=7){
+                const p=px(100,y);
+                const equal=[220,360,510,700,880,1060].every(x=>px(x,y).every((v,i)=>Math.abs(v-p[i])<2));
+                if(equal&&p[0]===96&&p[1]===89&&p[2]===160)stripes.push(y);
+              }
+              return {qa,stripes,canvasWidth:c.width,canvasHeight:c.height};
+            });
+            console.log('STAGE2_REPAIR_QA',JSON.stringify(result));
+            await page.screenshot({path:'stage2-repair-screenshot.png',fullPage:true});
+            if(result.error)throw Error(result.error);
+            if(!result.qa.backgroundLoaded||result.qa.sprites.filter(s=>s.loaded).length!==6)throw Error('transparent sprites not loaded');
+            if(result.qa.bossParts.length!==6)throw Error('boss 6-part rig missing');
+            if(result.stripes.length>1)throw Error('purple background bands remain at '+result.stripes.join(','));
+            if(errors.length)throw Error('JavaScript runtime errors: '+errors.slice(0,4).join(' | '));
+            await browser.close();
+          })().catch(err=>{console.error(err);process.exit(1)});
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage2-repair-screenshot
+          path: stage2-repair-screenshot.png
+      - name: Commit verified repair only to staging
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add zamajan-online/public/minigames/zamazone/index.html
+          if ! git diff --cached --quiet; then
+            git commit -m 'fix(zamazone): repair stage2 backdrop and scarab boss rendering'
+            git push origin HEAD:chatgpt-staging
+          fi
