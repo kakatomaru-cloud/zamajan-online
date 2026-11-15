@@ -1,0 +1,66 @@
+name: Integrate Stage 2 concept sprites
+on:
+  push:
+    branches: [chatgpt-staging]
+    paths:
+      - 'scripts/build_stage2_concept_assets.py'
+      - 'scripts/zamazone_stage2_sprite_integration.js'
+      - '.github/workflows/zamazone_stage2_concept_assets.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt-staging
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Generate transparent stage2 art
+        run: |
+          python3 -m pip install --quiet --break-system-packages Pillow
+          python3 scripts/build_stage2_concept_assets.py
+      - name: Integrate composited sprite rendering
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('zamajan-online/public/minigames/zamazone/index.html')
+          s=p.read_text(encoding='utf-8')
+          src=Path('scripts/zamazone_stage2_sprite_integration.js').read_text(encoding='utf-8')
+          marker='STAGE2_CONCEPT_SPRITE_INTEGRATION_20261115'
+          if marker not in s:
+              anchor='if(!riichiMode)showDebugTitle();\n})();</script><script id="zj-minigame-ready-v2">'
+              assert anchor in s,'main script anchor missing'
+              s=s.replace(anchor,src+'\n'+anchor,1)
+              p.write_text(s,encoding='utf-8')
+          print('Stage2 sprite integrated',marker in s)
+          PY
+      - name: Verify assets and JS parse
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          a=Path('zamajan-online/public/minigames/zamazone/assets/stage2_concept')
+          found=list(a.glob('*.webp'))
+          assert len(found)==43,(len(found),[f.name for f in found])
+          txt=Path('zamajan-online/public/minigames/zamazone/index.html').read_text(encoding='utf-8')
+          for tok in ('STAGE2_SCARAB_REMAKE_20261115','STAGE2_SCARAB_ATTACKS_20261115','STAGE2_CONCEPT_SPRITE_INTEGRATION_20261115'):
+            assert tok in txt,tok
+          for i,part in enumerate(re.findall(r'<script[^>]*>(.*?)</script>',txt,re.S)):
+            if part.strip():Path('/tmp/stage2-part-%s.js'%i).write_text(part,encoding='utf-8')
+          print('verified 43 sprite assets and game integration')
+          PY
+          for file in /tmp/stage2-part-*.js; do node --check "$file"; done
+      - name: Commit only to test branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add zamajan-online/public/minigames/zamazone/index.html zamajan-online/public/minigames/zamazone/assets/stage2_concept/
+          if ! git diff --cached --quiet; then
+            git commit -m "feat(zamazone): integrate 43 transparent stage2 sprites with independent animation"
+            git push origin HEAD:chatgpt-staging
+          fi
