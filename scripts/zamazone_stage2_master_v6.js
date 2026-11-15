@@ -176,3 +176,27 @@ window.ZAMAZONE_STAGE2_MASTER_QA=()=>({
  activeBases:bases?.filter(b=>b.alive).length,
  assets:{background:zm6Ready('bg_middle'),boss:zm6Ready('torso'),base:zm6Ready('base_ground_0'),enemy:zm6Ready('enemy_beetle_0')}
 });
+
+
+// Test-only hook is never exposed on ordinary game URLs.
+if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
+ window.ZAMAZONE_STAGE2_QA_DESTROY_ALL=function(){
+  if(!zm6Stage()||!boss?.alive||boss.z?.n!==3)return {error:'boss inactive'};
+  const outcomes=[];
+  for(const role of ['armL','armR','wingL','wingR','tail','core']){
+   const part=boss.z.parts.find(p=>zm6Role(p)===role);
+   let shots=0;
+   while(part&&!part.dead&&shots<120&&boss.alive){
+    for(const p of boss.z.parts)p.flash=0;
+    const q=getPartPos(part);
+    const s={x:wrapX(boss.x+q.x),y:boss.y+q.y,life:1,vx:700,dmg:1,radius:1};
+    const hit=applyRigShot(s);
+    if(!hit)return {error:'shot missed',role,shots,outcomes};
+    if(s.life!==0)return {error:'shot pierced',role,shots,outcomes};
+    shots++;
+   }
+   outcomes.push({role,shots,dead:!!part?.dead,hp:part?.hp});
+  }
+  return {outcomes,allDestroyed:boss.z.parts.every(p=>p.dead),bossAlive:boss.alive,mode};
+ };
+}
