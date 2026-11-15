@@ -84,6 +84,14 @@ jobs:
             });
             console.log('STAGE2_REPAIR_QA',JSON.stringify(result));
             await page.screenshot({path:'stage2-repair-screenshot.png',fullPage:true});
+            // Test the ordinary area as well as the debug boss encounter.
+            const ordinary=await page.evaluate(()=>{
+              if(!window.ZAMAZONE_STAGE2_REPAIR_PREVIEW_AREA?.())return {error:'cannot open stage2 normal area'};
+              return window.ZAMAZONE_STAGE2_REPAIR_QA?.();
+            });
+            await page.waitForTimeout(800);
+            await page.screenshot({path:'stage2-normal-area.png',fullPage:true});
+            if(!ordinary||ordinary.error||!ordinary.backgroundLoaded)throw Error('Stage 2 normal area failed '+JSON.stringify(ordinary));
             if(result.error)throw Error(result.error);
             if(!result.qa.backgroundLoaded||result.qa.sprites.filter(s=>s.loaded).length!==6)throw Error('transparent sprites not loaded');
             if(result.qa.bossParts.length!==6)throw Error('boss 6-part rig missing');
@@ -96,7 +104,9 @@ jobs:
         if: always()
         with:
           name: stage2-repair-screenshot
-          path: stage2-repair-screenshot.png
+          path: |
+            stage2-repair-screenshot.png
+            stage2-normal-area.png
       - name: Commit verified repair only to staging
         run: |
           git config user.name 'github-actions[bot]'
