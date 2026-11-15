@@ -176,3 +176,10 @@ window.ZAMAZONE_STAGE2_REPAIR_QA=()=>({
  bossParts:boss?.z?.n===3?boss.z.parts.map(p=>({type:p.type,hp:p.hp,maxHp:p.maxHp,dead:p.dead})):[],
  version:'stage2-repair-v4'
 });
+
+window.ZAMAZONE_STAGE2_REPAIR_PREVIEW_AREA=function(){
+  if(riichiMode)return false;
+  stage=2;setupStage(false);mode='play';closePanel();
+  camera=320;player.x=400;player.y=350;player.inv=8;
+  return true;
+};
