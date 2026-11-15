@@ -20,8 +20,8 @@ function _v5Layer(name,topFade=24,bottomFade=24){
  if(topFade||bottomFade){
   g.globalCompositeOperation='destination-in';
   const fade=g.createLinearGradient(0,0,0,c.height);
-  fade.addColorStop(0,topFade?0:1);fade.addColorStop(Math.min(.35,topFade/c.height),1);
-  fade.addColorStop(1-Math.min(.35,bottomFade/c.height),1);fade.addColorStop(1,bottomFade?0:1);
+  fade.addColorStop(0,topFade?'rgba(255,255,255,0)':'rgba(255,255,255,1)');fade.addColorStop(Math.min(.35,topFade/c.height),'rgba(255,255,255,1)');
+  fade.addColorStop(1-Math.min(.35,bottomFade/c.height),'rgba(255,255,255,1)');fade.addColorStop(1,bottomFade?'rgba(255,255,255,0)':'rgba(255,255,255,1)');
   g.fillStyle=fade;g.fillRect(0,0,c.width,c.height);g.globalCompositeOperation='source-over';
  }
  return _v5Masked[name]=c;
