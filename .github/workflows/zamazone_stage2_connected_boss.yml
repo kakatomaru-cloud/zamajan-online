@@ -1,0 +1,89 @@
+name: Stage 2 Cohesive Boss Motion Test
+on:
+  push:
+    branches: [chatgpt-staging]
+    paths:
+      - 'scripts/zamazone_stage2_connected_boss.js'
+      - '.github/workflows/zamazone_stage2_connected_boss.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt-staging
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Integrate coherent 12-frame boss animations
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('zamajan-online/public/minigames/zamazone/index.html')
+          s=p.read_text(encoding='utf-8')
+          code=Path('scripts/zamazone_stage2_connected_boss.js').read_text(encoding='utf-8')
+          anchor='if(!riichiMode)showDebugTitle();\n})();</script><script id="zj-minigame-ready-v2">'
+          marker='// STAGE2_CONNECTED_BOSS_12POSE_TEST_20261115'
+          assert anchor in s
+          if marker in s:
+            a=s.index(marker);b=s.index(anchor,a);s=s[:a]+code+'\n'+s[b:]
+          else:s=s.replace(anchor,code+'\n'+anchor,1)
+          p.write_text(s,encoding='utf-8')
+          for i in range(12):
+            assert (p.parent/'assets'/('mana3_frame%02d.png'%i)).exists()
+          print('coherent 12-pose renderer installed')
+          PY
+      - name: Syntax validation
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          s=Path('zamajan-online/public/minigames/zamazone/index.html').read_text()
+          assert 'STAGE2_CONNECTED_BOSS_12POSE_TEST_20261115' in s
+          for i,code in enumerate(re.findall(r'<script[^>]*>(.*?)</script>',s,re.S)):
+            if code.strip():Path(f'/tmp/zama-boss-{i}.js').write_text(code)
+          PY
+          for f in /tmp/zama-boss-*.js; do node --check "$f"; done
+      - name: Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run boss animation preview
+        run: |
+          python3 -m http.server 8765 --directory zamajan-online/public >/tmp/http.log 2>&1 &
+          sleep 2
+          node <<'JS'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+            const p=await browser.newPage({viewport:{width:1552,height:960}});
+            const errors=[];p.on('pageerror',e=>errors.push(e.message));
+            await p.goto('http://localhost:8765/minigames/zamazone/index.html',{waitUntil:'domcontentloaded'});
+            await p.click('#zb-debug-open');await p.click('[data-dbg-boss="3"]');
+            await p.waitForTimeout(5000);
+            const data=await p.evaluate(()=>window.ZAMAZONE_STAGE2_CONNECTED_BOSS_QA?.());
+            console.log('POSE_QA',JSON.stringify(data));
+            await p.screenshot({path:'stage2-cohesive-boss.png',fullPage:true});
+            if(!data||data.loadedFrames!==12||data.parts.length!==6)throw Error('frame or hitbox initialization failed');
+            if(errors.length)throw Error('runtime errors: '+errors.join('|'));
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage2-cohesive-boss-screenshot
+          path: stage2-cohesive-boss.png
+      - name: Commit tested game only to staging
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add zamajan-online/public/minigames/zamazone/index.html
+          if ! git diff --cached --quiet; then
+            git commit -m 'feat(zamazone): preview cohesive animated stage2 boss'
+            git push origin HEAD:chatgpt-staging
+          fi
