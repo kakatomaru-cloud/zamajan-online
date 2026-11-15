@@ -1,0 +1,101 @@
+name: Stage2 Scarab combat V7 acceptance
+on:
+  push:
+    branches: [chatgpt-staging]
+    paths:
+      - 'scripts/zamazone_stage2_combat_v7.js'
+      - '.github/workflows/zamazone_stage2_combat_v7.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build-qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt-staging
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Embed V7 gameplay changes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('zamajan-online/public/minigames/zamazone/index.html')
+          s=p.read_text(encoding='utf-8')
+          code=Path('scripts/zamazone_stage2_combat_v7.js').read_text(encoding='utf-8')
+          anchor='if(!riichiMode)showDebugTitle();\n})();</script><script id="zj-minigame-ready-v2">'
+          marker='// STAGE2_SCARAB_COMBAT_V7_20261115'
+          assert anchor in s
+          if marker in s:
+            start=s.index(marker);end=s.index(anchor,start)
+            s=s[:start]+code+'\n'+s[end:]
+          else:s=s.replace(anchor,code+'\n'+anchor,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Validate code and sprite
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          p=Path('zamajan-online/public/minigames/zamazone')
+          s=(p/'index.html').read_text(encoding='utf-8')
+          assert 'STAGE2_SCARAB_COMBAT_V7_20261115' in s
+          assert (p/'assets/scarab_boss_12poses.webp').stat().st_size>10000
+          for i,js in enumerate(re.findall(r'<script[^>]*>(.*?)</script>',s,re.S)):
+            if js.strip():Path('/tmp/zama-v7-%d.js'%i).write_text(js,encoding='utf-8')
+          PY
+          for f in /tmp/zama-v7-*.js; do node --check "$f"; done
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Playwright tests on shots, parts, attacks and art
+        run: |
+          python3 -m http.server 8765 --directory zamajan-online/public > /tmp/zama-http.log 2>&1 &
+          sleep 2
+          node <<'JS'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+            const page=await browser.newPage({viewport:{width:1552,height:960}});
+            const errors=[];page.on('pageerror',err=>errors.push(err.message));
+            await page.goto('http://localhost:8765/minigames/zamazone/index.html?stage2_qa=1',{waitUntil:'domcontentloaded',timeout:90000});
+            await page.click('#zb-debug-open');
+            await page.click('[data-dbg-boss="3"]');
+            await page.waitForTimeout(5400);
+            const state=await page.evaluate(()=>window.ZAMAZONE_STAGE2_COMBAT_V7_QA?.());
+            if(!state||state.stage!==2||state.parts.length!==6||state.size[0]<460)throw Error('Boss not enlarged or missing '+JSON.stringify(state));
+            const collision=await page.evaluate(()=>window.ZAMAZONE_STAGE2_COMBAT_V7_TEST?.());
+            console.log('COLLISION_V7',JSON.stringify(collision));
+            if(!collision||!collision.blocked||!collision.blockedConsumed||!collision.coreSafe)throw Error('Ricochet missing '+JSON.stringify(collision));
+            if(collision.parts.some(p=>!p.collided||!p.consumed||!p.damaged))throw Error('Unreachable part '+JSON.stringify(collision.parts));
+            await page.screenshot({path:'stage2-v7-enlarged-boss.png',fullPage:true});
+            for(const a of ['frontal-fan','claw-laser','shell-dash','tail-bombs','sand-columns']){
+             const v=await page.evaluate(a=>{const set=window.ZAMAZONE_STAGE2_COMBAT_V7_FORCE_ATTACK?.(a);const s=window.ZAMAZONE_STAGE2_COMBAT_V7_QA?.();return {set,s};},a);
+             if(!v.set||v.s.attack!==a||!v.s.hazards.length)throw Error('Attack not producing real hit area '+a+' '+JSON.stringify(v));
+             await page.waitForTimeout(120);
+            }
+            await page.screenshot({path:'stage2-v7-attack.png',fullPage:true});
+            if(errors.length)throw Error('Runtime errors '+errors.slice(0,6).join(' | '));
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage2-v7-playtest-images
+          path: |
+            stage2-v7-enlarged-boss.png
+            stage2-v7-attack.png
+      - name: Commit tested gameplay only to staging
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add zamajan-online/public/minigames/zamazone/index.html
+          if ! git diff --cached --quiet; then
+            git commit -m 'feat(zamazone): larger scarab with active hitboxes and parrying armor'
+            git push origin HEAD:chatgpt-staging
+          fi
