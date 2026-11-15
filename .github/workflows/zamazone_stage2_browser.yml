@@ -32,11 +32,12 @@ jobs:
             await page.click('#zb-debug-open');
             await page.click('[data-dbg-boss="3"]');
             await page.waitForTimeout(5200);
-            const state=await page.evaluate(()=>({boss:window.ZAMAZONE_STAGE2_CONCEPT_QA?.(),attack:window.ZAMAZONE_STAGE2_ATTACK_QA?.()}));
+            const state=await page.evaluate(()=>({boss:window.ZAMAZONE_STAGE2_CONCEPT_QA?.(),attack:window.ZAMAZONE_STAGE2_ATTACK_QA?.(),sprites:window.ZAMAZONE_STAGE2_SPRITES_QA?.()}));
             await page.screenshot({path:'stage2-browser-preview.png',fullPage:true});
             console.log('STAGE2_SMOKE',JSON.stringify(state));
             if(!state.boss||state.boss.stage!==2||state.boss.parts.length!==6)throw Error('Stage2 rig missing');
             if(!state.attack)throw Error('Stage2 attack controller missing');
+            if(!state.sprites||state.sprites.loaded!==state.sprites.total)throw Error('Stage2 sprites missing: '+JSON.stringify(state.sprites));
             if(errors.length)throw Error('JS runtime errors: '+errors.slice(0,4).join('; '));
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
