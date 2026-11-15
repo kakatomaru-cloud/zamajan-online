@@ -1,0 +1,104 @@
+name: Stage2 scarab V8 staging delivery
+on:
+  push:
+    branches: [chatgpt-staging]
+    paths:
+      - 'scripts/zamazone_stage2_delivery_v8.js'
+      - '.github/workflows/zamazone_stage2_delivery_v8.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  stage2-v8:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt-staging
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inject v8 gameplay fixes into ZAMAZONE
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('zamajan-online/public/minigames/zamazone/index.html')
+          s=p.read_text(encoding='utf-8')
+          patch=Path('scripts/zamazone_stage2_delivery_v8.js').read_text(encoding='utf-8')
+          anchor='if(!riichiMode)showDebugTitle();\n})();</script><script id="zj-minigame-ready-v2">'
+          marker='// STAGE2_DELIVERY_V8_20261115'
+          assert anchor in s, 'Game insertion anchor missing'
+          if marker in s:
+            first=s.index(marker)
+            last=s.index(anchor,first)
+            s=s[:first]+patch+'\n'+s[last:]
+          else:
+            s=s.replace(anchor,patch+'\n'+anchor,1)
+          p.write_text(s,encoding='utf-8')
+          print('updated game bytes',len(s))
+          PY
+      - name: Check JS syntax and sprite availability
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          root=Path('zamajan-online/public/minigames/zamazone')
+          s=(root/'index.html').read_text(encoding='utf-8')
+          assert 'STAGE2_DELIVERY_V8_20261115' in s
+          assert 'STAGE2_SCARAB_COMBAT_V7_20261115' in s
+          assert (root/'assets/scarab_boss_12poses.webp').stat().st_size>10000
+          for i,script in enumerate(re.findall(r'<script[^>]*>(.*?)</script>',s,re.S)):
+            if script.strip(): Path(f'/tmp/zama-script-v8-{i}.js').write_text(script,encoding='utf-8')
+          PY
+          for f in /tmp/zama-script-v8-*.js; do node --check "$f"; done
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Test boss hitboxes and attack collision regions
+        run: |
+          python3 -m http.server 8765 --directory zamajan-online/public > /tmp/http.log 2>&1 &
+          sleep 2
+          node <<'JS'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+            const page=await browser.newPage({viewport:{width:1552,height:930}});
+            const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            await page.goto('http://localhost:8765/minigames/zamazone/index.html?stage2_qa=1',{waitUntil:'domcontentloaded',timeout:90000});
+            await page.click('#zb-debug-open');await page.click('[data-dbg-boss="3"]');
+            await page.waitForTimeout(5300);
+            const start=await page.evaluate(()=>window.ZAMAZONE_STAGE2_V8_QA?.());
+            console.log('V8_BOSS',JSON.stringify(start));
+            if(!start?.active||start.parts.length!==6||!start.imageLoaded)throw Error('boss unavailable');
+            const test=await page.evaluate(()=>window.ZAMAZONE_STAGE2_V8_TEST?.());
+            console.log('V8_COLLISION',JSON.stringify(test));
+            if(test?.seen?.some(x=>!x.collided||!x.consumed||x.damage<=0))throw Error('missing damageable parts '+JSON.stringify(test));
+            if(!test?.blocked||!test.blockedConsumed||!test.coreSafe)throw Error('armor ricochet regression '+JSON.stringify(test));
+            await page.screenshot({path:'stage2-v8-hitboxes.png',fullPage:true});
+            for(const a of ['front-barrage','double-laser','ram','claw-wave','sky-meteors']){
+              const res=await page.evaluate(a=>{const ok=window.ZAMAZONE_STAGE2_V8_FORCE(a);return {ok,state:window.ZAMAZONE_STAGE2_V8_QA()};},a);
+              if(!res.ok||res.state.attack!==a||!res.state.hazards.length)throw Error('nonfunctional attack '+a+JSON.stringify(res));
+            }
+            await page.screenshot({path:'stage2-v8-attack.png',fullPage:true});
+            if(errors.length)throw Error('JS errors: '+errors.join(' / '));
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage2-v8-browser-qa
+          path: |
+            stage2-v8-hitboxes.png
+            stage2-v8-attack.png
+      - name: Commit accepted update only on staging
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add zamajan-online/public/minigames/zamazone/index.html
+          if ! git diff --cached --quiet; then
+            git commit -m 'feat(zamazone): larger dynamic scarab boss, tangible damage, and hit-tested attack hazards'
+            git push origin HEAD:chatgpt-staging
+          fi
