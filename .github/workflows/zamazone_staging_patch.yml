@@ -1,9 +1,9 @@
-name: Patch ZAMAZONE staging SHOP and HUD
+name: Build ZAMAZONE staging fixes
 on:
   push:
     branches: [chatgpt-staging]
     paths:
-      - 'scripts/apply_zamazone_shop_hud.py'
+      - 'scripts/apply_zamazone_boss_A.py'
       - '.github/workflows/zamazone_staging_patch.yml'
   workflow_dispatch:
 permissions:
@@ -16,25 +16,31 @@ jobs:
         with:
           ref: chatgpt-staging
           persist-credentials: true
-      - name: Apply SHOP and boss HP fix
-        run: python3 scripts/apply_zamazone_shop_hud.py
-      - name: Validate HTML syntax and image assets
+      - name: Apply A-style boss and item art update
+        run: python3 scripts/apply_zamazone_boss_A.py
+      - name: Validate parts logic, SVG images, JavaScript syntax
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re,xml.etree.ElementTree as ET
           p=Path('zamajan-online/public/minigames/zamazone')
-          html=(p/'index.html').read_text()
-          assert 'SHOP12FIX-20261115' in html
-          for i in range(12):
-              assert (p/'assets'/f'v2_shop_{i:02}.png').exists(), i
-          print('SHOP 12 images and patch found')
+          s=(p/'index.html').read_text(encoding='utf-8')
+          assert 'ZAMA_BOSS_A_PARTS_V3_20261115' in s
+          assert 'zamaAAllBroken' in s
+          assert 'SHOP12FIX-20261115' in s
+          for i in range(12):ET.parse(p/'assets'/('v2_shop_%02d.svg'%i))
+          scripts=re.findall(r'<script[^>]*>(.*?)</script>',s,re.S)
+          for i,part in enumerate(scripts):
+              if part.strip():Path('/tmp/zama-script-%d.js'%i).write_text(part,encoding='utf-8')
+          print('Verified 12 SVGs, new boss parts logic, all scripts extracted:',len(scripts))
           PY
-      - name: Commit update only to staging
+          for file in /tmp/zama-script-*.js; do node --check "$file"; done
+      - name: Commit to staging only
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add zamajan-online/public/minigames/zamazone/index.html
+          git add zamajan-online/public/minigames/zamazone/index.html zamajan-online/public/minigames/zamazone/assets/v2_shop_*.svg
           if ! git diff --cached --quiet; then
-            git commit -m "fix(zamazone): show all 12 shop items and compact boss HUD"
+            git commit -m "feat(zamazone): A-style destructible bosses and realistic shop illustrations"
             git push origin HEAD:chatgpt-staging
           fi
