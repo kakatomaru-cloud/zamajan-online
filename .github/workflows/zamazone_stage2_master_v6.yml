@@ -84,7 +84,7 @@ jobs:
             const errors=[];const missing=[];
             page.on('pageerror',e=>errors.push(e.message));
             page.on('response',r=>{if(r.status()>=400&&r.url().includes('stage2_master'))missing.push(r.url());});
-            await page.goto('http://localhost:8765/minigames/zamazone/index.html',{waitUntil:'domcontentloaded',timeout:90000});
+            await page.goto('http://localhost:8765/minigames/zamazone/index.html?stage2_qa=1',{waitUntil:'domcontentloaded',timeout:90000});
             await page.waitForSelector('#zb-debug-open',{timeout:30000});
             await page.click('#zb-debug-open');
             await page.click('[data-dbg-boss="3"]');
@@ -104,6 +104,10 @@ jobs:
             if(!shotState?.parts?.some(p=>p.hp<p.maxHp||p.dead))
                 throw Error('Real shot input did not damage any boss part');
             await page.screenshot({path:'stage2-master-damaged-boss.png',fullPage:true});
+            const destruction=await page.evaluate(()=>window.ZAMAZONE_STAGE2_QA_DESTROY_ALL?.());
+            console.log('SIX_PART_DESTRUCTION_QA',JSON.stringify(destruction));
+            if(!destruction||destruction.error||!destruction.allDestroyed||destruction.bossAlive)
+                throw Error('Six-part defeat / no-pierce validation failed: '+JSON.stringify(destruction));
             await page.evaluate(()=>window.ZAMAZONE_STAGE2_REPAIR_PREVIEW_AREA());
             await page.waitForTimeout(950);
             const area=await page.evaluate(()=>window.ZAMAZONE_STAGE2_MASTER_QA?.());
