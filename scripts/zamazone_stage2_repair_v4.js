@@ -67,14 +67,58 @@ drawBase=function(base){if(!stage2RepairIs())return stage2RepairPreviousBase(bas
    else{ctx.fillStyle='#b78b66';ctx.fillRect(-65,-50,130,85);}
    for(const x0 of [-43,0,43]){ctx.fillStyle='#80eaff99';ctx.beginPath();ctx.moveTo(x0-9,57);ctx.lineTo(x0+9,57);ctx.lineTo(x0,86+Math.sin(t*16+x0)*10);ctx.closePath();ctx.fill();}
  }else{
-   const im=pixelArt.zaz_airbase;
-   // Stable stone foundations attached to the visible ground.
-   ctx.fillStyle='#855d61';for(const dx of [-49,48])ctx.fillRect(dx-10,14,20,ground-y-14);
-   ctx.fillStyle='#e6bf80';ctx.fillRect(-61,49,122,8);
-   ctx.fillStyle='#be885c';ctx.fillRect(-67,-47,134,92);
-   ctx.fillStyle='#ffdf99';ctx.fillRect(-52,-31,105,11);
-   ctx.fillStyle='#54316a';ctx.fillRect(-32,-15,64,49);
-   ctx.fillStyle='#ec78d5';ctx.beginPath();ctx.arc(0,10,20+Math.sin(t*4)*2,0,Math.PI*2);ctx.fill();
+   // Ancient desert fortress: shaded stonework, decorated spires, gilded scarab gate.
+   ctx.save();
+   ctx.fillStyle='#442f4d55';ctx.beginPath();ctx.ellipse(0,50,94,14,0,0,Math.PI*2);ctx.fill();
+   const block=ctx.createLinearGradient(-91,-135,92,49);
+   block.addColorStop(0,'#fff1ad');block.addColorStop(.3,'#d8ab70');
+   block.addColorStop(.65,'#9a6a61');block.addColorStop(1,'#573d5c');
+   const gold=ctx.createLinearGradient(-80,-112,72,26);
+   gold.addColorStop(0,'#fff6c5');gold.addColorStop(.5,'#e7bb6b');gold.addColorStop(1,'#8b4d52');
+   function wall(x,y,w,h){ctx.fillStyle=block;ctx.fillRect(x,y,w,h);ctx.strokeStyle='#765064';ctx.lineWidth=3;ctx.strokeRect(x,y,w,h);
+     ctx.strokeStyle='#ecc28a';ctx.lineWidth=1.7;
+     for(let row=1;row<Math.floor(h/17);row++){const yy=y+row*17;ctx.beginPath();ctx.moveTo(x,yy);ctx.lineTo(x+w,yy);ctx.stroke();}
+     for(let row=0;row<Math.floor(h/17);row++)for(let k=1;k<Math.floor(w/24);k++){const xx=x+k*24+(row%2)*12;if(xx<x+w){ctx.beginPath();ctx.moveTo(xx,y+row*17);ctx.lineTo(xx,y+(row+1)*17);ctx.stroke();}}}
+   wall(-89,-65,178,112);
+   // Side towers visibly anchored to foundation.
+   for(const sx of [-68,68]){
+     wall(sx-23,-117,46,158);
+     ctx.fillStyle=gold;ctx.fillRect(sx-28,-119,56,12);
+     ctx.fillStyle='#6c456b';ctx.fillRect(sx-13,-96,26,36);
+     ctx.fillStyle='#f5d59b';ctx.fillRect(sx-8,-93,7,28);
+     ctx.fillStyle='#6e4971';ctx.fillRect(sx-16,-137,32,21);
+     ctx.fillStyle='#f5c576';ctx.fillRect(sx-20,-141,40,7);
+     ctx.fillStyle='#2a214c';ctx.fillRect(sx-11,-136,22,4);
+     ctx.fillStyle='#ffbcdc';ctx.fillRect(sx-3,-134,6,14);
+   }
+   // Stone upper battlements.
+   wall(-56,-88,112,31);
+   ctx.fillStyle=gold;ctx.fillRect(-59,-96,118,10);
+   for(let i=0;i<5;i++){ctx.fillStyle=i%2?'#b98562':'#f1c98b';ctx.fillRect(-53+i*23,-111,19,16);}
+   // Central arched mechanical gateway.
+   ctx.fillStyle='#382449';ctx.beginPath();ctx.moveTo(-38,48);ctx.lineTo(-38,-16);ctx.arc(0,-16,38,Math.PI,0);ctx.lineTo(38,48);ctx.closePath();ctx.fill();
+   ctx.strokeStyle='#e5bd7b';ctx.lineWidth=8;ctx.stroke();
+   ctx.fillStyle='#9a4795';ctx.fillRect(-29,-14,58,62);
+   for(let i=0;i<3;i++){ctx.strokeStyle='#fdc9ff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-20+i*20,-8);ctx.lineTo(-20+i*20,40);ctx.stroke();}
+   // Emblem contains the vulnerable eye; damage color feedback uses existing base.flash.
+   ctx.save();ctx.translate(0,-60+Math.sin(t*3)*2);
+   ctx.fillStyle='#3e2c61';ctx.beginPath();ctx.ellipse(0,0,42,25,0,0,Math.PI*2);ctx.fill();
+   ctx.strokeStyle='#ffe39e';ctx.lineWidth=7;ctx.stroke();
+   ctx.fillStyle='#f57dcf';ctx.beginPath();ctx.ellipse(0,0,25,18,0,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle='#462359';ctx.beginPath();ctx.ellipse(0,0,9,16,0,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle='#fff6c4';ctx.beginPath();ctx.arc(-9,-6,5,0,Math.PI*2);ctx.fill();
+   ctx.restore();
+   // Gilded scarab relief across the roof.
+   for(const sign of [-1,1]){
+     ctx.save();ctx.translate(sign*37,-106);ctx.rotate(sign*.28);
+     ctx.fillStyle='#edba6e';ctx.beginPath();ctx.ellipse(0,0,28,11,sign*.35,0,Math.PI*2);ctx.fill();
+     ctx.strokeStyle='#72455a';ctx.lineWidth=3;ctx.stroke();ctx.restore();
+   }
+   // Tethers and red temple banners.
+   ctx.fillStyle='#7c2e65';ctx.fillRect(-95,-70,18,47);ctx.fillRect(77,-70,18,47);
+   ctx.fillStyle='#ffd88c';ctx.fillRect(-91,-65,10,32);ctx.fillRect(81,-65,10,32);
+   ctx.restore();
+
  }
  if(base.flash>0){ctx.globalAlpha=Math.min(.52,base.flash*3);ctx.fillStyle='#ffefc1';ctx.beginPath();ctx.ellipse(0,0,68,52,0,0,Math.PI*2);ctx.fill();}
  ctx.restore();
