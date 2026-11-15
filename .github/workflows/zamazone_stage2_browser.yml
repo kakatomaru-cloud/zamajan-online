@@ -1,0 +1,48 @@
+name: Stage2 Browser Smoke Test
+on:
+  push:
+    branches: [chatgpt-staging]
+    paths: ['.github/workflows/zamazone_stage2_browser.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Open stage 2 debug boss and verify rendering
+        run: |
+          python3 -m http.server 8765 --directory zamajan-online/public >/tmp/zama-http.log 2>&1 &
+          sleep 3
+          node <<'JS'
+          const { chromium }=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+            const page=await browser.newPage({viewport:{width:1400,height:960}});
+            const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            await page.goto('http://localhost:8765/minigames/zamazone/index.html',{waitUntil:'domcontentloaded',timeout:90000});
+            await page.waitForSelector('#zb-debug-open',{timeout:30000});
+            await page.click('#zb-debug-open');
+            await page.click('[data-dbg-boss="3"]');
+            await page.waitForTimeout(5200);
+            const state=await page.evaluate(()=>({boss:window.ZAMAZONE_STAGE2_CONCEPT_QA?.(),attack:window.ZAMAZONE_STAGE2_ATTACK_QA?.()}));
+            await page.screenshot({path:'stage2-browser-preview.png',fullPage:true});
+            console.log('STAGE2_SMOKE',JSON.stringify(state));
+            if(!state.boss||state.boss.stage!==2||state.boss.parts.length!==6)throw Error('Stage2 rig missing');
+            if(!state.attack)throw Error('Stage2 attack controller missing');
+            if(errors.length)throw Error('JS runtime errors: '+errors.slice(0,4).join('; '));
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage2-browser-preview
+          path: stage2-browser-preview.png
