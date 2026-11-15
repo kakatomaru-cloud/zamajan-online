@@ -1,0 +1,58 @@
+name: Build Stage 2 Desert concept preview
+on:
+  push:
+    branches: [chatgpt-staging]
+    paths:
+      - 'scripts/zamazone_stage2_remake.js'
+      - '.github/workflows/zamazone_stage2_remake.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  stage2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt-staging
+          persist-credentials: true
+      - name: Embed Stage 2 independent parts and parallax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('zamajan-online/public/minigames/zamazone/index.html')
+          code=Path('scripts/zamazone_stage2_remake.js').read_text(encoding='utf-8')
+          text=p.read_text(encoding='utf-8')
+          marker='STAGE2_SCARAB_REMAKE_20261115'
+          if marker not in text:
+              anchor='if(!riichiMode)showDebugTitle();\n})();</script><script id="zj-minigame-ready-v2">'
+              assert anchor in text, 'Could not find original game-script insertion anchor'
+              text=text.replace(anchor,code+'\n'+anchor,1)
+              p.write_text(text,encoding='utf-8')
+          print('stage2 reference',marker in text, 'game bytes',len(text))
+          PY
+      - name: Syntax and assets check
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          root=Path('zamajan-online/public/minigames/zamazone')
+          html=(root/'index.html').read_text(encoding='utf-8')
+          for token in ['STAGE2_SCARAB_REMAKE_20261115','ZAMA_BOSS_A_PARTS_V3_20261115','SHOP12FIX-20261115']:
+              assert token in html, token
+          assert (root/'assets/area2_background.webp').exists()
+          for i in range(12):assert (root/'assets'/f'v2_shop_{i:02}.svg').exists()
+          for i,m in enumerate(re.findall(r'<script[^>]*>(.*?)</script>',html,re.S)):
+              if m.strip():Path(f'/tmp/zama-stage2-{i}.js').write_text(m,encoding='utf-8')
+          print('Syntax sources extracted, all shop icons present')
+          PY
+          for file in /tmp/zama-stage2-*.js; do node --check "$file"; done
+      - name: Commit stage2 changes to staging only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add zamajan-online/public/minigames/zamazone/index.html
+          if ! git diff --cached --quiet; then
+            git commit -m "feat(zamazone): stage2 desert concept gameplay and layered visuals"
+            git push origin HEAD:chatgpt-staging
+          fi
