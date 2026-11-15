@@ -491,7 +491,7 @@ function drawProjectiles(){
    bullets.length=0;bombs.length=0;enemyBullets.length=0;
  }
  for(const b of bullets){const x=screenX(b.x);oval(x,b.y,14,5,'#fffad2');oval(x,b.y,7,3,'#ff84bf')}for(const b of bombs){const x=screenX(b.x);oval(x,b.y,13,13,'#3844ac');oval(x-3,b.y-4,5,5,'#fff')}for(const b of enemyBullets){const x=screenX(b.x);const r=b.kind==='rain'?13:10;oval(x,b.y,r,r,b.kind==='rain'?'#b679ff':'#ff7a9b');oval(x-3,b.y-3,r*.42,r*.42,'#fff1c8')}for(const p of particles){ctx.globalAlpha=clamp(p.life/p.max,0,1);oval(screenX(p.x),p.y,p.size,p.size,p.c)}ctx.globalAlpha=1;for(const co of coins){if(co.grounded&&co.groundAge>=2.6&&Math.floor((co.groundAge-2.6)*13)%2===0)continue;const x=screenX(co.x);ctx.save();ctx.translate(x,co.y+(co.grounded?0:Math.sin(co.spin||0)*1.5));ctx.rotate(co.grounded?Math.sin(co.spin||0)*Math.min(.8,Math.abs(co.vx||0)/110):Math.sin(co.spin||0)*0.15);sprite('coin',-16,-16,32,32);ctx.restore();}}
-function drawHUD(){ctx.fillStyle='#19184fcb';ctx.fillRect(0,0,W,82);ctx.fillStyle='#fff0b7';ctx.font='bold 29px system-ui';ctx.textAlign='left';ctx.fillText('🌟 ザマザマ  STAGE '+stage,23,38);ctx.fillStyle='#fff';ctx.font='bold 21px system-ui';ctx.fillText('HP',25,69);for(let i=0;i<player.maxHp;i++){ctx.fillStyle=i<player.hp?'#ff79a2':'#403d77';ctx.font='23px system-ui';ctx.fillText('♥',70+i*28,70)}ctx.fillStyle='#fff3a3';ctx.fillText(`💰 ${player.money}G`,288,69);ctx.fillText(`基地 ${bases.filter(b=>!b.alive).length}/6`,520,69);ctx.fillText(`💥 ${player.shotLevel}連装  ${player.fireRate.toFixed(1)}倍速`,730,69);ctx.fillText(shopBalloon?'🎈 SHOP 入店可能':`🎈 次のSHOP ${Math.max(0,nextShopMilestone-totalEarned)}G`,1010,69);if(boss&&boss.alive&&mode!=='bossIntro'){ctx.fillStyle='#190d44dd';ctx.fillRect(320,95,640,48);ctx.fillStyle='#fff1c4';ctx.textAlign='center';ctx.font='bold 18px system-ui';ctx.fillText(mode==='bossIntro'?'未確認生物 mana2 接近中':'未確認生物 mana2',640,115);ctx.fillStyle='#5b3a83';ctx.fillRect(370,121,540,11);ctx.fillStyle=mode==='bossIntro'?'#ffd56d':'#ff5692';ctx.fillRect(370,121,540*Math.max(0,boss.hp)/boss.maxHp,11)}if(mode==='bossDeath'){ctx.fillStyle='#201547bb';ctx.fillRect(430,190,420,84);ctx.textAlign='center';ctx.font='bold 30px system-ui';ctx.fillStyle='#fff4a2';ctx.fillText('STAGE '+stage+' CLEAR!',640,226);ctx.font='bold 24px system-ui';ctx.fillText('次の面まで '+Math.max(0,Math.ceil(winTimer))+' 秒',640,258)}if(messageTimer>0 && mode!=='bossIntro'){ctx.textAlign='center';ctx.font='bold 35px system-ui';ctx.lineWidth=7;ctx.strokeStyle='#4b266b';ctx.strokeText(message,640,185);ctx.fillStyle='#ffef98';ctx.fillText(message,640,185)}}
+function drawHUD(){ctx.fillStyle='#19184fcb';ctx.fillRect(0,0,W,82);ctx.fillStyle='#fff0b7';ctx.font='bold 29px system-ui';ctx.textAlign='left';ctx.fillText('🌟 ザマザマ  STAGE '+stage,23,38);ctx.fillStyle='#fff';ctx.font='bold 21px system-ui';ctx.fillText('HP',25,69);for(let i=0;i<player.maxHp;i++){ctx.fillStyle=i<player.hp?'#ff79a2':'#403d77';ctx.font='23px system-ui';ctx.fillText('♥',70+i*28,70)}ctx.fillStyle='#fff3a3';ctx.fillText(`💰 ${player.money}G`,288,69);ctx.fillText(`基地 ${bases.filter(b=>!b.alive).length}/6`,520,69);ctx.fillText(`💥 ${player.shotLevel}連装  ${player.fireRate.toFixed(1)}倍速`,730,69);ctx.fillText(shopBalloon?'🎈 SHOP 入店可能':`🎈 次のSHOP ${Math.max(0,nextShopMilestone-totalEarned)}G`,1010,69);if(boss&&boss.alive&&mode!=='bossIntro'){ctx.save();ctx.fillStyle='#110f35df';ctx.fillRect(911,88,352,26);ctx.fillStyle='#fff0ba';ctx.font='bold 12px system-ui';ctx.textAlign='left';ctx.fillText('BOSS HP',920,105);ctx.fillStyle='#573153';ctx.fillRect(996,96,250,10);ctx.fillStyle='#ff5692';ctx.fillRect(996,96,250*Math.max(0,boss.hp)/Math.max(1,boss.maxHp),10);ctx.restore();}if(mode==='bossDeath'){ctx.fillStyle='#201547bb';ctx.fillRect(430,190,420,84);ctx.textAlign='center';ctx.font='bold 30px system-ui';ctx.fillStyle='#fff4a2';ctx.fillText('STAGE '+stage+' CLEAR!',640,226);ctx.font='bold 24px system-ui';ctx.fillText('次の面まで '+Math.max(0,Math.ceil(winTimer))+' 秒',640,258)}if(messageTimer>0 && mode!=='bossIntro'){ctx.textAlign='center';ctx.font='bold 35px system-ui';ctx.lineWidth=7;ctx.strokeStyle='#4b266b';ctx.strokeText(message,640,185);ctx.fillStyle='#ffef98';ctx.fillText(message,640,185)}}
 function draw(){ctx.clearRect(0,0,W,H);ctx.save();if(shake>0)ctx.translate(rnd(-shake,shake),rnd(-shake,shake));if(!drawScreenshotScenery()){drawSky();drawScenery();}if(shopBalloon)drawShop(shopBalloon);bases.forEach(drawBase);enemies.forEach(drawEnemy);drawBoss();drawBossAttackEffects();drawBossDebris();drawProjectiles();drawShip();if(mode==='bossIntro')drawBossWarningOverlay();ctx.restore();drawHUD();if(riichiMode){ctx.save();ctx.fillStyle='#100e36e6';ctx.fillRect(395,83,490,41);ctx.textAlign='center';ctx.fillStyle='#ffef9b';ctx.font='bold 22px system-ui';ctx.fillText('防衛：基地 '+Math.min(2,bases.filter(b=>!b.alive).length)+'/2    残り '+Math.ceil(riichiRemaining)+'秒',640,111);ctx.restore()}}
 function loop(t){const dt=Math.min(.033,Math.max(0,(t-last)/1000));last=t;update(dt);if(player)draw();requestAnimationFrame(loop)}
 // Keyboard controls. Space confirms replay when result screen is open.
@@ -1850,11 +1850,7 @@ const oldDrawEffectsDoc=drawBossAttackEffects;
 drawBossAttackEffects=function(){if(!rigReady())return oldDrawEffectsDoc();drawHazardsRig();};
 const oldDrawHudDoc=drawHUD;
 drawHUD=function(){oldDrawHudDoc();if(!rigReady())return;const z=boss.z;const col=REBOSS[z.n].color;
- ctx.save();ctx.fillStyle='#111632e5';ctx.fillRect(340,144,600,38);ctx.textAlign='center';ctx.font='bold 20px system-ui';ctx.fillStyle=col;
- const counter=z.n===7?`ノード ${partCount(z)}/3`:`装甲 ${partCount(z)}/${z.parts.length}`;
- ctx.fillText(`${REBOSS[z.n].name}　${counter}　${exposed(z)?'弱点 OPEN':'弱点 LOCK'}`,640,170);
- if(z.attack&&z.state!=='IDLE'){ctx.font='bold 23px system-ui';ctx.fillStyle=z.state==='TELEGRAPH'?'#fff1a0':col;ctx.fillText(`${z.state==='TELEGRAPH'?'予兆':'攻撃'}：${z.attack[1]}`,640,206);}
- ctx.restore();};
+ ctx.save();ctx.fillStyle='#111632e5';ctx.fillRect(912,117,352,39);ctx.textAlign='left';ctx.font='bold 12px system-ui';ctx.fillStyle=col;ctx.fillText(REBOSS[z.n].name+' / '+(exposed(z)?'WEAK POINT OPEN':'ARMOR LOCK'),921,132);if(z.attack&&z.state!=='IDLE'){ctx.fillStyle=z.state==='TELEGRAPH'?'#fff1a0':col;ctx.fillText((z.state==='TELEGRAPH'?'予兆：':'攻撃：')+z.attack[1],921,148);}ctx.restore();};
 const oldDefeatDoc=defeatBoss;
 defeatBoss=function(){if(rigReady()){boss.z.state='DEATH';boss.z.deathTime=0;boss.z.deathPX=screenX(boss.x);boss.z.deathPY=boss.y;
  boss.z.deathParts=[...boss.z.parts.map(p=>({x:p.x,y:p.y,rot:rnd(-5,5),vx:rnd(-95,95),vy:rnd(-180,-40),img:'module'})),...Array.from({length:8},(_,i)=>({x:rnd(-110,110),y:rnd(-80,90),rot:rnd(-4,4),vx:rnd(-180,180),vy:rnd(-190,-50),img:i%2?'shard':'limb'}))];
@@ -2271,6 +2267,31 @@ if(window.ZamaV2QA){
 }
 
 // Debug menu from V2 remains enabled; as required riichi bypasses it.
+
+
+// SHOP12FIX-20261115
+const allShopStyle=document.createElement('style');
+allShopStyle.textContent='#panel.shop.v2-shop{width:min(96vw,1140px)!important;max-height:94vh!important;overflow:hidden!important}#panel.shop.v2-shop .shop12{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;max-height:61vh;overflow:auto;padding:8px}#panel.shop.v2-shop .shop12 article{background:#fff9e7;color:#214732;border:4px solid #cdaa61;border-radius:10px;padding:6px;min-width:0;text-align:center;display:flex;flex-direction:column;gap:4px}#panel.shop.v2-shop .shop12 img{width:100%;height:92px;object-fit:contain;background:#15214c;border-radius:5px}#panel.shop.v2-shop .shop12 strong{font-size:15px}#panel.shop.v2-shop .shop12 button{color:#285333;background:#ffefab;border:2px solid #9d7f45;border-radius:7px;font-weight:900;padding:5px}#panel.shop.v2-shop .shop12 button:disabled{opacity:.5}#panel.shop.v2-shop .shop12 .shop-selected{outline:4px solid #f535a4!important}#panel.shop.v2-shop .shop12-head{background:#fff1ab;color:#275038;display:flex;justify-content:space-between;padding:10px;border-radius:8px;font-weight:900}#panel.shop.v2-shop .shop12-foot{background:#27673e;color:#fff4be;padding:8px;font-size:13px;text-align:center;border-radius:7px}@media(max-width:750px){#panel.shop.v2-shop .shop12{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:520px){#panel.shop.v2-shop .shop12{grid-template-columns:repeat(2,minmax(0,1fr));max-height:46vh}#panel.shop.v2-shop .shop12 img{height:65px}}';
+document.head.appendChild(allShopStyle);
+v2ShopRender=function(){
+ titleEl.textContent='ZAMAZONE / ALL 12 ITEMS';
+ const panel=document.getElementById('panel');panel.classList.add('shop','v2-shop');
+ contentEl.replaceChildren();
+ const head=document.createElement('div');head.className='shop12-head';head.textContent='ALL 12 ITEMS　　所持金 '+player.money+' G';contentEl.appendChild(head);
+ const grid=document.createElement('div');grid.className='shop12';
+ V2_ITEMS.forEach((it,i)=>{
+  const a=document.createElement('article'),pic=document.createElement('img');pic.src='assets/v2_shop_'+String(i).padStart(2,'0')+'.png';pic.alt=it[0];a.appendChild(pic);
+  const name=document.createElement('strong');name.textContent=it[0];a.appendChild(name);
+  const desc=document.createElement('small');desc.textContent=it[2];a.appendChild(desc);
+  const price=document.createElement('strong');price.textContent=v2Cost(i)+' G';a.appendChild(price);
+  const btn=document.createElement('button');btn.type='button';btn.dataset.buy=String(i);btn.disabled=!v2Allowed(i);btn.textContent=v2Purchased[i]>=it[5]?'MAX':(i===8&&player.hp>=player.maxHp?'HP満タン':btn.disabled?'購入不可':'BUY');btn.onclick=()=>v2Buy(i);a.appendChild(btn);grid.appendChild(a);
+ });
+ contentEl.appendChild(grid);
+ const footer=document.createElement('div');footer.className='shop12-foot';footer.textContent='上下左右：商品選択 / Enter・A：購入 / Esc・B：退店　ハートとボムは何度でも購入可能';contentEl.appendChild(footer);
+ mainAction.textContent='EXIT / お店を出る';mainAction.onclick=curtainExit;panelWrap.classList.remove('hidden');
+ shopSelection=Math.min(12,Math.max(0,shopSelection));v2ShopHighlight();
+};refreshShop=v2ShopRender;
+shopNav=function(step,axis){if(mode!=='shop')return;shopSelection=(shopSelection+step+13)%13;v2ShopHighlight();sound(560,.028,'square',.014);};
 
 if(!riichiMode)showDebugTitle();
 })();</script><script id="zj-minigame-ready-v2">(()=>{'use strict';const p=new URLSearchParams(location.search);const id=p.get('game');if(p.get('riichi')!=='1'||!id||window.parent===window)return;const ready=()=>{try{window.parent.postMessage({type:'zamajan-minigame-ready',id},location.origin)}catch(e){}};if(document.readyState==='complete')setTimeout(ready,100);else window.addEventListener('load',()=>setTimeout(ready,100),{once:true});})();</script></body></html>
