@@ -2850,25 +2850,31 @@ function _v5Tile(img,rate,y,h,alpha=1){
 }
 drawScreenshotScenery=function(){
  if(!_v5Enabled())return _v5OriginalBackdrop();
- ctx.save();const sky=ctx.createLinearGradient(0,82,0,ground);
- sky.addColorStop(0,'#4e438f');sky.addColorStop(.38,'#a57fc3');sky.addColorStop(.74,'#f5beaa');sky.addColorStop(1,'#db9d80');
- ctx.fillStyle=sky;ctx.fillRect(0,82,W,H-82);
- _v5Tile(_v5Layer('bg_sky',0,60),.014,82,300,.98);
- _v5Tile(_v5Layer('bg_far',57,57),.064,192,280,.98);
- _v5Tile(_v5Layer('bg_mid',63,60),.18,320,292,.99);
- _v5Tile(_v5Layer('bg_near',70,0),.37,426,ground-426,.98);
- // Thin heat haze, atmospheric dust, but no opaque horizontal bands.
- const haze=ctx.createLinearGradient(0,ground-58,0,ground+12);
- haze.addColorStop(0,'#ffcf8600');haze.addColorStop(.9,'#f8c18d8c');haze.addColorStop(1,'#e4aa76');
- ctx.fillStyle=haze;ctx.fillRect(0,ground-58,W,70);
- const sand=ctx.createLinearGradient(0,ground,0,H);sand.addColorStop(0,'#bd826a');sand.addColorStop(.25,'#d7a277');sand.addColorStop(1,'#8e5f77');
- ctx.fillStyle=sand;ctx.fillRect(0,ground,W,H-ground);
- ctx.fillStyle='#ffe3a3';ctx.fillRect(0,ground-3,W,4);
- for(let i=0;i<26;i++){const x=((i*113-camera*.63)%(W+200)+(W+200))%(W+200)-110;const y=ground+12+(i*17)%57;ctx.fillStyle=i%3===0?'#fbd49c':'#9b6e73';ctx.globalAlpha=i%3===0?.7:.42;ctx.fillRect(x,y,15+(i%4)*7,2);}
- ctx.globalAlpha=1;
- for(let i=0;i<27;i++){const x=((i*171+themeTick*(15+i%4*8)-camera*.2)%(W+80)+(W+80))%(W+80)-40,y=160+(i*59)%(ground-210);ctx.fillStyle='#fff4cd';ctx.globalAlpha=.11+(i%5)*.04;ctx.beginPath();ctx.arc(x,y,1+i%3*.45,0,Math.PI*2);ctx.fill();}
- ctx.restore();return true;
+ // The concept strip atlas is NOT a continuous backdrop; displaying its rows
+ // produces opaque lavender bars. Preserve the clean panoramic desert base.
+ const result=_v5OriginalBackdrop();
+ ctx.save();
+ // Separate faint parallax silhouettes, not rectangular image-strip overlays.
+ for(let layer=0;layer<2;layer++){
+   const drift=camera*(layer===0?.11:.32);
+   ctx.globalAlpha=layer===0?.12:.18;
+   ctx.strokeStyle=layer===0?'#9c759f':'#815b7c';
+   ctx.lineWidth=layer===0?4:5;
+   const scale=layer===0?.72:1.07;
+   for(let j=-1;j<7;j++){
+     let x=j*330-((drift%330+330)%330)+80;
+     let y=ground-45-(layer===0?90:40);
+     ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);
+     ctx.beginPath();ctx.moveTo(-45,1);ctx.lineTo(-45,-80);ctx.lineTo(-33,-80);
+     ctx.lineTo(-33,-107);ctx.lineTo(-8,-107);ctx.lineTo(-8,-87);
+     ctx.lineTo(24,-87);ctx.lineTo(24,1);ctx.stroke();
+     ctx.restore();
+   }
+ }
+ ctx.restore();
+ return result;
 };
+
 function _v5Draw(name,x,y,w,h,alpha=1){
  if(!_v5Loaded(name))return false;
  ctx.save();ctx.globalAlpha*=alpha;ctx.drawImage(_v5Sprites[name],x,y,w,h);ctx.restore();return true;
