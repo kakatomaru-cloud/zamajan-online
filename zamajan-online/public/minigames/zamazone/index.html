@@ -2938,21 +2938,12 @@ function _v5BossPart(p,t,x,y){
  ctx.restore();
 }
 drawBoss=function(){
- if(!_v5Enabled()||!boss?.alive||boss.z?.n!==3||!_v5Loaded('boss_body'))return _v5OriginalBoss();
- const x=screenX(boss.x),y=boss.y,z=boss.z,t=z.elapsed||0;
- if(x<-400||x>W+400)return;
- ctx.save();
- // Depth shadow visually anchors the creature above the desert.
- ctx.fillStyle='#331a4a3d';ctx.beginPath();ctx.ellipse(x,ground-9,141,17,0,0,Math.PI*2);ctx.fill();
- const glow=ctx.createRadialGradient(x,y-10,25,x,y,228);glow.addColorStop(0,'#ff74d02c');glow.addColorStop(1,'#ff74d000');
- ctx.fillStyle=glow;ctx.beginPath();ctx.ellipse(x,y,230,196,0,0,Math.PI*2);ctx.fill();
- const ex=z.parts.some(p=>p.type!=='core'&&!p.dead);
- // Torso is a single underlay. Every damageable shell is independently transformed.
- _v5Draw('boss_body',x-158,y-154,316,289);
- for(const part of ['wing','tail','arm','core'])for(const p of z.parts)if(p.type===part)_v5BossPart(p,t,x,y);
- if(!ex){ctx.strokeStyle='#ffed97';ctx.lineWidth=5;ctx.shadowColor='#ff7fdb';ctx.shadowBlur=26;ctx.beginPath();ctx.arc(x,y-18,58+Math.sin(t*8)*7,0,Math.PI*2);ctx.stroke();}
- ctx.restore();
+ // The concept asset fragments in stage2_concept are not a complete boss rig.
+ // Keep the coherent transparent 6-part scarab renderer from the validated V4.
+ if(!_v5Enabled()||!boss?.alive||boss.z?.n!==3)return _v5OriginalBoss();
+ _v5OriginalBoss();
 };
+
 window.ZAMAZONE_STAGE2_DELIVERY_QA=()=>({
  version:'stage2-art-direction-v5',
  stage,mode,loaded:_v5Names.filter(_v5Loaded).length,total:_v5Names.length,
