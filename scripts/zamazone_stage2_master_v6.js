@@ -169,6 +169,84 @@ applyRigBomb=function(b,rad){
  if(hit&&z.parts.every(p=>p.dead)){boss.hp=0;defeatBoss();}
  return hit;
 };
+
+// Signature visual language: claws use a luminous narrow laser, dunes rise as
+// carved columns, the tail lobs heavy bombs, and shell wings telegraph a dash.
+const zm6PriorAttackFx=drawBossAttackEffects;
+drawBossAttackEffects=function(){
+ if(!zm6Stage()||!boss?.alive||boss.z?.n!==3||!boss.z.attack)return zm6PriorAttackFx();
+ const z=boss.z,a=z.attack[0],t=z.t||0;
+ const warning=z.state==='TELEGRAPH',active=z.state==='ATTACK';
+ if(!warning&&!active)return;
+ const bx=screenX(boss.x),by=boss.y,px=screenX(player.x);
+ ctx.save();
+ if(a==='claw-laser'){
+  const y=by+68+Math.sin(t*2)*12,left=66,right=bx-115;
+  const glow=ctx.createLinearGradient(left,y,right,y);
+  glow.addColorStop(0,'#f689e800');glow.addColorStop(.16,'#ef75dbaa');
+  glow.addColorStop(.68,'#ff8ed2');glow.addColorStop(1,'#fff6b8');
+  if(warning){
+   ctx.strokeStyle='#ffeeb5';ctx.lineWidth=2.5+Math.sin(t*16)*.6;
+   ctx.globalAlpha=.6+.22*Math.sin(t*10);
+   ctx.setLineDash([18,11]);ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(right,y);ctx.stroke();ctx.setLineDash([]);
+   for(let j=0;j<4;j++){const x=left+(right-left)*(j+.3)/4;
+    ctx.strokeStyle='#ffe6c5';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,7+j%2*3,0,2*Math.PI);ctx.stroke();}
+  }else{
+   ctx.lineCap='round';ctx.shadowColor='#ff57e2';ctx.shadowBlur=27;
+   ctx.strokeStyle='#d242d68a';ctx.lineWidth=35;ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(right,y);ctx.stroke();
+   ctx.shadowBlur=14;ctx.strokeStyle=glow;ctx.lineWidth=17;ctx.stroke();
+   ctx.shadowBlur=0;ctx.strokeStyle='#fff8e9';ctx.lineWidth=5;ctx.stroke();
+   for(let j=0;j<9;j++){const x=left+(right-left)*((j*.137+t*.58)%1);
+    ctx.fillStyle='#fff8e5';ctx.globalAlpha=.55+j%3*.15;
+    ctx.beginPath();ctx.arc(x,y+(j%2?1:-1)*7,2+j%3*1.4,0,2*Math.PI);ctx.fill();}
+  }
+ }else if(a==='sand-columns'){
+  for(let i=0;i<3;i++){
+   const x=220+i*365,up=active?Math.min(1,Math.max(0,(t-i*.24)*6)):0;
+   if(warning){
+    ctx.globalAlpha=.55+.23*Math.sin(t*11+i);
+    ctx.strokeStyle='#ffdfa3';ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(x,ground-6,55,13,0,0,2*Math.PI);ctx.stroke();
+    for(let j=0;j<5;j++){ctx.beginPath();ctx.moveTo(x-32+j*16,ground-17);ctx.lineTo(x-32+j*16,ground-38-Math.sin(t*6+j)*8);ctx.stroke();}
+   }else if(up>0){
+    const height=210*up,grad=ctx.createLinearGradient(x-48,0,x+48,0);
+    grad.addColorStop(0,'#8e5770');grad.addColorStop(.2,'#e6b37e');grad.addColorStop(.55,'#f4cd95');grad.addColorStop(1,'#95617b');
+    ctx.fillStyle=grad;ctx.strokeStyle='#6a4269';ctx.lineWidth=5;
+    ctx.beginPath();ctx.moveTo(x-45,ground);ctx.lineTo(x-45,ground-height+14);
+    ctx.lineTo(x-31,ground-height);ctx.lineTo(x+31,ground-height);
+    ctx.lineTo(x+45,ground-height+14);ctx.lineTo(x+45,ground);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.strokeStyle='#9d6a69';ctx.lineWidth=2;
+    for(let j=1;j<6;j++){const yy=ground-height+j*height/6;ctx.beginPath();ctx.moveTo(x-43,yy);ctx.lineTo(x+43,yy);ctx.stroke();}
+    ctx.fillStyle='#f7e6bb77';for(let j=0;j<7;j++){
+     const theta=j*2.4+t*3,dx=Math.sin(theta)*60,dy=Math.abs(Math.cos(theta))*30;
+     ctx.beginPath();ctx.arc(x+dx,ground-height+dy,2+j%3*2,0,2*Math.PI);ctx.fill();}
+   }
+  }
+ }else if(a==='tail-bombs'){
+  if(warning){const p=getPartPos(z.parts.find(p=>p.type==='tail')||{type:'tail',i:4});
+   ctx.strokeStyle='#ffdeac';ctx.lineWidth=3;ctx.setLineDash([8,10]);
+   ctx.beginPath();ctx.arc(bx+p.x,by+p.y,59+Math.sin(t*9)*5,0,2*Math.PI);ctx.stroke();ctx.setLineDash([]);
+  }else{
+   for(let i=0;i<3;i++){const k=t-i*.29;if(k<=0||k>1.7)continue;
+    const x=bx-100-i*140-k*110,y=by+114-300*k+310*k*k;
+    const g=ctx.createRadialGradient(x-7,y-7,2,x,y,29);
+    g.addColorStop(0,'#fff3c7');g.addColorStop(.25,'#f8abf7');g.addColorStop(.74,'#ae48b9');g.addColorStop(1,'#4b2c70');
+    ctx.shadowColor='#ff78d1';ctx.shadowBlur=16;ctx.fillStyle=g;ctx.strokeStyle='#edbe8e';ctx.lineWidth=4;
+    ctx.beginPath();ctx.arc(x,y,25,0,2*Math.PI);ctx.fill();ctx.stroke();
+    ctx.shadowBlur=0;ctx.strokeStyle='#fff5bb';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x-6,y-8,9,Math.PI*1.2,Math.PI*1.8);ctx.stroke();
+   }
+  }
+ }else if(a==='shell-dash'){
+  ctx.lineCap='round';ctx.globalAlpha=warning?.45:.75;ctx.strokeStyle=warning?'#ffe6b0':'#e5bdff';ctx.lineWidth=warning?3:7;
+  for(let i=0;i<9;i++){
+   const y=by-105+i*25,off=(i%3)*33;
+   const x=bx-180-off-(warning?0:t*65);
+   ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-85-i%3*31,y);ctx.stroke();
+  }
+  if(warning){ctx.strokeStyle='#ffefbc';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(bx,by,200,140,0,0,2*Math.PI);ctx.stroke();}
+ }
+ ctx.restore();
+};
+
 window.ZAMAZONE_STAGE2_MASTER_QA=()=>({
  stage,mode,ready:zm6Names.filter(zm6Ready).length,total:zm6Names.length,
  artSource:'original concept sprite sheets, independent 84-WebP delivery',
