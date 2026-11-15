@@ -94,6 +94,16 @@ jobs:
             if(!boss||boss.stage!==2||boss.total!==boss.ready||boss.parts.length!==6||!boss.assets.boss)throw Error('Boss artwork or rig incomplete');
             if(missing.length||errors.length)throw Error('Load/JS errors '+missing.slice(0,3)+' '+errors.slice(0,3));
             await page.screenshot({path:'stage2-master-boss.png',fullPage:true});
+            // Actual gameplay input: hold the shot button and verify at least
+            // one real destructible boss part takes damage.
+            await page.keyboard.down('j');
+            await page.waitForTimeout(3200);
+            await page.keyboard.up('j');
+            const shotState=await page.evaluate(()=>window.ZAMAZONE_STAGE2_MASTER_QA?.());
+            console.log('SHOT_DAMAGE_QA',JSON.stringify(shotState?.parts));
+            if(!shotState?.parts?.some(p=>p.hp<p.maxHp||p.dead))
+                throw Error('Real shot input did not damage any boss part');
+            await page.screenshot({path:'stage2-master-damaged-boss.png',fullPage:true});
             await page.evaluate(()=>window.ZAMAZONE_STAGE2_REPAIR_PREVIEW_AREA());
             await page.waitForTimeout(950);
             const area=await page.evaluate(()=>window.ZAMAZONE_STAGE2_MASTER_QA?.());
@@ -110,6 +120,7 @@ jobs:
           name: stage2-master-visual-results
           path: |
             stage2-master-boss.png
+            stage2-master-damaged-boss.png
             stage2-master-area.png
       - name: Commit tested asset integration to staging only
         run: |
