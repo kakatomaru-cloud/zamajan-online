@@ -2762,5 +2762,12 @@ window.ZAMAZONE_STAGE2_REPAIR_QA=()=>({
  version:'stage2-repair-v4'
 });
 
+window.ZAMAZONE_STAGE2_REPAIR_PREVIEW_AREA=function(){
+  if(riichiMode)return false;
+  stage=2;setupStage(false);mode='play';closePanel();
+  camera=320;player.x=400;player.y=350;player.inv=8;
+  return true;
+};
+
 if(!riichiMode)showDebugTitle();
 })();</script><script id="zj-minigame-ready-v2">(()=>{'use strict';const p=new URLSearchParams(location.search);const id=p.get('game');if(p.get('riichi')!=='1'||!id||window.parent===window)return;const ready=()=>{try{window.parent.postMessage({type:'zamajan-minigame-ready',id},location.origin)}catch(e){}};if(document.readyState==='complete')setTimeout(ready,100);else window.addEventListener('load',()=>setTimeout(ready,100),{once:true});})();</script></body></html>
