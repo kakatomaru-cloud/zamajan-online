@@ -26,12 +26,17 @@ jobs:
           p=Path('zamajan-online/public/minigames/zamazone/index.html')
           code=Path('scripts/zamazone_stage2_repair_v4.js').read_text(encoding='utf-8')
           s=p.read_text(encoding='utf-8')
-          if 'STAGE2_REPAIR_VISUAL_AND_COLLISION_V4_20261115' not in s:
-              anchor='if(!riichiMode)showDebugTitle();\n})();</script><script id="zj-minigame-ready-v2">'
-              assert anchor in s, 'Game script insertion point missing'
+          anchor='if(!riichiMode)showDebugTitle();\n})();</script><script id="zj-minigame-ready-v2">'
+          assert anchor in s, 'Game script insertion point missing'
+          marker='// STAGE2_REPAIR_VISUAL_AND_COLLISION_V4_20261115'
+          if marker in s:
+              a=s.index(marker)
+              b=s.index(anchor,a)
+              s=s[:a]+code+'\n'+s[b:]
+          else:
               s=s.replace(anchor,code+'\n'+anchor,1)
-              p.write_text(s,encoding='utf-8')
-          print('Stage2 repair installed',len(s))
+          p.write_text(s,encoding='utf-8')
+          print('Stage2 repair updated',len(s))
           PY
       - name: Validate JS syntax and transparent rig art
         run: |
