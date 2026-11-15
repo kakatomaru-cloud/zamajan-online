@@ -3249,6 +3249,8 @@ if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
 // STAGE2_CONNECTED_BOSS_12POSE_TEST_20261115
 // One complete-frame sprite per animation step: no disconnected tile-built body.
 const _poseBossPrevious=drawBoss;
+const _poseActualSheet=new Image();
+_poseActualSheet.src='assets/scarab_boss_12poses.webp';
 const _poseFrameImages=Array.from({length:12},(_,i)=>{
   const image=new Image();image.src='assets/mana3_frame'+String(i).padStart(2,'0')+'.png';return image;
 });
@@ -3278,7 +3280,9 @@ drawBoss=function(){
  // A single coherent silhouette is maintained in every frame.
  ctx.shadowColor=broken>=3?'#ff66a7':'#7b59a9';ctx.shadowBlur=broken>=3?17:6;
  const width=342,height=342;
- if(_poseLoaded(frame))ctx.drawImage(image,-width/2,-height/2,width,height);
+ if(_poseActualSheet.complete&&_poseActualSheet.naturalWidth===1448&&_poseActualSheet.naturalHeight===1086){
+   ctx.drawImage(_poseActualSheet,(frame%4)*362,Math.floor(frame/4)*362,362,362,-width/2,-height/2,width,height);
+ } else if(_poseLoaded(frame))ctx.drawImage(image,-width/2,-height/2,width,height);
  else _poseBossPrevious();
  ctx.shadowBlur=0;
  // Damage stages are legible without an intrusive boss health bar.
@@ -3296,6 +3300,7 @@ drawBoss=function(){
 window.ZAMAZONE_STAGE2_CONNECTED_BOSS_QA=()=>({
  version:'full-frame-12pose-preview',stage,mode,
  loadedFrames:_poseFrameImages.filter(x=>x.complete&&x.naturalWidth>0).length,
+ actualSpriteSheetLoaded:_poseActualSheet.complete&&_poseActualSheet.naturalWidth===1448,
  displayedFrame:_poseTarget()?_poseModeFrame():null,
  parts:boss?.z?.n===3?boss.z.parts.map(p=>({type:p.type,hp:p.hp,dead:p.dead})):[],
  hasFullSilhouette:true
