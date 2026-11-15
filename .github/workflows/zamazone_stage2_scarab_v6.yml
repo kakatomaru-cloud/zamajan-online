@@ -1,0 +1,95 @@
+name: Stage2 Scarab Delivery QA v6
+on:
+  push:
+    branches: [chatgpt-staging]
+    paths:
+      - 'scripts/zamazone_stage2_scarab_silhouette_v6.js'
+      - '.github/workflows/zamazone_stage2_scarab_v6.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build-and-qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt-staging
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install unique mechanical scarab parts renderer
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('zamajan-online/public/minigames/zamazone/index.html')
+          src=Path('scripts/zamazone_stage2_scarab_silhouette_v6.js').read_text(encoding='utf-8')
+          s=p.read_text(encoding='utf-8')
+          anchor='if(!riichiMode)showDebugTitle();\n})();</script><script id="zj-minigame-ready-v2">'
+          marker='// STAGE2_SCARAB_SILHOUETTE_V6_20261115'
+          assert anchor in s
+          if marker in s:
+            a=s.index(marker);b=s.index(anchor,a);s=s[:a]+src+'\n'+s[b:]
+          else:s=s.replace(anchor,src+'\n'+anchor,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Static parse
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          root=Path('zamajan-online/public/minigames/zamazone')
+          s=(root/'index.html').read_text(encoding='utf-8')
+          for k in ['STAGE2_SCARAB_SILHOUETTE_V6_20261115','STAGE2_REPAIR_VISUAL_AND_COLLISION_V4_20261115']:
+              assert k in s
+          for i,code in enumerate(re.findall(r'<script[^>]*>(.*?)</script>',s,re.S)):
+              if code.strip():Path('/tmp/stage2-v6-'+str(i)+'.js').write_text(code,encoding='utf-8')
+          PY
+          for f in /tmp/stage2-v6-*.js; do node --check "$f"; done
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Browser gameplay smoke test and screenshots
+        run: |
+          python3 -m http.server 8765 --directory zamajan-online/public >/tmp/zama-http.log 2>&1 &
+          sleep 2
+          node <<'JS'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const b=await chromium.launch({headless:true,args:['--no-sandbox']});
+            const p=await b.newPage({viewport:{width:1552,height:960}});
+            const errors=[];p.on('pageerror',e=>errors.push(e.message));
+            await p.goto('http://localhost:8765/minigames/zamazone/index.html',{waitUntil:'domcontentloaded',timeout:90000});
+            await p.waitForSelector('#zb-debug-open');
+            await p.click('#zb-debug-open');
+            await p.click('[data-dbg-boss="3"]');
+            await p.waitForTimeout(4900);
+            let state=await p.evaluate(()=>window.ZAMAZONE_STAGE2_V6_QA?.());
+            console.log('BOSS_V6',JSON.stringify(state));
+            if(!state||state.stage!==2||state.parts.length!==6)throw Error('missing animated scarab parts');
+            await p.screenshot({path:'stage2-v6-scarab.png',fullPage:true});
+            await p.evaluate(()=>window.ZAMAZONE_STAGE2_REPAIR_PREVIEW_AREA());
+            await p.waitForTimeout(900);
+            await p.screenshot({path:'stage2-v6-area.png',fullPage:true});
+            if(errors.length)throw Error('Browser JS errors: '+errors.join(' | '));
+            await b.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage2-v6-qa
+          path: |
+            stage2-v6-scarab.png
+            stage2-v6-area.png
+      - name: Commit tested game only on staging branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add zamajan-online/public/minigames/zamazone/index.html
+          if ! git diff --cached --quiet; then
+            git commit -m 'feat(zamazone): connect Stage 2 scarab limbs into a cohesive armored boss'
+            git push origin HEAD:chatgpt-staging
+          fi
