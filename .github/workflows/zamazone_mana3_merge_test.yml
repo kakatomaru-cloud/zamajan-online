@@ -1,0 +1,49 @@
+name: Add MANA3 merge-bigrock test to ZAMAZONE staging
+on:
+  push:
+    branches: [chatgpt-staging]
+    paths:
+      - 'scripts/zamazone_mana3_merge_test_entry.py'
+      - '.github/workflows/zamazone_mana3_merge_test.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  inject-test-entry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt-staging
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Insert interactive MANA3 test panel
+        run: python3 scripts/zamazone_mana3_merge_test_entry.py
+      - name: Verify test exists and parse inline scripts
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('zamajan-online/public/minigames/zamazone')
+          s=(p/'index.html').read_text(encoding='utf8')
+          demo=(p/'mana3_merge_bigrock_test.html').read_text(encoding='utf8')
+          assert 'ZAMAZONE_MANA3_MERGE_TEST_ENTRY_20261116' in s
+          assert 'mana3_merge_bigrock_test.html' in s
+          assert "MERGE_BIGROCK" in demo and "MERGE_GATHER" in demo
+          for n,code in enumerate(re.findall(r'<script[^>]*>(.*?)</script>',s,re.S)):
+              if code.strip(): Path('/tmp/zm-main-'+str(n)+'.js').write_text(code)
+          for n,code in enumerate(re.findall(r'<script[^>]*>(.*?)</script>',demo,re.S)):
+              if code.strip(): Path('/tmp/zm-demo-'+str(n)+'.js').write_text(code)
+          PY
+          for f in /tmp/zm-main-*.js /tmp/zm-demo-*.js; do node --check "$f"; done
+      - name: Commit staged game preview entry
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add zamajan-online/public/minigames/zamazone/index.html
+          if ! git diff --cached --quiet; then
+            git commit -m "test(zamazone): add Mana3 merge-bigrock overlay to staging game"
+            git push origin HEAD:chatgpt-staging
+          fi
