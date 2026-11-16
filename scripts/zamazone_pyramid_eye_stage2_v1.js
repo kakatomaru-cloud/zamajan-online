@@ -270,7 +270,7 @@ applyRigBomb=function(b,rad){
 };
 window.ZAMAZONE_PYRAMID_EYE_QA=()=>({
  active:pyramidOn(),stage,mode,assetLoaded:pyImagesReady(),
- stones:boss?.pyramid?.stones.map(s=>({id:s.id,alive:s.alive,visible:s.visible,hp:s.hp}))||[],
+ stones:boss?.pyramid?.stones.map(s=>({id:s.id,alive:s.alive,visible:s.visible,hp:s.hp,xScreen:screenX(s.x),y:s.y}))||[],
  attack:boss?.pyramid?.attack,phase:boss?.pyramid?.phase,
  mergePhase:boss?.pyramid?.merge?.phase||null,
  boulderCount:boss?.pyramid?.boulder?.alive?1:0,
