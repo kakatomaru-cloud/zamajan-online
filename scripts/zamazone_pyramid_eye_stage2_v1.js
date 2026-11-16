@@ -190,6 +190,16 @@ function pyUpdate(dt){
  }
 }
 updateBossAttacks=function(dt){if(!pyramidOn())return pyramidOldAttackUpdate(dt);pyUpdate(dt);};
+// Boss introduction uses the global update loop, not updateBossAttacks.
+// Advance the 16 independent stones while the body rises from below.
+const pyPrevMainUpdate=update;
+update=function(dt){
+ pyPrevMainUpdate(dt);
+ if(!riichiMode&&stage===2&&boss?.pyramid?.version===1){
+  if(mode==='bossIntro'&&!boss.pyramid.entranceComplete)pyUpdate(dt);
+  if(mode==='bossDeath')boss.pyramid.deathTime+=Math.min(.05,dt);
+ }
+};
 function pySprite(im,x,y,w,h,rot=0){if(!im?.complete||!im.naturalWidth)return;ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.drawImage(im,-w/2,-h/2,w,h);ctx.restore();}
 drawBoss=function(){
  if(!pyramidOn()){
