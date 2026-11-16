@@ -63,6 +63,8 @@ jobs:
             if(!qa||!qa.active)throw Error('Stage2 Pyramid Eye not active');
             if(qa.stones.length!==16)throw Error('Missing orbiting stones');
             if(!qa.assetLoaded)throw Error('Pyramid Eye sprite not loaded');
+            if(qa.stones.some(s=>s.y<0))throw Error('Intro stones still hidden above screen');
+            await page.waitForFunction(()=>{const q=window.ZAMAZONE_PYRAMID_EYE_QA?.();return q&&q.entranceComplete&&q.mode!=='bossIntro';},null,{timeout:25000});
             const front=await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_TEST.eyeHit(6,false));
             if(!front||front.after!==front.before)throw Error('Eye must reject hits when turned away: '+JSON.stringify(front));
             const colors=[];
@@ -81,6 +83,9 @@ jobs:
             if(radial.stones.every(s=>s.xScreen>95))throw Error('Stones did not reach left side');
             const ended=await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_TEST.eyeHit(6,true));
             console.log('PYRAMID_DEFEAT',JSON.stringify(ended));
+            const internals=await page.evaluate(()=>({deathRenderer:typeof drawBossDeath,drawBossName:typeof drawBoss,defeat:typeof defeatBoss,
+              mode:window.ZAMAZONE_PYRAMID_EYE_QA?.()?.mode}));
+            console.log('DEFEAT_RENDERERS',JSON.stringify(internals));
             if(ended.after!==0)throw Error('Defeat not triggered');
             if(errors.length)throw Error('JS runtime errors '+errors.slice(0,5).join(' | '));
             await browser.close();
