@@ -3836,6 +3836,7 @@ if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
 // ZAMAZONE_PYRAMID_EYE_STAGE2_V1_20261116
 // ZAMAZONE_PYRAMID_EYE_BALANCE_V2_20261116
 // ZAMAZONE_PYRAMID_EYE_COMBAT_V3_20261116
+// ZAMAZONE_PYRAMID_EYE_DEATH_ART_V4_20261116
 // Stage-2 real combat replacement. Uses images extracted from the approved MANA3 demo.
 const pyramidOldSpawn=spawnBoss,pyramidOldDraw=drawBoss,pyramidOldAttackUpdate=updateBossAttacks;
 const pyramidOldAttackFx=drawBossAttackEffects,pyramidOldShot=applyRigShot,pyramidOldBomb=applyRigBomb;
@@ -4038,7 +4039,7 @@ update=function(dt){
 function pySprite(im,x,y,w,h,rot=0){if(!im?.complete||!im.naturalWidth)return;ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.drawImage(im,-w/2,-h/2,w,h);ctx.restore();}
 drawBoss=function(){
  if(!pyramidOn()){
-  if(!riichiMode&&stage===2&&boss?.pyramid?.version===1&&boss.pyramid.eyeHp<=0){pyDrawDeath();return;}
+  if(!riichiMode&&stage===2&&boss?.pyramid?.version===1&&boss.pyramid.eyeHp<=0)return;
   return pyramidOldDraw();
  }
  const z=boss.pyramid,bx=screenX(boss.x),by=boss.y,frame=(Math.floor((z.turn%(Math.PI*2))/(Math.PI*2)*16)+16)%16;
@@ -4128,26 +4129,54 @@ window.ZAMAZONE_PYRAMID_EYE_QA=()=>({
 
 function pyDrawDeath(){
  const z=boss?.pyramid;if(!z||!z.deathShards.length)return;
- const elapsed=Math.min(2.7,(performance.now()-(z.deathStarted||performance.now()))/1000);
+ const elapsed=pyClamp((performance.now()-(z.deathStarted||performance.now()))/1000,0,3.2);
  const bx=screenX(boss.x),by=boss.y;
+ const im=pyramidArt.body[0],ready=im.complete&&im.naturalWidth>0;
+ const tile=5,srcW=ready?im.naturalWidth/5:64,srcH=ready?im.naturalHeight/5:64;
  ctx.save();
- for(let i=0;i<z.deathShards.length;i++){
+ // Pyramid image is fragmented into original painted tiles, not replaced by an unrelated boss texture.
+ for(let i=0;i<25;i++){
   const p=z.deathShards[i],time=elapsed;
   if(time>p.life)continue;
-  const opacity=Math.max(0,1-time/p.life);
-  const x=bx+p.vx*time,y=by+p.vy*time+170*time*time;
-  ctx.save();ctx.translate(x,y);ctx.rotate(p.rotation+time*3*(i%2?1:-1));
-  ctx.globalAlpha=opacity;
-  ctx.shadowColor='#ffe2a0';ctx.shadowBlur=9;
-  ctx.fillStyle=i%3?'#b5825c':'#e9c67d';ctx.strokeStyle='#6a493b';ctx.lineWidth=3;
-  ctx.beginPath();ctx.moveTo(-p.size*.6,-p.size*.5);ctx.lineTo(p.size*.58,-p.size*.38);
-  ctx.lineTo(p.size*.52,p.size*.42);ctx.lineTo(-p.size*.3,p.size*.63);ctx.closePath();
-  ctx.fill();ctx.stroke();ctx.restore();
+  const opacity=pyClamp((p.life-time)/.6,0,1);
+  const col=i%5,row=Math.floor(i/5);
+  const startX=(col-2)*63,startY=(row-2)*63;
+  const x=bx+startX+p.vx*time*.75;
+  const y=by+startY+p.vy*time*.8+125*time*time;
+  const angle=p.rotation+time*(i%2?2.8:-3.1);
+  ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.globalAlpha=opacity;
+  ctx.shadowColor='#ffd978';ctx.shadowBlur=8;
+  if(ready)ctx.drawImage(im,col*srcW,row*srcH,srcW,srcH,-35,-35,70,70);
+  else{ctx.fillStyle='#c89b68';ctx.fillRect(-35,-35,70,70);}
+  ctx.restore();
  }
- const fade=Math.max(0,1-elapsed/1.8);
- if(fade){ctx.globalAlpha=fade*.30;ctx.fillStyle='#fff2b0';ctx.beginPath();ctx.arc(bx,by,60+elapsed*165,0,Math.PI*2);ctx.fill();}
+ // The full 16-stone halo also breaks into rotating rubble, rather than vanishing abruptly.
+ const orb=pyramidArt.orb[Math.floor(elapsed*9)%8];
+ for(let i=0;i<16;i++){
+  const a=i*Math.PI/8,rad=190+(i%2)*35;
+  const speed=80+(i%4)*45;
+  const x=bx+Math.cos(a)*(rad+elapsed*speed);
+  const y=by+Math.sin(a)*(rad*.72+elapsed*speed*.5)+elapsed*elapsed*90;
+  const opacity=pyClamp((2.4-elapsed)*.8,0,1);
+  if(!opacity)continue;
+  ctx.save();ctx.globalAlpha=opacity;
+  pySprite(orb,x,y,68,68,i*.4+elapsed*4);
+  ctx.restore();
+ }
+ const flash=Math.max(0,1-elapsed/.55);
+ if(flash>0){ctx.globalAlpha=flash*.55;ctx.fillStyle='#fff3b5';
+  ctx.beginPath();ctx.arc(bx,by,55+elapsed*240,0,Math.PI*2);ctx.fill();}
  ctx.restore();
 }
+const pyPrevBossDebris=drawBossDebris;
+drawBossDebris=function(){
+ // Never draw the original mana2/scarab fragments or legacy V4 sprite on the Pyramid Eye death.
+ if(!riichiMode&&stage===2&&boss?.pyramid?.version===1&&boss.pyramid.eyeHp<=0){
+  if(mode==='bossDeath'||mode==='endingSlow')pyDrawDeath();
+  return;
+ }
+ return pyPrevBossDebris();
+};
 // Capture destruction before legacy death frames, then replace those frames rather than painting scarab art.
 const pyOldDefeat=defeatBoss;
 defeatBoss=function(){
@@ -4158,13 +4187,7 @@ defeatBoss=function(){
  }
  return pyOldDefeat();
 };
-if(typeof drawBossDeath==='function'){
- const pyOldDrawBossDeath=drawBossDeath;
- drawBossDeath=function(){
-  if(!riichiMode&&stage===2&&boss?.pyramid?.eyeHp<=0)return pyDrawDeath();
-  return pyOldDrawBossDeath();
- };
-}
+
 // Testing hooks use the normal gameplay damage routines and are only exposed with an explicit debug query.
 if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
  window.ZAMAZONE_PYRAMID_EYE_TEST={
