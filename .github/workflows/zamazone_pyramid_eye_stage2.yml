@@ -38,6 +38,20 @@ jobs:
               if code.strip():Path('/tmp/pyramid-game-%d.js'%i).write_text(code,encoding='utf8')
           PY
           for f in /tmp/pyramid-game-*.js; do node --check "$f"; done
+      - name: Check legacy defeat renderer references
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('zamajan-online/public/minigames/zamazone/index.html').read_text('utf8')
+          # Scan only original content before our injected Pyramid Eye script.
+          s=s.split('// ZAMAZONE_PYRAMID_EYE_STAGE2_V1_20261116')[0]
+          for needle in ['function defeatBoss','bossDeath','function drawBoss','function draw(']:
+            results=list(re.finditer(re.escape(needle),s))
+            print('LEGACY_DEATH_COUNT',needle,len(results))
+            for m in results[:9]:
+              print('LEGACY_DEATH_CONTEXT',needle,repr(s[max(0,m.start()-180):m.start()+600]))
+          PY
       - name: Install Chromium for playable boss smoke test
         run: |
           npm install --no-save playwright
