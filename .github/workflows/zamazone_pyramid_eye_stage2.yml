@@ -1,0 +1,83 @@
+name: Replace Stage 2 boss with playable Pyramid Eye
+on:
+  push:
+    branches: [chatgpt-staging]
+    paths:
+      - 'scripts/apply_zamazone_pyramid_eye_stage2.py'
+      - 'scripts/zamazone_pyramid_eye_stage2_v1.js'
+      - '.github/workflows/zamazone_pyramid_eye_stage2.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt-staging
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Generate sprite assets and replace Stage 2 boss
+        run: python3 scripts/apply_zamazone_pyramid_eye_stage2.py
+      - name: Verify artwork, integration, and JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          p=Path('zamajan-online/public/minigames/zamazone')
+          s=(p/'index.html').read_text(encoding='utf8')
+          assert s.count('// ZAMAZONE_PYRAMID_EYE_STAGE2_V1_20261116')==1
+          assert 'pyramidOn()' in s and 'defeatBoss()' in s
+          for i in range(16):assert (p/'assets/pyramid_eye'/('body_%02d.webp'%i)).stat().st_size>2000
+          for i in range(8):assert (p/'assets/pyramid_eye'/('orb_%02d.webp'%i)).stat().st_size>2000
+          assert (p/'assets/pyramid_eye/rock.webp').stat().st_size>2000
+          for i,code in enumerate(re.findall(r'<script[^>]*>(.*?)</script>',s,re.S)):
+              if code.strip():Path('/tmp/pyramid-game-%d.js'%i).write_text(code,encoding='utf8')
+          PY
+          for f in /tmp/pyramid-game-*.js; do node --check "$f"; done
+      - name: Install Chromium for playable boss smoke test
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Test actual gameplay boss encounter
+        run: |
+          python3 -m http.server 8765 --directory zamajan-online/public >/tmp/zamazone-test.log 2>&1 &
+          sleep 2
+          node <<'JS'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+            const page=await browser.newPage({viewport:{width:1552,height:930}});
+            const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            await page.goto('http://localhost:8765/minigames/zamazone/index.html',{waitUntil:'domcontentloaded',timeout:120000});
+            await page.waitForSelector('#zb-debug-open',{timeout:30000});
+            await page.click('#zb-debug-open');
+            await page.click('[data-dbg-boss="3"]');
+            await page.waitForTimeout(2400);
+            const qa=await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_QA?.());
+            console.log('PYRAMID_EYE_STAGE2_QA',JSON.stringify(qa));
+            await page.screenshot({path:'pyramid-eye-stage2.png',fullPage:true});
+            if(!qa||!qa.active)throw Error('Stage2 Pyramid Eye not active');
+            if(qa.stones.length!==16)throw Error('Missing orbiting stones');
+            if(!qa.assetLoaded)throw Error('Pyramid Eye sprite not loaded');
+            if(errors.length)throw Error('JS runtime errors '+errors.slice(0,5).join(' | '));
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pyramid-eye-stage2-smoke
+          path: pyramid-eye-stage2.png
+      - name: Commit integration to staging (production untouched)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add zamajan-online/public/minigames/zamazone/index.html zamajan-online/public/minigames/zamazone/assets/pyramid_eye/
+          if ! git diff --cached --quiet; then
+            git commit -m "feat(zamazone): playable stage2 Pyramid Eye boss and merge bigrock"
+            git push origin HEAD:chatgpt-staging
+          fi
