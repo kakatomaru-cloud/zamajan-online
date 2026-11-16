@@ -8,9 +8,13 @@ source=Path('scripts/zamazone_pyramid_eye_stage2_v1.js').read_text(encoding='utf
 assert 'ZAMAZONE_PYRAMID_EYE_STAGE2_V1_20261116' in source
 anchor='if(!riichiMode)showDebugTitle();\n})();</script><script id="zj-minigame-ready-v2">'
 assert anchor in s, 'Main game insertion point moved'
-if tag not in s:
+if tag in s:
+    start=s.index('// ZAMAZONE_PYRAMID_EYE_STAGE2_V1_20261116')
+    end=s.index(anchor,start)
+    s=s[:start]+source+'\n'+s[end:]
+else:
     s=s.replace(anchor,source+'\n'+anchor,1)
-    html.write_text(s,encoding='utf8')
+html.write_text(s,encoding='utf8')
 demo=(p/'mana3_merge_bigrock_test.html').read_text(encoding='utf8')
 m=re.search(r'const ASSETS=(\{.*?\});\s*const imgs=',demo,re.S)
 assert m, 'Cannot extract approved demo sprite data'
