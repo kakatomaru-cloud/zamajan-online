@@ -52,7 +52,7 @@ jobs:
             const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
             const page=await browser.newPage({viewport:{width:1552,height:930}});
             const errors=[];page.on('pageerror',e=>errors.push(e.message));
-            await page.goto('http://localhost:8765/minigames/zamazone/index.html',{waitUntil:'domcontentloaded',timeout:120000});
+            await page.goto('http://localhost:8765/minigames/zamazone/index.html?stage2_qa=1',{waitUntil:'domcontentloaded',timeout:120000});
             await page.waitForSelector('#zb-debug-open',{timeout:30000});
             await page.click('#zb-debug-open');
             await page.click('[data-dbg-boss="3"]');
@@ -63,6 +63,25 @@ jobs:
             if(!qa||!qa.active)throw Error('Stage2 Pyramid Eye not active');
             if(qa.stones.length!==16)throw Error('Missing orbiting stones');
             if(!qa.assetLoaded)throw Error('Pyramid Eye sprite not loaded');
+            const front=await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_TEST.eyeHit(6,false));
+            if(!front||front.after!==front.before)throw Error('Eye must reject hits when turned away: '+JSON.stringify(front));
+            const colors=[];
+            for(let i=0;i<3;i++){
+             const res=await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_TEST.eyeHit(6,true));
+             colors.push(res.color);
+            }
+            console.log('EYE_COLOR_SEQUENCE',JSON.stringify(colors));
+            if(JSON.stringify(colors)!==JSON.stringify(['#3fbaff','#ffe02b','#ff354d']))throw Error('Eye colors not changed as required');
+            const forced=await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_TEST.forceAttack('radial'));
+            if(!forced)throw Error('Could not force 16-stone radial attack');
+            await page.waitForTimeout(1600);
+            const radial=await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_QA());
+            console.log('RADIAL_ATTACK',JSON.stringify(radial));
+            if(radial.stones.length!==16||radial.stones.some(s=>!s.alive))throw Error('Stone lost during attack');
+            if(radial.stones.every(s=>s.xScreen>95))throw Error('Stones did not reach left side');
+            const ended=await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_TEST.eyeHit(6,true));
+            console.log('PYRAMID_DEFEAT',JSON.stringify(ended));
+            if(ended.after!==0)throw Error('Defeat not triggered');
             if(errors.length)throw Error('JS runtime errors '+errors.slice(0,5).join(' | '));
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
