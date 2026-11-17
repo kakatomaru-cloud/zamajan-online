@@ -126,6 +126,20 @@ jobs:
             }
             console.log('EYE_COLOR_SEQUENCE',JSON.stringify(colors));
             if(JSON.stringify(colors)!==JSON.stringify(['#3fbaff','#ffe02b','#ff354d']))throw Error('Eye colors not changed as required');
+            const hits=await page.evaluate(()=>{
+              const api=window.ZAMAZONE_HIT_FEEDBACK_TEST;
+              return {blocked:api.blockedBossShot(),damaged:api.successfulBossShot(),
+                base:api.baseHit(),enemy:api.enemyHit(),stats:window.ZAMAZONE_HIT_FEEDBACK_QA()};
+            });
+            console.log('UNIFIED_HIT_FEEDBACK',JSON.stringify(hits));
+            if(!hits.blocked||hits.blocked.after.blocked<=hits.blocked.before.blocked||
+              hits.blocked.after.damage!==hits.blocked.before.damage)throw Error('Blocked shot must trigger clank only');
+            if(hits.damaged.eyeAfter>=hits.damaged.eyeBefore||hits.damaged.after.damage<=hits.damaged.before.damage||
+              !hits.damaged.redUntil)throw Error('Damaging boss shot must trigger red slash');
+            if(!hits.base||!hits.base.damage||hits.base.after.base<=hits.base.before.base||
+              !hits.base.redUntil)throw Error('Base damage feedback missing');
+            if(!hits.enemy||hits.enemy.enemyHP>=3||hits.enemy.after.enemy<=hits.enemy.before.enemy||
+              !hits.enemy.redUntil)throw Error('Enemy damage feedback missing');
             const forced=await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_TEST.forceAttack('radial'));
             if(!forced)throw Error('Could not force 16-stone radial attack');
             await page.waitForFunction(()=>{
