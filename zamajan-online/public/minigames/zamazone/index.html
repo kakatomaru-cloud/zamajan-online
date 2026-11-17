@@ -3883,7 +3883,7 @@ spawnBoss=function(){
     entranceTime:0,entranceComplete:false,deathTime:0,deathShards:[],charge:null,
     chargeDisplayX:null, chargeFrameMinX:Infinity, bounceCount:0,
     drawChargeFrames:0, drawRockFrames:0, attackHistory:[],
-    introDrawY:null,introDrawX:null,introFrameMaxJump:0,introPreviousY:null,
+    introDrawY:null,introDrawX:null,introFrameMaxJump:0,introPreviousY:null,introExitJump:null,
     laserMode:'off',laserHits:0,laserDrawFrames:0,laserWarnings:0,
     stones:Array.from({length:16},(_,i)=>({id:i,alive:true,visible:true,hp:24,maxHp:24,
       x:wrapX(boss.x+Math.cos(i*Math.PI/8)*(i%2?235:188)),y:-95-i*13,angle:i*Math.PI/8,spin:i*.53,flash:0,danger:false,cracks:0})),
@@ -3936,6 +3936,8 @@ function pyUpdate(dt){
   z.introPreviousY=y;z.introDrawY=y;
   z.introDrawX=screenX(camera+330);
  }else{
+  if(z.introDrawY!==null&&z.introExitJump===null)
+   z.introExitJump=Math.abs(z.introDrawY-boss.y);
   z.introDrawY=null;z.introDrawX=null;
  }
  const bx=mode==='bossIntro'?z.introDrawX:z.attack==='charge'&&z.phase==='active'&&z.chargeDisplayX!==null?z.chargeDisplayX:screenX(boss.x);
@@ -4263,6 +4265,7 @@ window.ZAMAZONE_PYRAMID_EYE_QA=()=>({
  attackHistory:boss?.pyramid?.attackHistory||[],
  introDrawY:boss?.pyramid?.introDrawY??null,
  introFrameMaxJump:boss?.pyramid?.introFrameMaxJump??0,
+ introExitJump:boss?.pyramid?.introExitJump??null,
  laserMode:boss?.pyramid?.laserMode??'off',
  laserDrawFrames:boss?.pyramid?.laserDrawFrames??0,
  laserHits:boss?.pyramid?.laserHits??0,
