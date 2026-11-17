@@ -275,6 +275,42 @@ jobs:
             await page.click('#zb-debug-select');
             if(!await page.locator('[data-dbg-boss="3"]').count())throw Error('Return to boss selector failed');
             if(errors.length)throw Error('JS runtime errors '+errors.slice(0,5).join(' | '));
+            // Regression: reproduce an actual smartphone touch interaction,
+            // including viewport visibility and hit-testing of the fixed exit dock.
+            const phone=await browser.newContext({viewport:{width:393,height:852},
+              isMobile:true,hasTouch:true,deviceScaleFactor:3,
+              userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1'});
+            const mobile=await phone.newPage(),mobileErrors=[];
+            mobile.on('pageerror',e=>mobileErrors.push(e.message));
+            await mobile.goto('http://localhost:8765/minigames/zamazone/index.html?stage2_qa=1',{waitUntil:'domcontentloaded',timeout:120000});
+            await mobile.waitForSelector('#zb-debug-open',{timeout:30000});
+            await mobile.locator('#zb-debug-open').tap();
+            await mobile.locator('[data-dbg-boss="3"]').tap();
+            const bounds=await mobile.evaluate(()=>{
+              const dock=document.getElementById('zb-mobile-shop-exit');
+              const btn=document.getElementById('zb-mobile-shop-start');
+              if(!dock||!btn)return {missing:true};
+              const r=btn.getBoundingClientRect();
+              const top=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
+              return {mode:window.ZAMAZONE_DEBUG_BOSS_QA?.()?.mode,
+                x:r.x,y:r.y,width:r.width,height:r.height,vw:innerWidth,vh:innerHeight,
+                hit:top?.id,visible:r.top>=0&&r.bottom<=innerHeight&&r.right<=innerWidth};
+            });
+            console.log('MOBILE_SHOP_BUTTON_BOUNDS',JSON.stringify(bounds));
+            if(bounds.missing||bounds.mode!=='shop'||!bounds.visible||bounds.hit!=='zb-mobile-shop-start')
+              throw Error('Phone cannot see or hit the exit button '+JSON.stringify(bounds));
+            await mobile.screenshot({path:'pyramid-eye-mobile-shop.png',fullPage:true});
+            await mobile.locator('#zb-mobile-shop-start').tap();
+            const afterTap=await mobile.evaluate(()=>window.ZAMAZONE_DEBUG_BOSS_QA?.());
+            console.log('MOBILE_SHOP_TOUCH_EXIT',JSON.stringify(afterTap));
+            if(!afterTap||afterTap.prep||afterTap.shopVisible||afterTap.mobileDock||afterTap.mode==='shop')
+              throw Error('Phone touch failed to enter boss '+JSON.stringify(afterTap));
+            await mobile.evaluate(()=>window.ZAMAZONE_DEBUG_BOSS_TEST.relaunch(3));
+            await mobile.locator('#zb-mobile-shop-back').tap();
+            if(await mobile.locator('#zb-mobile-shop-exit').count())throw Error('Phone dock still visible after back');
+            if(!await mobile.locator('[data-dbg-boss="3"]').count())throw Error('Phone failed to return to boss selection');
+            if(mobileErrors.length)throw Error('Mobile runtime errors '+mobileErrors.slice(0,5).join(' | '));
+            await phone.close();
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
@@ -287,6 +323,7 @@ jobs:
             pyramid-eye-collapse.png
             desert-base-enemy-art.png
             pyramid-eye-natural-attacks.png
+            pyramid-eye-mobile-shop.png
       - name: Commit integration to staging (production untouched)
         run: |
           git config user.name "github-actions[bot]"
