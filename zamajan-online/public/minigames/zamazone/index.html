@@ -3840,6 +3840,7 @@ if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
 // ZAMAZONE_PYRAMID_EYE_COMBAT_V5_20261117
 // ZAMAZONE_PYRAMID_EYE_CHARGE_BOUNCE_V6_20261117
 // ZAMAZONE_PYRAMID_EYE_VISIBLE_ATTACKS_V7_20261117
+// ZAMAZONE_PYRAMID_EYE_INTRO_LASER_V8_20261117
 // Stage-2 real combat replacement. Uses images extracted from the approved MANA3 demo.
 const pyramidOldSpawn=spawnBoss,pyramidOldDraw=drawBoss,pyramidOldAttackUpdate=updateBossAttacks;
 const pyramidOldAttackFx=drawBossAttackEffects,pyramidOldShot=applyRigShot,pyramidOldBomb=applyRigBomb;
@@ -3882,6 +3883,8 @@ spawnBoss=function(){
     entranceTime:0,entranceComplete:false,deathTime:0,deathShards:[],charge:null,
     chargeDisplayX:null, chargeFrameMinX:Infinity, bounceCount:0,
     drawChargeFrames:0, drawRockFrames:0, attackHistory:[],
+    introDrawY:null,introDrawX:null,introFrameMaxJump:0,introPreviousY:null,
+    laserMode:'off',laserHits:0,laserDrawFrames:0,laserWarnings:0,
     stones:Array.from({length:16},(_,i)=>({id:i,alive:true,visible:true,hp:24,maxHp:24,
       x:wrapX(boss.x+Math.cos(i*Math.PI/8)*(i%2?235:188)),y:-95-i*13,angle:i*Math.PI/8,spin:i*.53,flash:0,danger:false,cracks:0})),
     parts:[],starts:[],merge:null,boulder:null};
@@ -3923,7 +3926,20 @@ function pyUpdate(dt){
  z.eyeHitTime=Math.max(0,z.eyeHitTime-step);
  if(z.eyeHitText)z.eyeHitText.life=Math.max(0,z.eyeHitText.life-step);
  z.stones.forEach(s=>s.flash=Math.max(0,s.flash-step));
- const bx=z.attack==='charge'&&z.phase==='active'&&z.chargeDisplayX!==null?z.chargeDisplayX:screenX(boss.x),by=boss.y;
+ // The older boss-introduction routine moves boss.y on its own timetable.
+ // Keep our own continuous presentation trajectory to avoid its upward snap.
+ if(mode==='bossIntro'){
+  const progress=pyClamp(1-Math.max(0,boss.intro||0)/4.6,0,1);
+  const yStart=ground+195,yEnd=260;
+  const y=yStart+(yEnd-yStart)*pyEase(progress);
+  if(z.introPreviousY!==null)z.introFrameMaxJump=Math.max(z.introFrameMaxJump,Math.abs(y-z.introPreviousY));
+  z.introPreviousY=y;z.introDrawY=y;
+  z.introDrawX=screenX(camera+330);
+ }else{
+  z.introDrawY=null;z.introDrawX=null;
+ }
+ const bx=mode==='bossIntro'?z.introDrawX:z.attack==='charge'&&z.phase==='active'&&z.chargeDisplayX!==null?z.chargeDisplayX:screenX(boss.x);
+ const by=mode==='bossIntro'?z.introDrawY:boss.y;
  // The 16 stones are stored permanently. Hiding is permitted only while the big rock exists.
  const home=(s,progress=1)=>{
   const a=s.angle+t*.92,r=(s.id%2?226:180);
@@ -3949,7 +3965,7 @@ function pyUpdate(dt){
  if(z.phase==='idle'||z.phase==='warn'||z.phase==='recover'){
   z.stones.forEach(s=>{if(s.alive&&s.visible)home(s,z.phase==='recover'?Math.min(1,step*10):1);});
  }
- if(z.phase==='idle'&&z.time>.34){pyStartAttack(boss);return;}
+ if(z.phase==='idle'&&z.time>.34){z.laserMode='off';pyStartAttack(boss);return;}
  if(z.phase==='warn'&&z.time>(z.attack==='charge'?.88:z.attack==='salvo'?.54:.67)){
   z.phase='active';z.time=0;
   z.starts=z.parts.map(s=>({x:screenX(s.x),y:s.y}));
@@ -3957,6 +3973,21 @@ function pyUpdate(dt){
   if(z.attack==='charge'){
    z.charge={startX:screenX(boss.x),homeX:boss.x,homeY:boss.y};
    z.chargeDisplayX=z.charge.startX; z.chargeFrameMinX=Infinity;
+  }
+ }
+ // When orbit stones leave the body, the eye warns and fires a wide horizontal laser.
+ z.laserMode='off';
+ const rocksAway=z.parts.some(st=>st.alive&&st.visible&&Math.abs(screenX(st.x)-bx)>245);
+ if(z.phase==='active'&&z.attack!=='charge'&&rocksAway&&z.time>=.30&&z.time<1.38){
+  z.laserMode=z.time<.63?'warning':'firing';
+  if(z.laserMode==='warning')z.laserWarnings++;
+  else{
+   // Keep the eye facing the player for an unmistakable origin.
+   const eyeY=by-23,px=screenX(player.x);
+   const eyeX=bx-34;
+   if(px<eyeX&&px>-20&&Math.abs(player.y-eyeY)<33&&player.inv<=0&&z.hitClock<=0){
+    damage('boss');z.hitClock=.77;z.laserHits++;
+   }
   }
  }
  if(z.phase==='active'){
@@ -4112,7 +4143,7 @@ drawBoss=function(){
   if(!riichiMode&&stage===2&&boss?.pyramid?.version===1&&boss.pyramid.eyeHp<=0)return;
   return pyramidOldDraw();
  }
- const z=boss.pyramid,bx=z.chargeDisplayX!==null&&z.attack==='charge'&&z.phase==='active'?z.chargeDisplayX:screenX(boss.x),by=boss.y,frame=(Math.floor((z.turn%(Math.PI*2))/(Math.PI*2)*16)+16)%16;
+ const z=boss.pyramid,bx=mode==='bossIntro'&&z.introDrawX!==null?z.introDrawX:z.chargeDisplayX!==null&&z.attack==='charge'&&z.phase==='active'?z.chargeDisplayX:screenX(boss.x),by=mode==='bossIntro'&&z.introDrawY!==null?z.introDrawY:boss.y,frame=(Math.floor((z.turn%(Math.PI*2))/(Math.PI*2)*16)+16)%16;
  if(z.attack==='charge'&&z.phase==='active'){
   z.drawChargeFrames++;
   ctx.save();ctx.globalAlpha=.35;ctx.strokeStyle='#ffe6a2';ctx.lineWidth=7;
@@ -4124,7 +4155,7 @@ drawBoss=function(){
  // Eye damage stages: white > blue > yellow > red.
  const color=pyEyeColor(z);
  // The iris itself is repainted opaque so the damage-stage color is unmistakable.
- if(pyFacing(z)){
+ if(pyFacing(z)||z.laserMode==='firing'||z.laserMode==='warning'){
  ctx.save();ctx.translate(bx,by-23);
  if(z.eyeHitTime>0){ctx.shadowColor=color;ctx.shadowBlur=42;ctx.globalAlpha=.42+.42*Math.abs(Math.sin(z.clock*39));
   ctx.fillStyle='#ffffff';ctx.beginPath();ctx.ellipse(0,0,56,44,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}
@@ -4154,7 +4185,25 @@ drawBoss=function(){
 };
 drawBossAttackEffects=function(){
  if(!pyramidOn())return pyramidOldAttackFx();
- const z=boss.pyramid;if(z.phase!=='warn')return;
+ const z=boss.pyramid;
+ if(z.laserMode==='warning'||z.laserMode==='firing'){
+  const x=screenX(boss.x)-37,y=boss.y-23;
+  ctx.save();ctx.lineCap='round';
+  ctx.shadowColor='#12aaff';ctx.shadowBlur=23;
+  ctx.strokeStyle=z.laserMode==='warning'?'#66d5ff':'#0069fa';
+  ctx.globalAlpha=z.laserMode==='warning'?.45+.28*Math.sin(z.clock*23):.85;
+  ctx.lineWidth=z.laserMode==='warning'?6:28;
+  ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(0,y);ctx.stroke();
+  if(z.laserMode==='firing'){
+   ctx.shadowBlur=14;ctx.globalAlpha=1;ctx.strokeStyle='#83e7ff';ctx.lineWidth=16;
+   ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(0,y);ctx.stroke();
+   ctx.shadowBlur=0;ctx.strokeStyle='#f1ffff';ctx.lineWidth=5;
+   ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(0,y);ctx.stroke();
+   z.laserDrawFrames++;
+  }
+  ctx.restore();
+ }
+ if(z.phase!=='warn')return;
  if(z.attack==='charge'){
   ctx.save();ctx.strokeStyle='#ff656b';ctx.globalAlpha=.55+.4*Math.abs(Math.sin(z.clock*15));ctx.lineWidth=8;ctx.setLineDash([18,14]);
   ctx.beginPath();ctx.moveTo(screenX(boss.x)-130,boss.y);ctx.lineTo(10,boss.y);ctx.stroke();ctx.restore();return;
@@ -4212,6 +4261,12 @@ window.ZAMAZONE_PYRAMID_EYE_QA=()=>({
  drawChargeFrames:boss?.pyramid?.drawChargeFrames??0,
  drawRockFrames:boss?.pyramid?.drawRockFrames??0,
  attackHistory:boss?.pyramid?.attackHistory||[],
+ introDrawY:boss?.pyramid?.introDrawY??null,
+ introFrameMaxJump:boss?.pyramid?.introFrameMaxJump??0,
+ laserMode:boss?.pyramid?.laserMode??'off',
+ laserDrawFrames:boss?.pyramid?.laserDrawFrames??0,
+ laserHits:boss?.pyramid?.laserHits??0,
+ laserWarnings:boss?.pyramid?.laserWarnings??0,
  totalBounces:boss?.pyramid?.bounceCount??0,
  bossX:boss?screenX(boss.x):null
 });
