@@ -73,6 +73,16 @@ jobs:
             for m in matches[-3:]:
               print('HIT_HOOK_DETAIL',name,repr(s[max(0,m.start()-80):m.start()+1900]))
           PY
+      - name: Examine boss debug selector, shop, game-over hooks
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('zamajan-online/public/minigames/zamazone/index.html').read_text('utf8')
+          s=s.split('// ZAMAZONE_PYRAMID_EYE_STAGE2_V1_20261116')[0]
+          for needle in ["zb-debug-open","data-dbg-boss","function v2Buy(","v2Buy=function","function v2Allowed(","function v2Cost(","function shop(","function gameOver(","function showPanel(","function start(","mode='gameover'","mode='gameOver'","function showDebugTitle","function curtainExit(","mainAction.onclick","shopSelection="]:
+            i=s.rfind(needle)
+            print('DEBUG_HOOK',needle, 'INDEX',i, repr(s[max(0,i-900):i+2600]) if i>=0 else '')
+          PY
       - name: Install Chromium for playable boss smoke test
         run: |
           npm install --no-save playwright
