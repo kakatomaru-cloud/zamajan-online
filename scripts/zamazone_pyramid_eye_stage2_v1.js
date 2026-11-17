@@ -9,7 +9,101 @@
 // ZAMAZONE_UNIFIED_HIT_FEEDBACK_V1_20261117
 // ZAMAZONE_LOCAL_RED_FLASH_V2_20261117
 // ZAMAZONE_STONE_RECOVERY_V9_20261118
+// ZAMAZONE_DEBUG_BOSS_SHOP_RETRY_V10_20261118
 // Stage-2 real combat replacement. Uses images extracted from the approved MANA3 demo.
+// Debug-boss-only preparation and retry flow. Regular campaign shop remains unchanged.
+let zbPrepActive=false,zbPrepReturnMode='bossIntro',zbPrepChoice=null;
+const zbOldAllowed=v2Allowed;
+v2Allowed=function(i){
+ if(!zbPrepActive)return zbOldAllowed(i);
+ const saved=player.money;player.money=1000000000;
+ const allowed=zbOldAllowed(i);player.money=saved;
+ return allowed;
+};
+const zbOldBuy=v2Buy;
+v2Buy=function(i){
+ if(!zbPrepActive)return zbOldBuy(i);
+ const saved=player.money;
+ player.money=1000000000;
+ zbOldBuy(i);
+ player.money=saved;
+ v2ShopRender();
+};
+function zbBeginPreparedBoss(){
+ if(!zbPrepActive)return;
+ zbPrepActive=false;
+ mode=zbPrepReturnMode;
+ pressed.clear();closePanel();
+ last=performance.now();
+}
+const zbOldShopRender=v2ShopRender;
+v2ShopRender=function(){
+ zbOldShopRender();
+ if(!zbPrepActive)return;
+ titleEl.textContent='BOSS DEBUG / FREE EQUIPMENT SHOP';
+ const head=contentEl.querySelector('.shop12-head');
+ if(head)head.textContent='ボス戦用の装備を選択 / 金額制限なし（性能上限は有効）';
+ const foot=contentEl.querySelector('.shop12-foot');
+ if(foot)foot.textContent='好きなだけ装備を購入してからボス戦へ。 所持金は消費しません。';
+ mainAction.textContent='▶ 装備を確定してボス戦開始';
+ mainAction.onclick=zbBeginPreparedBoss;
+};
+refreshShop=v2ShopRender;
+const zbOldLaunchDebug=launchDebugBoss;
+launchDebugBoss=function(n){
+ zbPrepActive=false;
+ zbOldLaunchDebug(n);
+ if(riichiMode||!debugBossRunning||!boss)return;
+ zbPrepChoice=+n;
+ zbPrepReturnMode=mode;
+ zbPrepActive=true;mode='shop';
+ pressed.clear();
+ v2ShopRender();
+ panelWrap.classList.remove('hidden');
+};
+function zbDebugGameOver(){
+ if(riichiMode||!debugBossRunning||mode==='debugGameOver')return false;
+ const n=zbPrepChoice||debugBossChoice||3;
+ zbPrepActive=false;mode='debugGameOver';
+ enemyBullets.length=0;bullets.length=0;bombs.length=0;
+ showPanel('BOSS DEBUG / GAME OVER',
+  '<p>ボス戦でゲームオーバー</p><div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap"><button id="zb-debug-retry" type="button" style="padding:15px 24px;background:#ffe18e;color:#30224a;border-radius:10px;font-weight:bold">↻ リトライ</button><button id="zb-debug-select" type="button" style="padding:15px 24px;background:#8ed3ff;color:#172744;border-radius:10px;font-weight:bold">ボス選択へ戻る</button></div>',
+  '↻ リトライ（装備ショップから）',()=>launchDebugBoss(n));
+ const retry=document.getElementById('zb-debug-retry');
+ const select=document.getElementById('zb-debug-select');
+ if(retry)retry.onclick=()=>launchDebugBoss(n);
+ if(select)select.onclick=()=>{debugBossRunning=false;debugBossMenu();};
+ return true;
+}
+const zbOldDamage=damage;
+damage=function(...args){
+ const prev=player?.hp||0;
+ const result=zbOldDamage(...args);
+ if(!riichiMode&&debugBossRunning&&prev>0&&player?.hp<=0)zbDebugGameOver();
+ return result;
+};
+// Some attack paths set HP to zero without passing through damage().
+const zbOldMainUpdate=update;
+update=function(dt){
+ zbOldMainUpdate(dt);
+ if(!riichiMode&&debugBossRunning&&player?.hp<=0&&mode!=='bossDeath'&&mode!=='clear'&&mode!=='debugGameOver')zbDebugGameOver();
+};
+window.ZAMAZONE_DEBUG_BOSS_QA=()=>({
+ prep:zbPrepActive,choice:zbPrepChoice,returnMode:zbPrepReturnMode,
+ active:!!debugBossRunning,mode,gameOver:mode==='debugGameOver',
+ shopVisible:!panelWrap.classList.contains('hidden')&&mode==='shop',
+ money:player?.money??0,purchases:[...v2Purchased],
+ retry:!!document.getElementById('zb-debug-retry'),select:!!document.getElementById('zb-debug-select')
+});
+if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
+ window.ZAMAZONE_DEBUG_BOSS_TEST={
+  forceGameOver(){
+   if(!debugBossRunning)return false;
+   player.hp=0;zbDebugGameOver();return window.ZAMAZONE_DEBUG_BOSS_QA();
+  }
+ };
+}
+
 const pyramidOldSpawn=spawnBoss,pyramidOldDraw=drawBoss,pyramidOldAttackUpdate=updateBossAttacks;
 const pyramidOldAttackFx=drawBossAttackEffects,pyramidOldShot=applyRigShot,pyramidOldBomb=applyRigBomb;
 const pyramidArt={body:[],orb:[],rock:null};
