@@ -4420,9 +4420,23 @@ function zfxPlay(kind){
  }else{
   if(now-zfxLastBlocked<100)return;
   zfxLastBlocked=now;
-  // Two bright metal overtones: "キンキン".
-  sound(1220,.085,'triangle',.054);
-  sound(1740,.065,'sine',.043);
+  // Two consecutive metallic strikes, separated by 75 ms: "キン・キン".
+  try{
+   if(muted)return;
+   audioCtx??=new (window.AudioContext||window.webkitAudioContext)();
+   const ac=audioCtx,t=ac.currentTime;
+   for(const [delay,freq] of [[0,1320],[.075,1760]]){
+    const o=ac.createOscillator(),g=ac.createGain();
+    o.type='triangle';
+    o.frequency.setValueAtTime(freq,t+delay);
+    o.frequency.exponentialRampToValueAtTime(freq*.79,t+delay+.095);
+    g.gain.setValueAtTime(.0001,t+delay);
+    g.gain.linearRampToValueAtTime(.058,t+delay+.003);
+    g.gain.exponentialRampToValueAtTime(.0001,t+delay+.11);
+    o.connect(g);g.connect(ac.destination);
+    o.start(t+delay);o.stop(t+delay+.115);
+   }
+  }catch{sound(1220,.10,'triangle',.052);}
  }
 }
 function zfxReport(kind,target,x,y,category='boss'){
