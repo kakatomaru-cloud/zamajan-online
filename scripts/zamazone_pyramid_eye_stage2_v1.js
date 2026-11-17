@@ -8,6 +8,7 @@
 // ZAMAZONE_PYRAMID_EYE_INTRO_LASER_V8_20261117
 // ZAMAZONE_UNIFIED_HIT_FEEDBACK_V1_20261117
 // ZAMAZONE_LOCAL_RED_FLASH_V2_20261117
+// ZAMAZONE_STONE_RECOVERY_V9_20261118
 // Stage-2 real combat replacement. Uses images extracted from the approved MANA3 demo.
 const pyramidOldSpawn=spawnBoss,pyramidOldDraw=drawBoss,pyramidOldAttackUpdate=updateBossAttacks;
 const pyramidOldAttackFx=drawBossAttackEffects,pyramidOldShot=applyRigShot,pyramidOldBomb=applyRigBomb;
@@ -23,7 +24,19 @@ const pyImagesReady=()=>pyramidArt.body[0].complete&&pyramidArt.body[0].naturalW
 const pyFacing=z=>Math.cos(z.turn)>.72;
 const pyEyeColor=z=>z.eyeHp/z.eyeMax>.75?'#ffffff':z.eyeHp/z.eyeMax>.5?'#3fbaff':z.eyeHp/z.eyeMax>.25?'#ffe02b':'#ff354d';
 const pyScreenWorld=x=>wrapX(camera+x-W/2);
-const pyStoneAt=(s,x,y)=>{s.x=pyScreenWorld(x);s.y=y;};
+// Screen-space position is not wrapped during offscreen attacks / recovery.
+const pyStoneX=s=>Number.isFinite(s.visualX)?s.visualX:screenX(s.x);
+const pyStoneAt=(s,x,y)=>{s.x=pyScreenWorld(x);s.visualX=x;s.y=y;};
+function pyRecoverStone(st,targetX,targetY,step){
+ const x=pyStoneX(st),dx=targetX-x,dy=targetY-st.y,dist=Math.hypot(dx,dy);
+ const maxStep=Math.min(step,.05)*780;
+ if(dist<=maxStep)pyStoneAt(st,targetX,targetY);
+ else pyStoneAt(st,x+dx/dist*maxStep,st.y+dy/dist*maxStep);
+}
+function pyBeginRecover(z){
+ z.phase='recover';z.time=0;
+ z.stones.forEach(st=>{if(st.alive)st.visible=true;});
+}
 function pyStartAttack(b){
  const z=b.pyramid;
  // Show signature attacks first: a visible body charge, then the billiard boulder.
@@ -52,7 +65,7 @@ spawnBoss=function(){
     drawChargeFrames:0, drawRockFrames:0, attackHistory:[],
     introDrawY:null,introDrawX:null,introFrameMaxJump:0,introPreviousY:null,introExitJump:null,
     laserMode:'off',laserHits:0,laserDrawFrames:0,laserWarnings:0,
-    stones:Array.from({length:16},(_,i)=>({id:i,alive:true,visible:true,hp:24,maxHp:24,
+    stones:Array.from({length:16},(_,i)=>({id:i,alive:true,visible:true,hp:8,maxHp:8,
       x:wrapX(boss.x+Math.cos(i*Math.PI/8)*(i%2?235:188)),y:-95-i*13,angle:i*Math.PI/8,spin:i*.53,flash:0,danger:false,cracks:0})),
     parts:[],starts:[],merge:null,boulder:null};
 };
@@ -110,11 +123,11 @@ function pyUpdate(dt){
  const bx=mode==='bossIntro'?z.introDrawX:z.attack==='charge'&&z.phase==='active'&&z.chargeDisplayX!==null?z.chargeDisplayX:screenX(boss.x);
  const by=mode==='bossIntro'?z.introDrawY:boss.y;
  // The 16 stones are stored permanently. Hiding is permitted only while the big rock exists.
- const home=(s,progress=1)=>{
-  const a=s.angle+t*.92,r=(s.id%2?226:180);
-  const x=bx+Math.cos(a)*r,y=by+Math.sin(a)*((s.id%2)?159:129);
-  const k=pyEase(progress);
-  pyStoneAt(s,screenX(s.x)+(x-screenX(s.x))*k,s.y+(y-s.y)*k);
+ const home=(s,recover=false)=>{
+  const a=s.angle+t*.92,r=s.id%2?226:180;
+  const x=bx+Math.cos(a)*r,y=by+Math.sin(a)*(s.id%2?159:129);
+  if(recover)pyRecoverStone(s,x,y,step);
+  else pyStoneAt(s,x,y);
  };
  if(!z.entranceComplete){
   z.entranceTime+=step;
@@ -132,7 +145,7 @@ function pyUpdate(dt){
   return;
  }
  if(z.phase==='idle'||z.phase==='warn'||z.phase==='recover'){
-  z.stones.forEach(s=>{if(s.alive&&s.visible)home(s,z.phase==='recover'?Math.min(1,step*10):1);});
+  z.stones.forEach(s=>{if(s.alive&&s.visible)home(s,z.phase==='recover');});
  }
  if(z.phase==='idle'&&z.time>.34){z.laserMode='off';pyStartAttack(boss);return;}
  if(z.phase==='warn'&&z.time>(z.attack==='charge'?.88:z.attack==='salvo'?.54:.67)){
@@ -170,7 +183,7 @@ function pyUpdate(dt){
     pyStoneAt(s,x,y);
     if(u>0&&x>20)pyContact(s.x,s.y,30,step);
    });
-   if(z.time>1.95){z.phase='recover';z.time=0;}
+   if(z.time>1.95){pyBeginRecover(z);}
   }else if(z.attack==='orbit'){
    // Counter-clockwise double rings sweep from the boss to the far left.
    const sweep=z.time*500;
@@ -180,7 +193,7 @@ function pyUpdate(dt){
     pyStoneAt(s,x,pyClamp(y,95,ground-60));
     if(x>15)pyContact(s.x,s.y,30,step);
    });
-   if(z.time>2.3){z.phase='recover';z.time=0;}
+   if(z.time>2.3){pyBeginRecover(z);}
   }else if(z.attack==='spiral'){
    // Fast rotating wheel expands into two rotating wings across the field.
    const sweep=z.time*565;
@@ -190,7 +203,7 @@ function pyUpdate(dt){
     pyStoneAt(s,bx-sweep+Math.cos(a)*radius,by+Math.sin(a)*Math.min(210,radius));
     if(screenX(s.x)>15)pyContact(s.x,s.y,30,step);
    });
-   if(z.time>2.05){z.phase='recover';z.time=0;}
+   if(z.time>2.05){pyBeginRecover(z);}
   }else if(z.attack==='aimed'){
    // Four diagonal sweeps aim at the player's position as captured after the warning.
    z.parts.forEach((s,i)=>{
@@ -201,7 +214,7 @@ function pyUpdate(dt){
     pyStoneAt(s,x,pyClamp(y,75,ground-55));
     if(u>0&&x>10)pyContact(s.x,s.y,30,step);
    });
-   if(z.time>1.9){z.phase='recover';z.time=0;}
+   if(z.time>1.9){pyBeginRecover(z);}
   }else if(z.attack==='salvo'){
    // Each surviving stone launches separately at high speed, one per 0.105s.
    const interval=.105,speed=1080;
@@ -215,11 +228,11 @@ function pyUpdate(dt){
     const x=start.x-shotTime*speed;pyStoneAt(stone,x,y);
     if(x>=-38&&x<=W+38)pyContact(stone.x,stone.y,30,step);
    });
-   if(z.time>z.parts.length*interval+1.35){z.phase='recover';z.time=0;}
+   if(z.time>z.parts.length*interval+1.35){pyBeginRecover(z);}
   }else if(z.attack==='charge'){
    // Boss travels from its starting position to the far left, then returns.
    const charge=z.charge;
-   if(!charge){z.phase='recover';z.time=0;}
+   if(!charge){pyBeginRecover(z);}
    else{
     const left=-185,out=.62,hold=.42,back=.85;let x;
     if(z.time<out)x=charge.startX+(left-charge.startX)*pyEase(z.time/out);
@@ -230,14 +243,14 @@ function pyUpdate(dt){
     z.stones.forEach(st=>{if(st.alive){st.visible=true;home(st);}});
     if(z.time>=out+hold+back){
      boss.x=charge.homeX;boss.y=charge.homeY;z.charge=null;z.chargeDisplayX=null;
-     z.phase='recover';z.time=0;
+     pyBeginRecover(z);
     }
    }
   }else if(z.attack==='merge'){
    if(!z.merge)z.merge={phase:'merge',time:0,centerX:pyScreenWorld(bx-155),centerY:by+9,starts:z.parts.map(s=>({x:screenX(s.x),y:s.y}))};
    const m=z.merge;m.time+=step;
    if(m.phase==='merge'){
-    if(z.parts.filter(s=>s.alive).length<8){z.merge=null;z.phase='recover';z.time=0;return;}
+    if(z.parts.filter(s=>s.alive).length<8){z.merge=null;pyBeginRecover(z);return;}
     const k=pyEase(m.time/.78),cx=screenX(m.centerX);
     z.parts.forEach((s,i)=>{
       const src=m.starts[i];if(!src||!s.alive)return;
@@ -252,7 +265,7 @@ function pyUpdate(dt){
     }
    }else if(m.phase==='bigrock'){
     const rock=z.boulder;
-    if(!rock){z.phase='recover';z.time=0;}
+    if(!rock){pyBeginRecover(z);}
     else if(!rock.launched){
      rock.scale=.55+.53*pyEase(m.time/.19);rock.glow=Math.max(0,1-m.time/.3);
      if(m.time>.21){rock.launched=true;m.time=0;sound(108,.31,'sawtooth',.13);}
@@ -275,16 +288,19 @@ function pyUpdate(dt){
       damage('boss');z.hitClock=.7;
      }
      if(rx<-180||m.time>2.50){
-      rock.alive=false;z.boulder=null;z.phase='recover';z.time=0;
+      rock.alive=false;z.boulder=null;pyBeginRecover(z);
       z.stones.forEach(s=>s.visible=!!s.alive);
      }
     }
    }
   }
  }
- if(z.phase==='recover'&&z.time>.50){
-  z.phase='idle';z.time=0;
-  z.stones.forEach(s=>{s.visible=!!s.alive;});
+ if(z.phase==='recover'){
+  const allHome=z.stones.filter(s=>s.alive).every(s=>{
+   const a=s.angle+t*.92,r=s.id%2?226:180;
+   return Math.hypot(pyStoneX(s)-bx-Math.cos(a)*r,s.y-by-Math.sin(a)*(s.id%2?159:129))<38;
+  });
+  if((allHome&&z.time>.25)||z.time>5.6){z.phase='idle';z.time=0;}
  }
  if(player.inv<=0&&z.hitClock<=0&&Math.abs(screenX(player.x)-bx)<110&&Math.abs(player.y-by)<116){
   damage('boss');z.hitClock=.72;
@@ -340,7 +356,7 @@ drawBoss=function(){
  }
  const orbFrame=Math.floor(z.clock*8)%8;
  z.stones.forEach(s=>{if(!s.alive||!s.visible)return;
-  const x=screenX(s.x),y=s.y;if(x<-70||x>W+70)return;
+  const x=pyStoneX(s),y=s.y;if(x<-70||x>W+70)return;
   pySprite(pyramidArt.orb[orbFrame],x,y,74,74,s.spin+z.clock*1.3);
   if(s.cracks>0){ctx.save();ctx.translate(x,y);ctx.rotate(s.spin+z.clock*1.3);ctx.globalAlpha=Math.min(.7,s.cracks*.14);ctx.lineWidth=3;ctx.strokeStyle='#2c1b28';ctx.beginPath();ctx.moveTo(-13,-23);ctx.lineTo(1,-7);ctx.lineTo(-5,12);ctx.lineTo(13,24);ctx.stroke();ctx.restore();}
   if(s.zfxRedUntil&&zfxNow()<s.zfxRedUntil){ctx.save();ctx.globalAlpha=.60;ctx.fillStyle='#ff253b';ctx.shadowColor='#ff0000';ctx.shadowBlur=20;ctx.beginPath();ctx.arc(x,y,31,0,Math.PI*2);ctx.fill();ctx.restore();}
