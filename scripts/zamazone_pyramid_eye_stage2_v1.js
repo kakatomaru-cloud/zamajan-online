@@ -448,6 +448,10 @@ defeatBoss=function(){
 // Testing hooks use the normal gameplay damage routines and are only exposed with an explicit debug query.
 if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
  window.ZAMAZONE_PYRAMID_EYE_TEST={
+  enableSpectator(){
+   if(!pyramidOn())return false;
+   player.inv=300;return true;
+  },
   forceAttack(name){
    if(!pyramidOn()||!['radial','orbit','spiral','merge','aimed','salvo','charge'].includes(name))return false;
    if(name==='merge'&&boss.pyramid.stones.filter(s=>s.alive).length<8)return false;
