@@ -95,6 +95,25 @@ jobs:
             console.log('RADIAL_ATTACK',JSON.stringify(radial));
             if(radial.stones.length!==16||radial.stones.some(s=>!s.alive))throw Error('Stone lost during attack');
             if(radial.stones.every(s=>s.xScreen>95))throw Error('Stones did not reach left side');
+            // Validate that destroyed stones never return and eight survivors are required to merge.
+            const destroyed=await page.evaluate(()=>{
+              for(let i=0;i<9;i++)if(!window.ZAMAZONE_PYRAMID_EYE_TEST.breakStone(i))throw Error('could not destroy '+i);
+              return window.ZAMAZONE_PYRAMID_EYE_QA();
+            });
+            if(destroyed.remainingStones!==7||destroyed.stones.filter(s=>s.alive).length!==7)throw Error('stone destruction failed');
+            if(await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_TEST.forceAttack('merge')))throw Error('merge wrongly allowed with seven stones');
+            // One-by-one rapid stone salvo must move surviving rocks without regenerating nine broken stones.
+            if(!await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_TEST.forceAttack('salvo')))throw Error('salvo unavailable');
+            await page.waitForTimeout(1200);
+            const salvo=await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_QA());
+            console.log('SEQUENTIAL_SALVO',JSON.stringify({phase:salvo.phase,attack:salvo.attack,remaining:salvo.remainingStones,x:salvo.stones.filter(s=>s.alive).map(s=>s.xScreen)}));
+            if(salvo.remainingStones!==7||salvo.stones.some((s,i)=>i<9&&s.alive))throw Error('destroyed stones regenerated');
+            // Boss body occasionally charges across the entire screen with a visible warning.
+            if(!await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_TEST.forceAttack('charge')))throw Error('charge unavailable');
+            await page.waitForTimeout(1500);
+            const charge=await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_QA());
+            console.log('BODY_CHARGE',JSON.stringify({x:charge.bossX,phase:charge.phase,attack:charge.attack}));
+            if(charge.bossX>175)throw Error('boss body failed to charge toward the left edge');
             const ended=await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_TEST.eyeHit(6,true));
             console.log('PYRAMID_DEFEAT',JSON.stringify(ended));
             const internals=await page.evaluate(()=>({deathRenderer:typeof drawBossDeath,drawBossName:typeof drawBoss,defeat:typeof defeatBoss,
