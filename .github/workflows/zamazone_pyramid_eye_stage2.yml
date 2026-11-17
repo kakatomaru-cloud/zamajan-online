@@ -90,7 +90,10 @@ jobs:
             if(JSON.stringify(colors)!==JSON.stringify(['#3fbaff','#ffe02b','#ff354d']))throw Error('Eye colors not changed as required');
             const forced=await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_TEST.forceAttack('radial'));
             if(!forced)throw Error('Could not force 16-stone radial attack');
-            await page.waitForTimeout(1600);
+            await page.waitForFunction(()=>{
+              const q=window.ZAMAZONE_PYRAMID_EYE_QA?.();
+              return q&&q.stones.some(s=>s.alive&&s.xScreen<95);
+            },null,{timeout:2900});
             const radial=await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_QA());
             console.log('RADIAL_ATTACK',JSON.stringify(radial));
             if(radial.stones.length!==16||radial.stones.some(s=>!s.alive))throw Error('Stone lost during attack');
