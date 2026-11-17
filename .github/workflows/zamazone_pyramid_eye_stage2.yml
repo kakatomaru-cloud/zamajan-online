@@ -5,6 +5,9 @@ on:
     paths:
       - 'scripts/apply_zamazone_pyramid_eye_stage2.py'
       - 'scripts/zamazone_pyramid_eye_stage2_v1.js'
+      - 'scripts/apply_zamazone_desert_redesign.py'
+      - 'zamajan-online/public/minigames/zamazone/desert_redesign_stage2.js'
+      - 'zamajan-online/public/minigames/zamazone/assets/desert_redesign/**'
       - '.github/workflows/zamazone_pyramid_eye_stage2.yml'
   workflow_dispatch:
 permissions:
@@ -22,6 +25,8 @@ jobs:
           node-version: '22'
       - name: Generate sprite assets and replace Stage 2 boss
         run: python3 scripts/apply_zamazone_pyramid_eye_stage2.py
+      - name: Integrate approved ground/air desert bases and enemies
+        run: python3 scripts/apply_zamazone_desert_redesign.py
       - name: Verify artwork, integration, and JavaScript syntax
         run: |
           python3 - <<'PY'
@@ -84,6 +89,23 @@ jobs:
             const errors=[];page.on('pageerror',e=>errors.push(e.message));
             await page.goto('http://localhost:8765/minigames/zamazone/index.html?stage2_qa=1',{waitUntil:'domcontentloaded',timeout:120000});
             await page.waitForSelector('#zb-debug-open',{timeout:30000});
+            await page.waitForFunction(()=>{
+              const q=window.ZAMAZONE_DESERT_REDESIGN_QA?.();
+              return q&&Object.entries(q.assets).length===5&&Object.values(q.assets).every(v=>{
+                const [ready,total]=v.split('/').map(Number);return ready===total;
+              });
+            },null,{timeout:20000});
+            const desert=await page.evaluate(()=>window.ZAMAZONE_DESERT_REDESIGN_TEST?.smoke());
+            console.log('DESERT_REDESIGN_SMOKE',JSON.stringify(desert));
+            if(!desert||!desert.allLoaded||!desert.groundDead||!desert.airDead||
+              desert.after.groundDraw<=desert.before.groundDraw||
+              desert.after.airDraw<=desert.before.airDraw||
+              desert.after.enemyDraw-desert.before.enemyDraw<8||
+              desert.after.groundDestroyed<=desert.before.groundDestroyed||
+              desert.after.airDestroyed<=desert.before.airDestroyed||
+              desert.after.deathDraw-desert.before.deathDraw<2)
+               throw Error('New Stage 2 desert art/hit boxes/deaths failed '+JSON.stringify(desert));
+            await page.screenshot({path:'desert-base-enemy-art.png',fullPage:true});
             await page.click('#zb-debug-open');
             await page.click('[data-dbg-boss="3"]');
             await page.waitForTimeout(2400);
@@ -203,6 +225,7 @@ jobs:
           path: |
             pyramid-eye-stage2.png
             pyramid-eye-collapse.png
+            desert-base-enemy-art.png
             pyramid-eye-natural-attacks.png
       - name: Commit integration to staging (production untouched)
         run: |
