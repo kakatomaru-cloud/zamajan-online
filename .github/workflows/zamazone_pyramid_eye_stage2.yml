@@ -85,6 +85,16 @@ jobs:
             if(!billiard||billiard.totalBounces<2||billiard.samples.length<3)throw Error('Giant rock never rebounded');
             if(billiard.samples.at(-1).x>=billiard.samples[0].x)throw Error('Giant rock did not move left');
             if(!billiard.samples.some((x,i,a)=>i>0&&Math.sign(x.vy)!==Math.sign(a[i-1].vy)))throw Error('Giant rock vertical velocity did not reverse');
+            // Acceptance: real-time, unforced attacks must be drawn on canvas.
+            if(!await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_TEST.enableSpectator()))throw Error('spectator unavailable');
+            await page.waitForFunction(()=>{
+             const q=window.ZAMAZONE_PYRAMID_EYE_QA?.();
+             return q&&q.drawChargeFrames>3&&q.drawRockFrames>3&&q.totalBounces>=2;
+            },null,{timeout:35000});
+            const natural=await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_QA());
+            console.log('NATURAL_VISIBLE_ATTACKS',JSON.stringify({chargeFrames:natural.drawChargeFrames,rockFrames:natural.drawRockFrames,bounces:natural.totalBounces,history:natural.attackHistory}));
+            if(natural.attackHistory[0]!=='charge'||natural.attackHistory[1]!=='merge')throw Error('Signature attacks not first');
+            await page.screenshot({path:'pyramid-eye-natural-attacks.png',fullPage:true});
             const front=await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_TEST.eyeHit(6,false));
             if(!front||front.after!==front.before)throw Error('Eye must reject hits when turned away: '+JSON.stringify(front));
             const colors=[];
@@ -150,6 +160,7 @@ jobs:
           path: |
             pyramid-eye-stage2.png
             pyramid-eye-collapse.png
+            pyramid-eye-natural-attacks.png
       - name: Commit integration to staging (production untouched)
         run: |
           git config user.name "github-actions[bot]"
