@@ -3845,6 +3845,7 @@ if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
 // ZAMAZONE_LOCAL_RED_FLASH_V2_20261117
 // ZAMAZONE_STONE_RECOVERY_V9_20261118
 // ZAMAZONE_DEBUG_BOSS_SHOP_RETRY_V10_20261118
+// ZAMAZONE_MOBILE_DEBUG_SHOP_EXIT_V11_20261118
 // Stage-2 real combat replacement. Uses images extracted from the approved MANA3 demo.
 // Debug-boss-only preparation and retry flow. Regular campaign shop remains unchanged.
 let zbPrepActive=false,zbPrepReturnMode='bossIntro',zbPrepChoice=null;
@@ -3866,6 +3867,7 @@ v2Buy=function(i){
 };
 function zbBeginPreparedBoss(){
  if(!zbPrepActive)return false;
+ zbRemoveMobileDock();
  const nextMode=zbPrepReturnMode;
  zbPrepActive=false;
  mode=nextMode;
@@ -3890,6 +3892,41 @@ zbPrepStyles.textContent=`
  padding:10px 15px;border-radius:9px;font-weight:800}
 `;
 document.head.appendChild(zbPrepStyles);
+// Touch-first exit controls live outside the game panel: game canvas/panel scaling
+// can otherwise hide or obstruct its ordinary shop buttons on iPhone.
+let zbMobileDock=null;
+function zbRemoveMobileDock(){
+ if(zbMobileDock){zbMobileDock.remove();zbMobileDock=null;}
+}
+function zbMountMobileDock(){
+ zbRemoveMobileDock();
+ const dock=document.createElement('div');
+ dock.id='zb-mobile-shop-exit';
+ dock.setAttribute('role','group');dock.setAttribute('aria-label','ボスデバッグショップの操作');
+ dock.style.cssText='position:fixed!important;inset:auto 0 0 0!important;bottom:env(safe-area-inset-bottom,0px)!important;z-index:2147483647!important;display:flex!important;gap:8px!important;align-items:stretch!important;justify-content:center!important;padding:12px 8px!important;background:rgba(8,22,42,.97)!important;border-top:3px solid #ffd55c!important;box-sizing:border-box!important;pointer-events:auto!important;transform:none!important;width:100vw!important;max-width:100vw!important;';
+ const start=document.createElement('button');start.id='zb-mobile-shop-start';start.type='button';
+ start.textContent='▶ 購入完了・ボス戦へ';
+ start.style.cssText='flex:3!important;min-width:0!important;min-height:60px!important;font-size:17px!important;font-weight:900!important;color:#17223b!important;background:#ffdc62!important;border:2px solid white!important;border-radius:11px!important;touch-action:manipulation!important;cursor:pointer!important;';
+ const back=document.createElement('button');back.id='zb-mobile-shop-back';back.type='button';
+ back.textContent='← ボス選択';back.style.cssText='flex:2!important;min-width:0!important;min-height:60px!important;font-size:14px!important;font-weight:800!important;color:#192f4a!important;background:#d6eaff!important;border:2px solid #a3c7e6!important;border-radius:11px!important;touch-action:manipulation!important;cursor:pointer!important;';
+ // The touch events are captured at the dock itself, so existing canvas gesture
+ // handlers do not swallow them. click covers mouse / accessibility activation.
+ let lastTouch=0;
+ function invoke(action,e){
+  e?.preventDefault();e?.stopPropagation();
+  if(action==='start')zbBeginPreparedBoss();
+  else{zbRemoveMobileDock();zbPrepActive=false;debugBossRunning=false;debugBossMenu();}
+ }
+ for(const [btn,action] of [[start,'start'],[back,'back']]){
+  btn.addEventListener('touchend',e=>{lastTouch=performance.now();invoke(action,e);},{passive:false});
+  btn.addEventListener('click',e=>{
+   if(performance.now()-lastTouch<500){e.preventDefault();return;}
+   invoke(action,e);
+  });
+ }
+ dock.append(start,back);document.body.appendChild(dock);zbMobileDock=dock;
+}
+
 function zbAttachShopControls(){
  if(!zbPrepActive)return;
  const bar=document.createElement('div');bar.id='zb-debug-shop-toolbar';
@@ -3916,6 +3953,7 @@ v2ShopRender=function(){
  const foot=contentEl.querySelector('.shop12-foot');
  if(foot)foot.textContent='好きなだけ装備を購入してからボス戦へ。 所持金は消費しません。';
  zbAttachShopControls();
+ zbMountMobileDock();
 };
 refreshShop=v2ShopRender;
 // Stop existing shop key handlers from reopening the exit curtain in debug mode.
@@ -3938,6 +3976,7 @@ function zbPollPreparedShopPad(){
 requestAnimationFrame(zbPollPreparedShopPad);
 const zbOldLaunchDebug=launchDebugBoss;
 launchDebugBoss=function(n){
+ zbRemoveMobileDock();
  zbPrepActive=false;
  zbOldLaunchDebug(n);
  if(riichiMode||!debugBossRunning||!boss)return;
@@ -3950,6 +3989,7 @@ launchDebugBoss=function(n){
 };
 function zbDebugGameOver(){
  if(riichiMode||!debugBossRunning||mode==='debugGameOver')return false;
+ zbRemoveMobileDock();
  const n=zbPrepChoice||debugBossChoice||3;
  zbPrepActive=false;mode='debugGameOver';
  enemyBullets.length=0;bullets.length=0;bombs.length=0;
@@ -3980,6 +4020,7 @@ window.ZAMAZONE_DEBUG_BOSS_QA=()=>({
  active:!!debugBossRunning,mode,gameOver:mode==='debugGameOver',
  shopVisible:!panelWrap.classList.contains('hidden')&&mode==='shop',
  exitVisible:!!document.getElementById('zb-debug-shop-start'),
+ mobileDock:!!document.getElementById('zb-mobile-shop-exit'),
  money:player?.money??0,purchases:[...v2Purchased],
  retry:!!document.getElementById('zb-debug-retry'),select:!!document.getElementById('zb-debug-select')
 });
