@@ -60,7 +60,7 @@ jobs:
           s=Path('zamajan-online/public/minigames/zamazone/index.html').read_text('utf8')
           s=s.split('// ZAMAZONE_PYRAMID_EYE_STAGE2_V1_20261116')[0]
           for name in ['applyRigShot','applyRigBomb','damageEnemy','damageBase','hitEnemy','hitBase','drawEnemy','drawBase','drawBoss','function sound','function updateShots','function drawProjectiles','function updateProjectiles','function updateBullets','function drawRig','function updateRig','function updateEnemies','function updateBases']:
-            matches=list(re.finditer(r'(?:function\\s+|\\b)'+name+r'\\s*(?:=|\\()',s))
+            matches=list(re.finditer(re.escape(name),s))
             print('HIT_HOOK',name,'COUNT',len(matches))
             for m in matches[-3:]:
               print('HIT_HOOK_DETAIL',name,repr(s[max(0,m.start()-80):m.start()+1900]))
