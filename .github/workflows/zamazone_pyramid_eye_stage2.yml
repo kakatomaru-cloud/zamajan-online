@@ -245,7 +245,7 @@ jobs:
             if(post?.mode!=='bossDeath')throw Error('Boss defeat sequence did not continue '+JSON.stringify(post));
             await page.screenshot({path:'pyramid-eye-collapse.png',fullPage:true});
             // Debug death must allow retry via the preparation shop or return to boss select.
-            await page.evaluate(()=>launchDebugBoss(3));
+            await page.evaluate(()=>window.ZAMAZONE_DEBUG_BOSS_TEST.relaunch(3));
             await page.waitForFunction(()=>window.ZAMAZONE_DEBUG_BOSS_QA?.()?.shopVisible,null,{timeout:8000});
             await page.evaluate(()=>mainAction.click());
             const over=await page.evaluate(()=>window.ZAMAZONE_DEBUG_BOSS_TEST.forceGameOver());
