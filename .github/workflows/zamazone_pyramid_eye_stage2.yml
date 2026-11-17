@@ -113,7 +113,10 @@ jobs:
             if(salvo.remainingStones!==7||salvo.stones.some((s,i)=>i<9&&s.alive))throw Error('destroyed stones regenerated');
             // Boss body occasionally charges across the entire screen with a visible warning.
             if(!await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_TEST.forceAttack('charge')))throw Error('charge unavailable');
-            await page.waitForTimeout(1500);
+            await page.waitForFunction(()=>{
+              const q=window.ZAMAZONE_PYRAMID_EYE_QA?.();
+              return q&&q.attack==='charge'&&q.bossX<175;
+            },null,{timeout:8500});
             const charge=await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_QA());
             console.log('BODY_CHARGE',JSON.stringify({x:charge.bossX,phase:charge.phase,attack:charge.attack}));
             if(charge.bossX>175)throw Error('boss body failed to charge toward the left edge');
