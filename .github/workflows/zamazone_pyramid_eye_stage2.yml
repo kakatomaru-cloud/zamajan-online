@@ -79,6 +79,12 @@ jobs:
             if(!qa.assetLoaded)throw Error('Pyramid Eye sprite not loaded');
             if(qa.stones.some(s=>s.y<0))throw Error('Intro stones still hidden above screen');
             await page.waitForFunction(()=>{const q=window.ZAMAZONE_PYRAMID_EYE_QA?.();return q&&q.entranceComplete&&q.mode!=='bossIntro';},null,{timeout:25000});
+            // Giant rock must rebound visibly at least twice while travelling from right to left.
+            const billiard=await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_TEST.simulateBounce());
+            console.log('GIANT_BILLIARD',JSON.stringify(billiard));
+            if(!billiard||billiard.totalBounces<2||billiard.samples.length<3)throw Error('Giant rock never rebounded');
+            if(billiard.samples.at(-1).x>=billiard.samples[0].x)throw Error('Giant rock did not move left');
+            if(!billiard.samples.some((x,i,a)=>i>0&&Math.sign(x.vy)!==Math.sign(a[i-1].vy)))throw Error('Giant rock vertical velocity did not reverse');
             const front=await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_TEST.eyeHit(6,false));
             if(!front||front.after!==front.before)throw Error('Eye must reject hits when turned away: '+JSON.stringify(front));
             const colors=[];
