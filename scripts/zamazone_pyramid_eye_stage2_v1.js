@@ -177,7 +177,7 @@ function pyUpdate(dt){
    const charge=z.charge;
    if(!charge){z.phase='recover';z.time=0;}
    else{
-    const left=-150,out=.65,hold=.10,back=.78;let x;
+    const left=-185,out=.62,hold=.42,back=.85;let x;
     if(z.time<out)x=charge.startX+(left-charge.startX)*pyEase(z.time/out);
     else if(z.time<out+hold)x=left;
     else x=left+(charge.startX-left)*pyEase((z.time-out-hold)/back);
@@ -335,6 +335,7 @@ window.ZAMAZONE_PYRAMID_EYE_QA=()=>({
  entranceComplete:boss?.pyramid?.entranceComplete,
  deathShards:boss?.pyramid?.deathShards?.length||0,
  remainingStones:boss?.pyramid?.stones.filter(s=>s.alive).length||0,
+ chargeTime:boss?.pyramid?.attack==='charge'?boss.pyramid.time:null,
  bossX:boss?screenX(boss.x):null
 });
 
@@ -406,7 +407,8 @@ if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
   forceAttack(name){
    if(!pyramidOn()||!['radial','orbit','spiral','merge','aimed','salvo','charge'].includes(name))return false;
    if(name==='merge'&&boss.pyramid.stones.filter(s=>s.alive).length<8)return false;
-   const z=boss.pyramid;z.entranceComplete=true;pyStartAttack(boss);
+   const z=boss.pyramid;player.inv=Math.max(player.inv||0,25);
+   z.entranceComplete=true;pyStartAttack(boss);
    z.attack=name;z.phase='warn';z.time=0;return true;
   },
   eyeHit(damage=6,front=true){
