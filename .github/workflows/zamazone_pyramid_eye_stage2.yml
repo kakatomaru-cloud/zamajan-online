@@ -118,6 +118,14 @@ jobs:
             console.log('SEQUENTIAL_SALVO',JSON.stringify({phase:salvo.phase,attack:salvo.attack,remaining:salvo.remainingStones,x:salvo.stones.filter(s=>s.alive).map(s=>s.xScreen)}));
             if(salvo.remainingStones!==7||salvo.stones.some((s,i)=>i<9&&s.alive))throw Error('destroyed stones regenerated');
             // Boss body occasionally charges across the entire screen with a visible warning.
+            // Real running-game charge must be visible, not only the deterministic QA simulation.
+            if(!await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_TEST.forceAttack('charge')))throw Error('Live charge unavailable');
+            await page.waitForFunction(()=>{
+              const q=window.ZAMAZONE_PYRAMID_EYE_QA?.();
+              return q&&q.attack==='charge'&&q.chargeFrameMinX!==null&&q.chargeFrameMinX<0;
+            },null,{timeout:8500});
+            const liveCharge=await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_QA());
+            console.log('LIVE_BODY_CHARGE',JSON.stringify({minX:liveCharge.chargeFrameMinX,x:liveCharge.chargeDisplayX,time:liveCharge.chargeTime}));
             const charge=await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_TEST.simulateCharge());
             console.log('BODY_CHARGE',JSON.stringify(charge));
             if(!charge||charge.minX>175)throw Error('boss body failed to charge toward the left edge');
