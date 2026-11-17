@@ -3842,6 +3842,7 @@ if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
 // ZAMAZONE_PYRAMID_EYE_VISIBLE_ATTACKS_V7_20261117
 // ZAMAZONE_PYRAMID_EYE_INTRO_LASER_V8_20261117
 // ZAMAZONE_UNIFIED_HIT_FEEDBACK_V1_20261117
+// ZAMAZONE_LOCAL_RED_FLASH_V2_20261117
 // Stage-2 real combat replacement. Uses images extracted from the approved MANA3 demo.
 const pyramidOldSpawn=spawnBoss,pyramidOldDraw=drawBoss,pyramidOldAttackUpdate=updateBossAttacks;
 const pyramidOldAttackFx=drawBossAttackEffects,pyramidOldShot=applyRigShot,pyramidOldBomb=applyRigBomb;
@@ -4403,8 +4404,8 @@ function zfxPlay(kind){
   if(now-zfxLastDamage<65)return;
   zfxLastDamage=now;
   // Sharp slashing transient followed by a descending rasp: "ズバッ".
-  sound(420,.075,'sawtooth',.063);
-  sound(190,.13,'triangle',.057);
+  sound(420,.075,'sawtooth',.081);
+  sound(190,.13,'triangle',.073);
   try{
    audioCtx??=new (window.AudioContext||window.webkitAudioContext)();
    if(muted)return;
@@ -4413,7 +4414,7 @@ function zfxPlay(kind){
    const src=ac.createBufferSource(),filter=ac.createBiquadFilter(),gain=ac.createGain();
    src.buffer=buf;filter.type='bandpass';filter.frequency.value=1050;filter.Q.value=.55;
    const t=ac.currentTime;
-   gain.gain.setValueAtTime(.001,t);gain.gain.linearRampToValueAtTime(.075,t+.008);
+   gain.gain.setValueAtTime(.001,t);gain.gain.linearRampToValueAtTime(.096,t+.008);
    gain.gain.exponentialRampToValueAtTime(.0001,t+.083);
    src.connect(filter);filter.connect(gain);gain.connect(ac.destination);src.start(t);src.stop(t+.085);
   }catch{}
@@ -4431,12 +4432,12 @@ function zfxPlay(kind){
     o.frequency.setValueAtTime(freq,t+delay);
     o.frequency.exponentialRampToValueAtTime(freq*.79,t+delay+.095);
     g.gain.setValueAtTime(.0001,t+delay);
-    g.gain.linearRampToValueAtTime(.058,t+delay+.003);
+    g.gain.linearRampToValueAtTime(.076,t+delay+.003);
     g.gain.exponentialRampToValueAtTime(.0001,t+delay+.11);
     o.connect(g);g.connect(ac.destination);
     o.start(t+delay);o.stop(t+delay+.115);
    }
-  }catch{sound(1220,.10,'triangle',.052);}
+  }catch{sound(1220,.10,'triangle',.069);}
  }
 }
 function zfxReport(kind,target,x,y,category='boss'){
@@ -4444,8 +4445,13 @@ function zfxReport(kind,target,x,y,category='boss'){
  if(kind==='damage'){
   zfxStats.damage++;
   zfxStats[category]=(zfxStats[category]||0)+1;
-  if(target&&typeof target==='object')target.zfxRedUntil=t+250;
-  zfxSparks.push({x,y,until:t+280,kind:'damage'});
+  if(target&&typeof target==='object'){
+   target.zfxRedUntil=t+250;
+   // Hit location is world-space; only this local patch is recolored during blinking.
+   target.zfxHitX=x;target.zfxHitY=y;
+   target.zfxHitRadius=category==='boss'?48:54;
+  }
+  // No slash particles or drawn strokes on a successful hit: blinking only.
   zfxPlay('damage');
  }else{
   zfxStats.blocked++;
@@ -4531,8 +4537,17 @@ drawEnemy=function(e){if(!zfxActive(e))return zfxOldDrawEnemy(e);
 drawBase=function(b){if(!zfxActive(b))return zfxOldDrawBase(b);
  ctx.save();ctx.filter=zfxRedFilter;zfxOldDrawBase(b);ctx.restore();
 };
-drawBoss=function(){if(!zfxActive(boss))return zfxOldDrawBoss();
- ctx.save();ctx.filter=zfxRedFilter;zfxOldDrawBoss();ctx.restore();
+drawBoss=function(){
+ // Never recolor the entire boss. Repaint only the struck piece within
+ // a circular clip; all other areas retain their original colors.
+ zfxOldDrawBoss();
+ if(!zfxActive(boss))return;
+ const x=screenX(boss.zfxHitX??boss.x),y=boss.zfxHitY??boss.y;
+ const radius=boss.zfxHitRadius||48;
+ ctx.save();ctx.beginPath();ctx.arc(x,y,radius,0,Math.PI*2);ctx.clip();
+ ctx.filter=zfxRedFilter;
+ zfxOldDrawBoss();
+ ctx.restore();
 };
 const zfxOldDrawProjectiles=drawProjectiles;
 drawProjectiles=function(){
@@ -4543,17 +4558,19 @@ drawProjectiles=function(){
   const x=screenX(p.x),y=p.y,fade=Math.min(1,(p.until-now)/110);
   if(x<-65||x>W+65)continue;
   ctx.save();ctx.globalAlpha=fade;
-  if(p.kind==='damage'){
-   ctx.strokeStyle='#ff3447';ctx.shadowColor='#ff2430';ctx.shadowBlur=15;
-   ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(x-23,y+17);ctx.lineTo(x+23,y-18);ctx.moveTo(x-16,y-14);ctx.lineTo(x+20,y+12);ctx.stroke();
-  }else{
+  // Blocked shots retain a restrained metallic glint; successful hits draw no slash.
+  if(p.kind==='blocked'){
    ctx.strokeStyle='#ffe7aa';ctx.shadowColor='#fff4aa';ctx.shadowBlur=12;ctx.lineWidth=3;
    ctx.beginPath();ctx.arc(x,y,9,0,Math.PI*2);ctx.stroke();
   }
   ctx.restore();
  }
 };
-window.ZAMAZONE_HIT_FEEDBACK_QA=()=>({...zfxStats,flashes:zfxSparks.length});
+window.ZAMAZONE_HIT_FEEDBACK_QA=()=>({...zfxStats,flashes:zfxSparks.length,
+ slashParticles:zfxSparks.filter(p=>p.kind==='damage').length,
+ bossFlashLocal:boss?.zfxHitX!==undefined,
+ bossFlashX:boss?.zfxHitX??null,bossFlashY:boss?.zfxHitY??null,
+ bossFlashRadius:boss?.zfxHitRadius??null});
 if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
  window.ZAMAZONE_HIT_FEEDBACK_TEST={
   blockedBossShot(){
