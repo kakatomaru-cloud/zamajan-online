@@ -3841,6 +3841,7 @@ if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
 // ZAMAZONE_PYRAMID_EYE_CHARGE_BOUNCE_V6_20261117
 // ZAMAZONE_PYRAMID_EYE_VISIBLE_ATTACKS_V7_20261117
 // ZAMAZONE_PYRAMID_EYE_INTRO_LASER_V8_20261117
+// ZAMAZONE_UNIFIED_HIT_FEEDBACK_V1_20261117
 // Stage-2 real combat replacement. Uses images extracted from the approved MANA3 demo.
 const pyramidOldSpawn=spawnBoss,pyramidOldDraw=drawBoss,pyramidOldAttackUpdate=updateBossAttacks;
 const pyramidOldAttackFx=drawBossAttackEffects,pyramidOldShot=applyRigShot,pyramidOldBomb=applyRigBomb;
@@ -4176,6 +4177,7 @@ drawBoss=function(){
   const x=screenX(s.x),y=s.y;if(x<-70||x>W+70)return;
   pySprite(pyramidArt.orb[orbFrame],x,y,74,74,s.spin+z.clock*1.3);
   if(s.cracks>0){ctx.save();ctx.translate(x,y);ctx.rotate(s.spin+z.clock*1.3);ctx.globalAlpha=Math.min(.7,s.cracks*.14);ctx.lineWidth=3;ctx.strokeStyle='#2c1b28';ctx.beginPath();ctx.moveTo(-13,-23);ctx.lineTo(1,-7);ctx.lineTo(-5,12);ctx.lineTo(13,24);ctx.stroke();ctx.restore();}
+  if(s.zfxRedUntil&&zfxNow()<s.zfxRedUntil){ctx.save();ctx.globalAlpha=.60;ctx.fillStyle='#ff253b';ctx.shadowColor='#ff0000';ctx.shadowBlur=20;ctx.beginPath();ctx.arc(x,y,31,0,Math.PI*2);ctx.fill();ctx.restore();}
   if(s.flash>0){ctx.save();ctx.globalAlpha=s.flash*4;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(x,y,30,0,2*Math.PI);ctx.fill();ctx.restore();}
  });
  const b=z.boulder;
@@ -4385,6 +4387,196 @@ if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
    return {minX:Math.min(...samples.map(s=>s.x)),samples,mode};
   },
   snap(){return window.ZAMAZONE_PYRAMID_EYE_QA();}
+ };
+}
+
+// ---- SHARED HIT FEEDBACK: every enemy, base and boss uses the same rules ----
+// A hit is classified by actual HP loss. Invulnerable armor -> metallic clank;
+// successful damage -> slash sound and a red blinking target (including moving sprites).
+const zfxStats={damage:0,blocked:0,enemy:0,base:0,boss:0};
+const zfxSparks=[];
+let zfxLastDamage=-10000,zfxLastBlocked=-10000;
+const zfxNow=()=>performance.now();
+function zfxPlay(kind){
+ const now=zfxNow();
+ if(kind==='damage'){
+  if(now-zfxLastDamage<65)return;
+  zfxLastDamage=now;
+  // Sharp slashing transient followed by a descending rasp: "ズバッ".
+  sound(420,.075,'sawtooth',.063);
+  sound(190,.13,'triangle',.057);
+  try{
+   audioCtx??=new (window.AudioContext||window.webkitAudioContext)();
+   if(muted)return;
+   const ac=audioCtx,len=Math.floor(ac.sampleRate*.085),buf=ac.createBuffer(1,len,ac.sampleRate),data=buf.getChannelData(0);
+   for(let i=0;i<len;i++)data[i]=(Math.random()*2-1)*(1-i/len);
+   const src=ac.createBufferSource(),filter=ac.createBiquadFilter(),gain=ac.createGain();
+   src.buffer=buf;filter.type='bandpass';filter.frequency.value=1050;filter.Q.value=.55;
+   const t=ac.currentTime;
+   gain.gain.setValueAtTime(.001,t);gain.gain.linearRampToValueAtTime(.075,t+.008);
+   gain.gain.exponentialRampToValueAtTime(.0001,t+.083);
+   src.connect(filter);filter.connect(gain);gain.connect(ac.destination);src.start(t);src.stop(t+.085);
+  }catch{}
+ }else{
+  if(now-zfxLastBlocked<100)return;
+  zfxLastBlocked=now;
+  // Two bright metal overtones: "キンキン".
+  sound(1220,.085,'triangle',.054);
+  sound(1740,.065,'sine',.043);
+ }
+}
+function zfxReport(kind,target,x,y,category='boss'){
+ const t=zfxNow();
+ if(kind==='damage'){
+  zfxStats.damage++;
+  zfxStats[category]=(zfxStats[category]||0)+1;
+  if(target&&typeof target==='object')target.zfxRedUntil=t+250;
+  zfxSparks.push({x,y,until:t+280,kind:'damage'});
+  zfxPlay('damage');
+ }else{
+  zfxStats.blocked++;
+  zfxSparks.push({x,y,until:t+140,kind:'blocked'});
+  zfxPlay('blocked');
+ }
+ if(zfxSparks.length>55)zfxSparks.splice(0,zfxSparks.length-55);
+}
+const zfxActive=o=>!!o?.zfxRedUntil&&zfxNow()<o.zfxRedUntil&&Math.floor(zfxNow()/68)%2===0;
+const zfxRedFilter='brightness(0) saturate(100%) invert(18%) sepia(100%) saturate(6900%) hue-rotate(345deg) brightness(150%)';
+const zfxBeforeBoss=()=>!boss?null:{
+ target:boss,
+ hp:boss.hp||0,
+ eye:boss.pyramid?.eyeHp||0,
+ stones:boss.pyramid?.stones.reduce((sum,p)=>sum+(p.hp||0),0)||0,
+ parts:boss.z?.parts?.reduce((sum,p)=>sum+(p.hp||0),0)||0,
+ wings:boss.wings?.reduce((sum,p)=>sum+(p.hp||0),0)||0
+};
+const zfxBossLoss=before=>before?Math.max(0,
+ before.hp-(before.target?.hp||0))+
+ Math.max(0,before.eye-(before.target?.pyramid?.eyeHp||0))+
+ Math.max(0,before.stones-(before.target?.pyramid?.stones.reduce((n,p)=>n+(p.hp||0),0)||0))+
+ Math.max(0,before.parts-(before.target?.z?.parts?.reduce((n,p)=>n+(p.hp||0),0)||0))+
+ Math.max(0,before.wings-(before.target?.wings?.reduce((n,p)=>n+(p.hp||0),0)||0)):0;
+
+// Bases already use a single hitBase() entrypoint, including direct shots and bombs.
+const zfxOldHitBase=hitBase;
+hitBase=function(base,amount){
+ const before=base?.hp||0,wasAlive=!!base?.alive;
+ const result=zfxOldHitBase(base,amount);
+ if(wasAlive&&base&&base.hp<before)zfxReport('damage',base,base.x,base.y,'base');
+ else if(wasAlive&&base)zfxReport('blocked',base,base.x,base.y,'base');
+ return result;
+};
+
+// Bosses from all stages, including shields and the Pyramid Eye, share one classifier.
+const zfxOldRigShot=applyRigShot,zfxOldRigBomb=applyRigBomb;
+applyRigShot=function(shot){
+ const before=zfxBeforeBoss(),x=shot.x,y=shot.y;
+ const result=zfxOldRigShot(shot);
+ if(before&&result){
+  const loss=zfxBossLoss(before);
+  zfxReport(loss>0?'damage':'blocked',before.target,x,y,'boss');
+ }
+ return result;
+};
+applyRigBomb=function(b,rad){
+ const before=zfxBeforeBoss();
+ const result=zfxOldRigBomb(b,rad);
+ if(before&&result)zfxReport(zfxBossLoss(before)>0?'damage':'blocked',before.target,b.x,b.y,'boss');
+ return result;
+};
+
+// The base engine subtracts enemy HP directly inside update(), instead of a hit function.
+// Observe real HP differences after update; one notification per damaged enemy.
+const zfxOldUpdate=update;
+update=function(dt){
+ const playing=mode==='play';
+ const former=playing?enemies.map(e=>({e,hp:e.hp})):null;
+ const oldBoss=playing?zfxBeforeBoss():null;
+ const oldBaseHealth=playing?bases.map(b=>({b,hp:b.hp})):null;
+ zfxOldUpdate(dt);
+ if(!playing)return;
+ for(const {e,hp} of former){
+  if(e.hp<hp)zfxReport('damage',e,e.x,e.y,'enemy');
+  else if(e.hp<=0&&hp>0)zfxReport('damage',e,e.x,e.y,'enemy');
+ }
+ // Stage 1 and legacy attack handlers also damage bosses outside applyRigShot().
+ if(oldBoss&&zfxBossLoss(oldBoss)>0&&!zfxActive(oldBoss.target)){
+  zfxReport('damage',oldBoss.target,oldBoss.target.x,oldBoss.target.y,'boss');
+ }
+ // Detect any direct base damage that bypassed hitBase().
+ for(const {b,hp} of oldBaseHealth){
+  if(b.hp<hp&&!b.zfxRedUntil)zfxReport('damage',b,b.x,b.y,'base');
+ }
+};
+
+// Draw red blinking on the actual sprite, irrespective of stage-specific art overrides.
+const zfxOldDrawEnemy=drawEnemy,zfxOldDrawBase=drawBase,zfxOldDrawBoss=drawBoss;
+drawEnemy=function(e){if(!zfxActive(e))return zfxOldDrawEnemy(e);
+ ctx.save();ctx.filter=zfxRedFilter;zfxOldDrawEnemy(e);ctx.restore();
+};
+drawBase=function(b){if(!zfxActive(b))return zfxOldDrawBase(b);
+ ctx.save();ctx.filter=zfxRedFilter;zfxOldDrawBase(b);ctx.restore();
+};
+drawBoss=function(){if(!zfxActive(boss))return zfxOldDrawBoss();
+ ctx.save();ctx.filter=zfxRedFilter;zfxOldDrawBoss();ctx.restore();
+};
+const zfxOldDrawProjectiles=drawProjectiles;
+drawProjectiles=function(){
+ zfxOldDrawProjectiles();
+ const now=zfxNow();
+ for(let i=zfxSparks.length-1;i>=0;i--){
+  const p=zfxSparks[i];if(p.until<=now){zfxSparks.splice(i,1);continue;}
+  const x=screenX(p.x),y=p.y,fade=Math.min(1,(p.until-now)/110);
+  if(x<-65||x>W+65)continue;
+  ctx.save();ctx.globalAlpha=fade;
+  if(p.kind==='damage'){
+   ctx.strokeStyle='#ff3447';ctx.shadowColor='#ff2430';ctx.shadowBlur=15;
+   ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(x-23,y+17);ctx.lineTo(x+23,y-18);ctx.moveTo(x-16,y-14);ctx.lineTo(x+20,y+12);ctx.stroke();
+  }else{
+   ctx.strokeStyle='#ffe7aa';ctx.shadowColor='#fff4aa';ctx.shadowBlur=12;ctx.lineWidth=3;
+   ctx.beginPath();ctx.arc(x,y,9,0,Math.PI*2);ctx.stroke();
+  }
+  ctx.restore();
+ }
+};
+window.ZAMAZONE_HIT_FEEDBACK_QA=()=>({...zfxStats,flashes:zfxSparks.length});
+if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
+ window.ZAMAZONE_HIT_FEEDBACK_TEST={
+  blockedBossShot(){
+   if(!pyramidOn())return false;
+   const z=boss.pyramid;z.turn=Math.PI;z.eyeFlash=0;
+   const before={...zfxStats};
+   const shot={x:boss.x,y:boss.y-23,life:1,vx:500,vy:0,dmg:1,radius:2,kind:'bullet'};
+   applyRigShot(shot);
+   return {before,after:{...zfxStats},red:zfxActive(boss),eye:z.eyeHp};
+  },
+  successfulBossShot(){
+   if(!pyramidOn())return false;
+   const z=boss.pyramid;z.turn=0;z.eyeFlash=0;
+   const before={...zfxStats},eye=z.eyeHp;
+   const shot={x:boss.x,y:boss.y-23,life:1,vx:500,vy:0,dmg:1,radius:2,kind:'bullet'};
+   applyRigShot(shot);
+   return {before,after:{...zfxStats},redUntil:boss.zfxRedUntil||0,eyeBefore:eye,eyeAfter:z.eyeHp};
+  },
+  baseHit(){
+   // Test a representative base even when debug boss mode has cleared all six bases.
+   const b={x:wrapX(camera+120),y:ground-100,hp:10,maxHp:10,alive:true,flash:0};
+   const before={...zfxStats};
+   hitBase(b,1);
+   return {before,after:{...zfxStats},redUntil:b.zfxRedUntil||0,damage:b.hp===9};
+  },
+  enemyHit(){
+   if(mode!=='play')return false;
+   const x=wrapX(camera-300);
+   const e={type:'jelly',hp:3,x,y:ground-42,baseY:ground-42,vx:0,phase:0,shot:100,dead:false};
+   enemies.push(e);
+   const old={...zfxStats};
+   bullets.push({x,y:e.y,vx:0,vy:0,life:.65,dmg:1,radius:4,kind:'bullet'});
+   update(1/60);
+   const result={before:old,after:{...zfxStats},enemyHP:e.hp,redUntil:e.zfxRedUntil||0};
+   enemies=enemies.filter(v=>v!==e);
+   return result;
+  }
  };
 }
 
