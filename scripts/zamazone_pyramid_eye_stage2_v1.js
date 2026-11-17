@@ -84,7 +84,7 @@ v2ShopRender=function(){
 };
 refreshShop=v2ShopRender;
 // Stop existing shop key handlers from reopening the exit curtain in debug mode.
-document.addEventListener('keydown',e=>{
+window.addEventListener('keydown',e=>{
  if(!zbPrepActive||mode!=='shop')return;
  if(e.code==='Escape'||e.code==='KeyB'||e.code==='Enter'&&e.target?.id==='zb-debug-shop-start'){
   e.preventDefault();e.stopImmediatePropagation();zbBeginPreparedBoss();
