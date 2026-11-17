@@ -16,7 +16,8 @@
    });
  }
  const ready=im=>!!(im?.complete&&im.naturalWidth>0);
- const active=()=>stage===2&&!riichiMode;
+ let qaForceStage2=false;
+ const active=()=>(stage===2||qaForceStage2)&&!riichiMode;
  const deaths=[];
  const counters={groundDraw:0,airDraw:0,enemyDraw:0,deathDraw:0,groundDestroyed:0,airDestroyed:0};
  const red=o=>o?.zfxRedUntil&&performance.now()<o.zfxRedUntil&&Math.floor(performance.now()/68)%2===0;
@@ -108,13 +109,13 @@
  if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
    window.ZAMAZONE_DESERT_REDESIGN_TEST={
      smoke(){
-       const oldStage=stage,oldRiichi=riichiMode;
+       if(riichiMode)return {error:'Riichi mode cannot be used for desert test'};
        const before=state(),baselineX=screenX(camera+140);
        const groundBase={x:camera+140,y:ground,hp:2,maxHp:2,alive:true,phase:2.08,flying:false,flash:0};
        const airBase={x:camera+390,y:250,hp:2,maxHp:2,alive:true,phase:2.8,flying:true,flash:0};
        const sentinel={x:camera+1300,y:ground,hp:99,maxHp:99,alive:true,flying:false};
        try{
-         stage=2;riichiMode=false;
+         qaForceStage2=true;
          drawBase(groundBase);drawBase(airBase);
          for(const [type,i] of [['bird',0],['bouncer',1],['jelly',2],['laserjelly',3]]){
            drawEnemy({type,x:camera+520+i*110,y:260,phase:.13,hp:3,vx:-40});
@@ -128,7 +129,7 @@
          drawProjectiles();
          return {before,after:state(),groundDead:!groundBase.alive,airDead:!airBase.alive,
            allLoaded:Object.entries(images).every(([k,v])=>v.every(ready))};
-       }finally{stage=oldStage;riichiMode=oldRiichi;}
+       }finally{qaForceStage2=false;}
      }
    };
  }
