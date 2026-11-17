@@ -80,6 +80,10 @@ jobs:
             if(qa.stones.some(s=>s.y<0))throw Error('Intro stones still hidden above screen');
             if(qa.introFrameMaxJump>30)throw Error('Intro upward frame skip '+qa.introFrameMaxJump);
             await page.waitForFunction(()=>{const q=window.ZAMAZONE_PYRAMID_EYE_QA?.();return q&&q.entranceComplete&&q.mode!=='bossIntro';},null,{timeout:25000});
+            await page.waitForFunction(()=>window.ZAMAZONE_PYRAMID_EYE_QA?.()?.introExitJump!==null,null,{timeout:5000});
+            const transition=await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_QA());
+            console.log('INTRO_TO_COMBAT',JSON.stringify({frameMaxJump:transition.introFrameMaxJump,exitJump:transition.introExitJump}));
+            if(transition.introFrameMaxJump>30||transition.introExitJump>30)throw Error('Boss introduction teleport '+JSON.stringify(transition));
             // Giant rock must rebound visibly at least twice while travelling from right to left.
             const billiard=await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_TEST.simulateBounce());
             console.log('GIANT_BILLIARD',JSON.stringify(billiard));
