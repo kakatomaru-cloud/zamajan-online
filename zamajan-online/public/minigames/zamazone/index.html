@@ -3839,6 +3839,7 @@ if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
 // ZAMAZONE_PYRAMID_EYE_DEATH_ART_V4_20261116
 // ZAMAZONE_PYRAMID_EYE_COMBAT_V5_20261117
 // ZAMAZONE_PYRAMID_EYE_CHARGE_BOUNCE_V6_20261117
+// ZAMAZONE_PYRAMID_EYE_VISIBLE_ATTACKS_V7_20261117
 // Stage-2 real combat replacement. Uses images extracted from the approved MANA3 demo.
 const pyramidOldSpawn=spawnBoss,pyramidOldDraw=drawBoss,pyramidOldAttackUpdate=updateBossAttacks;
 const pyramidOldAttackFx=drawBossAttackEffects,pyramidOldShot=applyRigShot,pyramidOldBomb=applyRigBomb;
@@ -3857,10 +3858,12 @@ const pyScreenWorld=x=>wrapX(camera+x-W/2);
 const pyStoneAt=(s,x,y)=>{s.x=pyScreenWorld(x);s.y=y;};
 function pyStartAttack(b){
  const z=b.pyramid;
- const attacks=['salvo','charge','radial','merge','orbit','charge','aimed','spiral'];
+ // Show signature attacks first: a visible body charge, then the billiard boulder.
+ const attacks=['charge','merge','salvo','radial','charge','orbit','merge','aimed','spiral'];
  let attack=attacks[z.attackNo++%attacks.length];
  if(attack==='merge'&&z.stones.filter(s=>s.alive).length<8)attack='salvo';
  z.attack=attack;z.phase='warn';z.time=0;z.charge=null;z.chargeDisplayX=null;
+ (z.attackHistory??=[]).push(attack);
  z.parts=z.stones.filter(s=>s.alive);z.starts=z.parts.map(s=>({x:s.x,y:s.y}));
  z.merge=null;z.boulder=null;z.fireClock=0;z.hitClock=0;
  z.stones.forEach(s=>{s.launched=false;});
@@ -3878,6 +3881,7 @@ spawnBoss=function(){
     eyeHp:24,eyeMax:24,eyeFlash:0,eyeHitTime:0,eyeHitText:null,eyeExposed:1,turn:0,hitClock:0,fireClock:0,
     entranceTime:0,entranceComplete:false,deathTime:0,deathShards:[],charge:null,
     chargeDisplayX:null, chargeFrameMinX:Infinity, bounceCount:0,
+    drawChargeFrames:0, drawRockFrames:0, attackHistory:[],
     stones:Array.from({length:16},(_,i)=>({id:i,alive:true,visible:true,hp:24,maxHp:24,
       x:wrapX(boss.x+Math.cos(i*Math.PI/8)*(i%2?235:188)),y:-95-i*13,angle:i*Math.PI/8,spin:i*.53,flash:0,danger:false,cracks:0})),
     parts:[],starts:[],merge:null,boulder:null};
@@ -3919,7 +3923,7 @@ function pyUpdate(dt){
  z.eyeHitTime=Math.max(0,z.eyeHitTime-step);
  if(z.eyeHitText)z.eyeHitText.life=Math.max(0,z.eyeHitText.life-step);
  z.stones.forEach(s=>s.flash=Math.max(0,s.flash-step));
- const bx=screenX(boss.x),by=boss.y;
+ const bx=z.attack==='charge'&&z.phase==='active'&&z.chargeDisplayX!==null?z.chargeDisplayX:screenX(boss.x),by=boss.y;
  // The 16 stones are stored permanently. Hiding is permitted only while the big rock exists.
  const home=(s,progress=1)=>{
   const a=s.angle+t*.92,r=(s.id%2?226:180);
@@ -4109,6 +4113,11 @@ drawBoss=function(){
   return pyramidOldDraw();
  }
  const z=boss.pyramid,bx=z.chargeDisplayX!==null&&z.attack==='charge'&&z.phase==='active'?z.chargeDisplayX:screenX(boss.x),by=boss.y,frame=(Math.floor((z.turn%(Math.PI*2))/(Math.PI*2)*16)+16)%16;
+ if(z.attack==='charge'&&z.phase==='active'){
+  z.drawChargeFrames++;
+  ctx.save();ctx.globalAlpha=.35;ctx.strokeStyle='#ffe6a2';ctx.lineWidth=7;
+  ctx.beginPath();ctx.moveTo(Math.min(W,bx+195),by);ctx.lineTo(Math.min(W,bx+410),by);ctx.stroke();ctx.restore();
+ }
  ctx.save();ctx.shadowColor='#ffdc8a';ctx.shadowBlur=13;
  pySprite(pyramidArt.body[frame],bx,by,350,350);
  ctx.restore();
@@ -4137,7 +4146,7 @@ drawBoss=function(){
   if(s.flash>0){ctx.save();ctx.globalAlpha=s.flash*4;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(x,y,30,0,2*Math.PI);ctx.fill();ctx.restore();}
  });
  const b=z.boulder;
- if(b?.alive){const x=screenX(b.x),y=b.y;ctx.save();
+ if(b?.alive){z.drawRockFrames++;const x=screenX(b.x),y=b.y;ctx.save();
   ctx.shadowColor='#ffe5aa';ctx.shadowBlur=b.glow>0?50:16;
   pySprite(pyramidArt.rock,x,y,b.size*b.scale,b.size*b.scale,b.rotation);
   if(b.glow>0){ctx.globalAlpha=b.glow*.4;ctx.fillStyle='#fff7cf';ctx.beginPath();ctx.arc(x,y,b.size*b.scale*.47,0,Math.PI*2);ctx.fill();}
@@ -4200,6 +4209,9 @@ window.ZAMAZONE_PYRAMID_EYE_QA=()=>({
  chargeFrameMinX:boss?.pyramid?.chargeFrameMinX??null,
  bigRockY:boss?.pyramid?.boulder?.y??null,
  bigRockBounces:boss?.pyramid?.boulder?.bounces??0,
+ drawChargeFrames:boss?.pyramid?.drawChargeFrames??0,
+ drawRockFrames:boss?.pyramid?.drawRockFrames??0,
+ attackHistory:boss?.pyramid?.attackHistory||[],
  totalBounces:boss?.pyramid?.bounceCount??0,
  bossX:boss?screenX(boss.x):null
 });
@@ -4271,6 +4283,10 @@ defeatBoss=function(){
 // Testing hooks use the normal gameplay damage routines and are only exposed with an explicit debug query.
 if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
  window.ZAMAZONE_PYRAMID_EYE_TEST={
+  enableSpectator(){
+   if(!pyramidOn())return false;
+   player.inv=300;return true;
+  },
   forceAttack(name){
    if(!pyramidOn()||!['radial','orbit','spiral','merge','aimed','salvo','charge'].includes(name))return false;
    if(name==='merge'&&boss.pyramid.stones.filter(s=>s.alive).length<8)return false;
