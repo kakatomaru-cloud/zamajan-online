@@ -118,8 +118,8 @@
          qaForceStage2=true;
          drawBase(groundBase);drawBase(airBase);
          for(const [type,i] of [['bird',0],['bouncer',1],['jelly',2],['laserjelly',3]]){
-           drawEnemy({type,x:camera+520+i*110,y:260,phase:.13,hp:3,vx:-40});
-           drawEnemy({type,x:camera+520+i*110,y:260,phase:.30,hp:3,vx:-40});
+           drawEnemy({type,x:wrapX(camera+(i-1.5)*100),y:260,phase:.13,hp:3,vx:-40});
+           drawEnemy({type,x:wrapX(camera+(i-1.5)*100),y:260,phase:.30,hp:3,vx:-40});
          }
          bases.push(sentinel);
          try{hitBase(groundBase,3);hitBase(airBase,3);}finally{
