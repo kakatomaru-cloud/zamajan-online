@@ -30,11 +30,46 @@ v2Buy=function(i){
  v2ShopRender();
 };
 function zbBeginPreparedBoss(){
- if(!zbPrepActive)return;
+ if(!zbPrepActive)return false;
+ const nextMode=zbPrepReturnMode;
  zbPrepActive=false;
- mode=zbPrepReturnMode;
- pressed.clear();closePanel();
+ mode=nextMode;
+ pressed.clear();
+ // The original shop owns an exit curtain; bypass it when launching a
+ // debug boss that is already spawned, otherwise it can reopen the shop.
+ const panel=document.getElementById('panel');
+ if(panel)panel.classList.remove('shop','v2-shop');
+ closePanel();
+ panelWrap.classList.add('hidden');
  last=performance.now();
+ return true;
+}
+const zbPrepStyles=document.createElement('style');
+zbPrepStyles.textContent=`
+#zb-debug-shop-toolbar{position:sticky;top:0;z-index:99;display:flex;gap:8px;
+ flex-wrap:wrap;align-items:center;justify-content:center;background:#152944;
+ border:2px solid #ffdd6b;border-radius:10px;padding:10px;margin:3px 0 12px}
+#zb-debug-shop-start{cursor:pointer;background:#ffdf79;color:#17223e;border:2px solid white;
+ padding:12px 22px;border-radius:10px;font-size:18px;font-weight:900;min-height:48px}
+#zb-debug-shop-back{cursor:pointer;background:#e4effb;color:#1b3555;border:1px solid #8fb5e8;
+ padding:10px 15px;border-radius:9px;font-weight:800}
+`;
+document.head.appendChild(zbPrepStyles);
+function zbAttachShopControls(){
+ if(!zbPrepActive)return;
+ const bar=document.createElement('div');bar.id='zb-debug-shop-toolbar';
+ const startBtn=document.createElement('button');startBtn.id='zb-debug-shop-start';startBtn.type='button';
+ startBtn.textContent='▶ 装備を確定してボス戦へ';
+ startBtn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();zbBeginPreparedBoss();});
+ const backBtn=document.createElement('button');backBtn.id='zb-debug-shop-back';backBtn.type='button';
+ backBtn.textContent='← ボス選択に戻る';
+ backBtn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();
+  zbPrepActive=false;debugBossRunning=false;debugBossMenu();
+ });
+ bar.append(startBtn,backBtn);
+ contentEl.prepend(bar);
+ mainAction.textContent='▶ 装備を確定してボス戦へ';
+ mainAction.onclick=zbBeginPreparedBoss;
 }
 const zbOldShopRender=v2ShopRender;
 v2ShopRender=function(){
@@ -45,10 +80,27 @@ v2ShopRender=function(){
  if(head)head.textContent='ボス戦用の装備を選択 / 金額制限なし（性能上限は有効）';
  const foot=contentEl.querySelector('.shop12-foot');
  if(foot)foot.textContent='好きなだけ装備を購入してからボス戦へ。 所持金は消費しません。';
- mainAction.textContent='▶ 装備を確定してボス戦開始';
- mainAction.onclick=zbBeginPreparedBoss;
+ zbAttachShopControls();
 };
 refreshShop=v2ShopRender;
+// Stop existing shop key handlers from reopening the exit curtain in debug mode.
+document.addEventListener('keydown',e=>{
+ if(!zbPrepActive||mode!=='shop')return;
+ if(e.code==='Escape'||e.code==='KeyB'||e.code==='Enter'&&e.target?.id==='zb-debug-shop-start'){
+  e.preventDefault();e.stopImmediatePropagation();zbBeginPreparedBoss();
+ }
+},true);
+let zbLastPadExit=false;
+function zbPollPreparedShopPad(){
+ if(zbPrepActive&&mode==='shop'){
+  const pad=(navigator.getGamepads?.()||[])[0];
+  const pressedExit=!!(pad?.buttons?.[1]?.pressed||pad?.buttons?.[9]?.pressed);
+  if(pressedExit&&!zbLastPadExit)zbBeginPreparedBoss();
+  zbLastPadExit=pressedExit;
+ }else zbLastPadExit=false;
+ requestAnimationFrame(zbPollPreparedShopPad);
+}
+requestAnimationFrame(zbPollPreparedShopPad);
 const zbOldLaunchDebug=launchDebugBoss;
 launchDebugBoss=function(n){
  zbPrepActive=false;
@@ -92,6 +144,7 @@ window.ZAMAZONE_DEBUG_BOSS_QA=()=>({
  prep:zbPrepActive,choice:zbPrepChoice,returnMode:zbPrepReturnMode,
  active:!!debugBossRunning,mode,gameOver:mode==='debugGameOver',
  shopVisible:!panelWrap.classList.contains('hidden')&&mode==='shop',
+ exitVisible:!!document.getElementById('zb-debug-shop-start'),
  money:player?.money??0,purchases:[...v2Purchased],
  retry:!!document.getElementById('zb-debug-retry'),select:!!document.getElementById('zb-debug-select')
 });
