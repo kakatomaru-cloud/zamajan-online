@@ -97,6 +97,7 @@ window.ZAMAZONE_DEBUG_BOSS_QA=()=>({
 });
 if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
  window.ZAMAZONE_DEBUG_BOSS_TEST={
+  relaunch(n=3){launchDebugBoss(n);return window.ZAMAZONE_DEBUG_BOSS_QA();},
   forceGameOver(){
    if(!debugBossRunning)return false;
    player.hp=0;zbDebugGameOver();return window.ZAMAZONE_DEBUG_BOSS_QA();
