@@ -705,3 +705,45 @@ drawProjectiles=function(){
  }
 };
 window.ZAMAZONE_HIT_FEEDBACK_QA=()=>({...zfxStats,flashes:zfxSparks.length});
+if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
+ window.ZAMAZONE_HIT_FEEDBACK_TEST={
+  blockedBossShot(){
+   if(!pyramidOn())return false;
+   const z=boss.pyramid;z.turn=Math.PI;z.eyeFlash=0;
+   const before={...zfxStats};
+   const shot={x:boss.x,y:boss.y-23,life:1,vx:500,vy:0,dmg:1,radius:2,kind:'bullet'};
+   applyRigShot(shot);
+   return {before,after:{...zfxStats},red:zfxActive(boss),eye:z.eyeHp};
+  },
+  successfulBossShot(){
+   if(!pyramidOn())return false;
+   const z=boss.pyramid;z.turn=0;z.eyeFlash=0;
+   const before={...zfxStats},eye=z.eyeHp;
+   const shot={x:boss.x,y:boss.y-23,life:1,vx:500,vy:0,dmg:1,radius:2,kind:'bullet'};
+   applyRigShot(shot);
+   return {before,after:{...zfxStats},redUntil:boss.zfxRedUntil||0,eyeBefore:eye,eyeAfter:z.eyeHp};
+  },
+  baseHit(){
+   const b=bases[0];if(!b)return false;
+   const saved={hp:b.hp,alive:b.alive};
+   b.hp=Math.max(5,b.hp);b.alive=true;
+   const before={...zfxStats};
+   hitBase(b,1);
+   const result={before,after:{...zfxStats},redUntil:b.zfxRedUntil||0,damage:b.hp<Math.max(5,saved.hp)};
+   b.hp=saved.hp;b.alive=saved.alive;
+   return result;
+  },
+  enemyHit(){
+   if(mode!=='play')return false;
+   const x=wrapX(camera-300);
+   const e={type:'jelly',hp:3,x,y:ground-42,baseY:ground-42,vx:0,phase:0,shot:100,dead:false};
+   enemies.push(e);
+   const old={...zfxStats};
+   bullets.push({x,y:e.y,vx:0,vy:0,life:.65,dmg:1,radius:4,kind:'bullet'});
+   update(1/60);
+   const result={before:old,after:{...zfxStats},enemyHP:e.hp,redUntil:e.zfxRedUntil||0};
+   enemies=enemies.filter(v=>v!==e);
+   return result;
+  }
+ };
+}
