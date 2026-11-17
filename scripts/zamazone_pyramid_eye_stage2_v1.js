@@ -3,6 +3,7 @@
 // ZAMAZONE_PYRAMID_EYE_COMBAT_V3_20261116
 // ZAMAZONE_PYRAMID_EYE_DEATH_ART_V4_20261116
 // ZAMAZONE_PYRAMID_EYE_COMBAT_V5_20261117
+// ZAMAZONE_PYRAMID_EYE_CHARGE_BOUNCE_V6_20261117
 // Stage-2 real combat replacement. Uses images extracted from the approved MANA3 demo.
 const pyramidOldSpawn=spawnBoss,pyramidOldDraw=drawBoss,pyramidOldAttackUpdate=updateBossAttacks;
 const pyramidOldAttackFx=drawBossAttackEffects,pyramidOldShot=applyRigShot,pyramidOldBomb=applyRigBomb;
@@ -21,10 +22,10 @@ const pyScreenWorld=x=>wrapX(camera+x-W/2);
 const pyStoneAt=(s,x,y)=>{s.x=pyScreenWorld(x);s.y=y;};
 function pyStartAttack(b){
  const z=b.pyramid;
- const attacks=['salvo','radial','orbit','charge','aimed','spiral','merge'];
+ const attacks=['salvo','charge','radial','merge','orbit','charge','aimed','spiral'];
  let attack=attacks[z.attackNo++%attacks.length];
  if(attack==='merge'&&z.stones.filter(s=>s.alive).length<8)attack='salvo';
- z.attack=attack;z.phase='warn';z.time=0;z.charge=null;
+ z.attack=attack;z.phase='warn';z.time=0;z.charge=null;z.chargeDisplayX=null;
  z.parts=z.stones.filter(s=>s.alive);z.starts=z.parts.map(s=>({x:s.x,y:s.y}));
  z.merge=null;z.boulder=null;z.fireClock=0;z.hitClock=0;
  z.stones.forEach(s=>{s.launched=false;});
@@ -41,6 +42,7 @@ spawnBoss=function(){
  boss.pyramid={version:1,clock:0,attackNo:0,attack:null,phase:'idle',time:0,
     eyeHp:24,eyeMax:24,eyeFlash:0,eyeHitTime:0,eyeHitText:null,eyeExposed:1,turn:0,hitClock:0,fireClock:0,
     entranceTime:0,entranceComplete:false,deathTime:0,deathShards:[],charge:null,
+    chargeDisplayX:null, chargeFrameMinX:Infinity, bounceCount:0,
     stones:Array.from({length:16},(_,i)=>({id:i,alive:true,visible:true,hp:24,maxHp:24,
       x:wrapX(boss.x+Math.cos(i*Math.PI/8)*(i%2?235:188)),y:-95-i*13,angle:i*Math.PI/8,spin:i*.53,flash:0,danger:false,cracks:0})),
     parts:[],starts:[],merge:null,boulder:null};
@@ -113,7 +115,10 @@ function pyUpdate(dt){
   z.phase='active';z.time=0;
   z.starts=z.parts.map(s=>({x:screenX(s.x),y:s.y}));
   z.aimY=pyClamp(player.y,105,ground-65);
-  if(z.attack==='charge')z.charge={startX:screenX(boss.x),homeX:boss.x,homeY:boss.y};
+  if(z.attack==='charge'){
+   z.charge={startX:screenX(boss.x),homeX:boss.x,homeY:boss.y};
+   z.chargeDisplayX=z.charge.startX; z.chargeFrameMinX=Infinity;
+  }
  }
  if(z.phase==='active'){
   if(z.attack==='radial'){
@@ -181,10 +186,12 @@ function pyUpdate(dt){
     if(z.time<out)x=charge.startX+(left-charge.startX)*pyEase(z.time/out);
     else if(z.time<out+hold)x=left;
     else x=left+(charge.startX-left)*pyEase((z.time-out-hold)/back);
+    z.chargeDisplayX=x;z.chargeFrameMinX=Math.min(z.chargeFrameMinX,x);
     boss.x=pyScreenWorld(x);boss.y=charge.homeY+Math.sin(z.time*18)*10;
     z.stones.forEach(st=>{if(st.alive){st.visible=true;home(st);}});
     if(z.time>=out+hold+back){
-     boss.x=charge.homeX;boss.y=charge.homeY;z.charge=null;z.phase='recover';z.time=0;
+     boss.x=charge.homeX;boss.y=charge.homeY;z.charge=null;z.chargeDisplayX=null;
+     z.phase='recover';z.time=0;
     }
    }
   }else if(z.attack==='merge'){
@@ -199,7 +206,8 @@ function pyUpdate(dt){
     });
     if(k>=1){
      z.parts.forEach(s=>{s.visible=false;});
-     z.boulder={x:m.centerX,y:m.centerY,size:235,scale:.55,rotation:0,glow:1,launched:false,alive:true};
+     z.boulder={x:m.centerX,y:m.centerY,size:235,scale:.55,rotation:0,glow:1,launched:false,alive:true,
+       vy:(z.attackNo%2?1:-1)*1070,bounces:0};
      m.phase='bigrock';m.time=0;shake=Math.max(shake,11);
      pop(m.centerX,m.centerY,'#ffe9a4',32,1);sound(790,.16,'triangle',.085);
     }
@@ -210,12 +218,24 @@ function pyUpdate(dt){
      rock.scale=.55+.53*pyEase(m.time/.19);rock.glow=Math.max(0,1-m.time/.3);
      if(m.time>.21){rock.launched=true;m.time=0;sound(108,.31,'sawtooth',.13);}
     }else{
-     rock.x=wrapX(rock.x-850*step);rock.rotation+=step*2.5;
+     // Fast billiard rebounds between the upper and lower arena walls.
+     const top=96+rock.size*rock.scale*.39;
+     const bottom=ground-rock.size*rock.scale*.39-7;
+     rock.x=pyScreenWorld(screenX(rock.x)-720*step);
+     rock.y+=rock.vy*step;
+     for(let attempt=0;attempt<3&&(rock.y<top||rock.y>bottom);attempt++){
+      if(rock.y<top){rock.y=2*top-rock.y;rock.vy=Math.abs(rock.vy);}
+      else{rock.y=2*bottom-rock.y;rock.vy=-Math.abs(rock.vy);}
+      rock.bounces++;z.bounceCount++;
+      sound(170+Math.min(rock.bounces,7)*27,.085,'triangle',.055);
+      pop(rock.x,rock.y,'#fff1af',11,.46);
+     }
+     rock.rotation+=step*(rock.vy>0?5.5:-5.5);
      const h=pyHitbox(rock),rx=screenX(rock.x),px=screenX(player.x),py=player.y;
      if(player.inv<=0&&z.hitClock<=0&&Math.abs(px-rx)<h.w*.5+18&&Math.abs(py-rock.y)<h.h*.5+18){
       damage('boss');z.hitClock=.7;
      }
-     if(rx<-180||m.time>2.05){
+     if(rx<-180||m.time>2.50){
       rock.alive=false;z.boulder=null;z.phase='recover';z.time=0;
       z.stones.forEach(s=>s.visible=!!s.alive);
      }
@@ -238,6 +258,11 @@ const pyPrevMainUpdate=update;
 update=function(dt){
  pyPrevMainUpdate(dt);
  if(!riichiMode&&stage===2&&boss?.pyramid?.version===1){
+  // The legacy main update repositions boss.x every frame. Re-apply the active
+  // charge's display coordinate after all older movement logic has completed.
+  if(mode==='play'&&boss.pyramid.chargeDisplayX!==null&&boss.pyramid.phase==='active'&&boss.pyramid.attack==='charge'){
+    boss.x=pyScreenWorld(boss.pyramid.chargeDisplayX);
+  }
   if(mode==='bossIntro')pyUpdate(dt);
   if(mode==='bossDeath')boss.pyramid.deathTime+=Math.min(.05,dt);
  }
@@ -248,7 +273,7 @@ drawBoss=function(){
   if(!riichiMode&&stage===2&&boss?.pyramid?.version===1&&boss.pyramid.eyeHp<=0)return;
   return pyramidOldDraw();
  }
- const z=boss.pyramid,bx=screenX(boss.x),by=boss.y,frame=(Math.floor((z.turn%(Math.PI*2))/(Math.PI*2)*16)+16)%16;
+ const z=boss.pyramid,bx=z.chargeDisplayX!==null&&z.attack==='charge'&&z.phase==='active'?z.chargeDisplayX:screenX(boss.x),by=boss.y,frame=(Math.floor((z.turn%(Math.PI*2))/(Math.PI*2)*16)+16)%16;
  ctx.save();ctx.shadowColor='#ffdc8a';ctx.shadowBlur=13;
  pySprite(pyramidArt.body[frame],bx,by,350,350);
  ctx.restore();
@@ -336,6 +361,11 @@ window.ZAMAZONE_PYRAMID_EYE_QA=()=>({
  deathShards:boss?.pyramid?.deathShards?.length||0,
  remainingStones:boss?.pyramid?.stones.filter(s=>s.alive).length||0,
  chargeTime:boss?.pyramid?.attack==='charge'?boss.pyramid.time:null,
+ chargeDisplayX:boss?.pyramid?.chargeDisplayX??null,
+ chargeFrameMinX:boss?.pyramid?.chargeFrameMinX??null,
+ bigRockY:boss?.pyramid?.boulder?.y??null,
+ bigRockBounces:boss?.pyramid?.boulder?.bounces??0,
+ totalBounces:boss?.pyramid?.bounceCount??0,
  bossX:boss?screenX(boss.x):null
 });
 
