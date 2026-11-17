@@ -78,6 +78,7 @@ jobs:
             if(qa.stones.length!==16)throw Error('Missing orbiting stones');
             if(!qa.assetLoaded)throw Error('Pyramid Eye sprite not loaded');
             if(qa.stones.some(s=>s.y<0))throw Error('Intro stones still hidden above screen');
+            if(qa.introFrameMaxJump>30)throw Error('Intro upward frame skip '+qa.introFrameMaxJump);
             await page.waitForFunction(()=>{const q=window.ZAMAZONE_PYRAMID_EYE_QA?.();return q&&q.entranceComplete&&q.mode!=='bossIntro';},null,{timeout:25000});
             // Giant rock must rebound visibly at least twice while travelling from right to left.
             const billiard=await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_TEST.simulateBounce());
@@ -94,6 +95,7 @@ jobs:
             const natural=await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_QA());
             console.log('NATURAL_VISIBLE_ATTACKS',JSON.stringify({chargeFrames:natural.drawChargeFrames,rockFrames:natural.drawRockFrames,bounces:natural.totalBounces,history:natural.attackHistory}));
             if(natural.attackHistory[0]!=='charge'||natural.attackHistory[1]!=='merge')throw Error('Signature attacks not first');
+            if(natural.laserDrawFrames<3||natural.laserWarnings<3)throw Error('Eye laser not firing visibly during stone attacks '+JSON.stringify({frames:natural.laserDrawFrames,warnings:natural.laserWarnings}));
             await page.screenshot({path:'pyramid-eye-natural-attacks.png',fullPage:true});
             const front=await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_TEST.eyeHit(6,false));
             if(!front||front.after!==front.before)throw Error('Eye must reject hits when turned away: '+JSON.stringify(front));
