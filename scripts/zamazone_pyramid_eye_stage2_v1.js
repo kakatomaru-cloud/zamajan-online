@@ -454,6 +454,17 @@ if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
    const st=boss.pyramid.stones.find(x=>x.id===id);if(!st||!st.alive)return false;
    st.flash=0;pyDamageStone(st,st.hp,st.x,st.y);return !st.alive;
   },
+  simulateBounce(){
+   if(!pyramidOn()||boss.pyramid.stones.filter(s=>s.alive).length<8)return false;
+   this.forceAttack('merge');
+   const samples=[];
+   for(let i=0;i<245;i++){
+    pyUpdate(1/60);
+    const rock=boss.pyramid.boulder;
+    if(rock&&rock.launched&&i%10===0)samples.push({x:screenX(rock.x),y:rock.y,bounces:rock.bounces,vy:rock.vy});
+   }
+   return {samples,totalBounces:boss.pyramid.bounceCount};
+  },
   simulateCharge(){
    if(!pyramidOn())return false;
    this.forceAttack('charge');
