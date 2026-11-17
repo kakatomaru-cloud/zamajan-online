@@ -140,6 +140,13 @@ jobs:
               !hits.base.redUntil)throw Error('Base damage feedback missing');
             if(!hits.enemy||hits.enemy.enemyHP>=3||hits.enemy.after.enemy<=hits.enemy.before.enemy||
               !hits.enemy.redUntil)throw Error('Enemy damage feedback missing');
+            if(!hits.stats.bossFlashLocal||hits.stats.bossFlashRadius>55||
+              hits.stats.slashParticles!==0)throw Error('Boss red flash must affect only the hit region and no slash strokes '+JSON.stringify(hits.stats));
+            const localFlash=await page.evaluate(()=>{
+              const z=window.ZAMAZONE_HIT_FEEDBACK_QA(),q=window.ZAMAZONE_PYRAMID_EYE_QA();
+              return {radius:z.bossFlashRadius,x:z.bossFlashX,y:z.bossFlashY};
+            });
+            if(localFlash.radius!==48)throw Error('Local boss impact flash incorrect '+JSON.stringify(localFlash));
             const forced=await page.evaluate(()=>window.ZAMAZONE_PYRAMID_EYE_TEST.forceAttack('radial'));
             if(!forced)throw Error('Could not force 16-stone radial attack');
             await page.waitForFunction(()=>{
