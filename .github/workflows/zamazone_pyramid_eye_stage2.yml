@@ -89,6 +89,14 @@ jobs:
             const errors=[];page.on('pageerror',e=>errors.push(e.message));
             await page.goto('http://localhost:8765/minigames/zamazone/index.html?stage2_qa=1',{waitUntil:'domcontentloaded',timeout:120000});
             await page.waitForSelector('#zb-debug-open',{timeout:30000});
+            await page.waitForTimeout(1400);
+            console.log('DESERT_BOOT_DIAGNOSTIC',JSON.stringify(await page.evaluate(()=>({
+              qa:window.ZAMAZONE_DESERT_REDESIGN_QA?.()||null,
+              included:[...document.scripts].map(x=>x.src).filter(Boolean),
+              desertScripts:[...document.scripts].filter(x=>x.src.includes('desert_redesign')).length,
+              fetchFailures:performance.getEntriesByType('resource').filter(x=>x.name.includes('desert_redesign')).map(x=>({url:x.name,status:x.responseStatus,bytes:x.transferSize})).slice(0,30)
+            }))));
+            console.log('DESERT_BOOT_PAGE_ERRORS',JSON.stringify(errors));
             await page.waitForFunction(()=>{
               const q=window.ZAMAZONE_DESERT_REDESIGN_QA?.();
               return q&&Object.entries(q.assets).length===5&&Object.values(q.assets).every(v=>{
