@@ -366,6 +366,7 @@ function pyDrawDeath(){
  // The full 16-stone halo also breaks into rotating rubble, rather than vanishing abruptly.
  const orb=pyramidArt.orb[Math.floor(elapsed*9)%8];
  for(let i=0;i<16;i++){
+  if(z.deathRemainingIds&&!z.deathRemainingIds.includes(i))continue;
   const a=i*Math.PI/8,rad=190+(i%2)*35;
   const speed=80+(i%4)*45;
   const x=bx+Math.cos(a)*(rad+elapsed*speed);
@@ -395,6 +396,7 @@ const pyOldDefeat=defeatBoss;
 defeatBoss=function(){
  if(pyramidOn()&&boss?.pyramid){
   const z=boss.pyramid;z.deathStarted=performance.now();
+  z.deathRemainingIds=z.stones.filter(st=>st.alive).map(st=>st.id);
   z.stones.forEach(st=>{st.visible=false;st.alive=false;});
   z.boulder=null;
  }
@@ -421,6 +423,16 @@ if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
    if(!pyramidOn())return false;
    const st=boss.pyramid.stones.find(x=>x.id===id);if(!st||!st.alive)return false;
    st.flash=0;pyDamageStone(st,st.hp,st.x,st.y);return !st.alive;
+  },
+  simulateCharge(){
+   if(!pyramidOn())return false;
+   this.forceAttack('charge');
+   const samples=[];
+   for(let i=0;i<110;i++){
+    pyUpdate(1/60);
+    if(i%15===0)samples.push({t:boss.pyramid.time,x:screenX(boss.x),phase:boss.pyramid.phase});
+   }
+   return {minX:Math.min(...samples.map(s=>s.x)),samples,mode};
   },
   snap(){return window.ZAMAZONE_PYRAMID_EYE_QA();}
  };
