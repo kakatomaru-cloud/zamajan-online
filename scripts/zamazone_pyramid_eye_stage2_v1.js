@@ -724,14 +724,11 @@ if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
    return {before,after:{...zfxStats},redUntil:boss.zfxRedUntil||0,eyeBefore:eye,eyeAfter:z.eyeHp};
   },
   baseHit(){
-   const b=bases[0];if(!b)return false;
-   const saved={hp:b.hp,alive:b.alive};
-   b.hp=Math.max(5,b.hp);b.alive=true;
+   // Test a representative base even when debug boss mode has cleared all six bases.
+   const b={x:wrapX(camera+120),y:ground-100,hp:10,maxHp:10,alive:true,flash:0};
    const before={...zfxStats};
    hitBase(b,1);
-   const result={before,after:{...zfxStats},redUntil:b.zfxRedUntil||0,damage:b.hp<Math.max(5,saved.hp)};
-   b.hp=saved.hp;b.alive=saved.alive;
-   return result;
+   return {before,after:{...zfxStats},redUntil:b.zfxRedUntil||0,damage:b.hp===9};
   },
   enemyHit(){
    if(mode!=='play')return false;
