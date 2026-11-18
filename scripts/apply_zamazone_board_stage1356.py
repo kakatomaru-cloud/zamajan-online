@@ -25,6 +25,14 @@ for name in ('grass','ocean','snow','neon','digital'):
     out=asset_dir/f'{name}.png'
     out.write_bytes(raw)
     print('BOARD_ATLAS',name,out.stat().st_size)
+# Deploy the complete, source-derived 160px-per-character alpha sprites, not
+# the former 48px sprites enlarged by 4x or the unrelated vector stand-ins.
+hq_input=asset_dir/'grass_hq.webp.b64'
+assert hq_input.exists(), 'Missing source-derived HQ grass sprite atlas'
+hq_bytes=base64.b64decode(hq_input.read_text('utf8').strip(),validate=True)
+assert hq_bytes[:4]==b'RIFF' and hq_bytes[8:12]==b'WEBP'
+(asset_dir/'grass_hq.webp').write_bytes(hq_bytes)
+print('GRASS_HQ_ART_BUILT',len(hq_bytes))
 s=index.read_text('utf8')
 js=source.read_text('utf8')
 marker='ZAMAZONE_BOARD_STAGE1356_V1_20261118'
