@@ -1,4 +1,5 @@
-/* ZAMAZONE_BOARD_STAGE1356_V1_20261118
+/* ZAMAZONE_BOARD_STAGE1356_V2_GRASSLAND_VISUAL_FIX_20261118
+ZAMAZONE_BOARD_STAGE1356_V1_20261118
  * Approved original sprite art cropped from the supplied five-row design board.
  * Each stage atlas is 7 transparent 48x48 sprites: five mobs, air base, ground base.
  * Stage 2 remains on the separately approved desert art.
@@ -30,8 +31,8 @@ const current=()=>forceStage||stage;
 const enabled=()=>!riichiMode&&!!artStages[current()]&&
  !(window.ZAMAZONE_DESERT_REDESIGN_QA?.()?.active);
 const src=i=>i*48;
-const enemyScale={1:91,3:91,4:88,5:94,6:94};
-const baseScale={1:194,3:194,4:196,5:206,6:202};
+const enemyScale={1:112,3:91,4:88,5:94,6:94};
+const baseScale={1:164,3:194,4:196,5:206,6:202};
 const redFilter='brightness(0) saturate(100%) invert(19%) sepia(99%) saturate(6470%) hue-rotate(345deg)';
 const flashing=o=>(o?.zfxRedUntil&&performance.now()<o.zfxRedUntil&&Math.floor(performance.now()/70)%2===0)||
   (o?.flash>0&&Math.floor(performance.now()/70)%2===0);
@@ -43,7 +44,7 @@ function paint(index,x,y,w,h,opts={}){
  if(opts.rotation)ctx.rotate(opts.rotation);
  if(opts.alpha!==undefined)ctx.globalAlpha=opts.alpha;
  if(opts.red)ctx.filter=redFilter;
- ctx.imageSmoothingEnabled=true;
+ ctx.imageSmoothingEnabled=false;
  // Source art is pre-separated into an alpha-matted single sprite per cell.
  ctx.drawImage(img,src(index),0,48,48,-w/2,-h/2,w,h);
  ctx.restore();
@@ -63,6 +64,75 @@ function spawnDeath(index,x,y,size,kind){
  if(deaths.length>36)deaths.shift();
  counters[kind==='base'?'baseDefeats':'enemyDefeats']++;
 }
+
+// Stage 1 art direction from the approved concept board: grassland, not a
+// pink cosmic planet. Background follows the camera while character art
+// remains sprite-based and belongs to its own draw wrappers below.
+const boardOldSky=drawSky,boardOldScenery=drawScenery;
+drawSky=function(){
+ if(riichiMode||stage!==1)return boardOldSky();
+ const g=ctx.createLinearGradient(0,75,0,ground);
+ g.addColorStop(0,'#4aaeff');g.addColorStop(.49,'#a1eaff');g.addColorStop(1,'#ecfff1');
+ ctx.fillStyle=g;ctx.fillRect(0,82,W,ground-82);
+ ctx.fillStyle='rgba(255,255,255,.82)';
+ for(let j=0;j<8;j++){
+  const px=(j*241+Math.sin(time*.11+j)*9-camera*.065)%(W+310)-105;
+  const py=148+(j%3)*69;
+  ctx.beginPath();ctx.ellipse(px,py,88,22,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(px-36,py-8,36,29,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(px+24,py-10,45,33,0,0,Math.PI*2);ctx.fill();
+ }
+};
+drawScenery=function(){
+ if(riichiMode||stage!==1)return boardOldScenery();
+ // distant blue peaks and closer emerald rolling hills
+ for(let layer=0;layer<3;layer++){
+  const offset=layer===0?camera*.075:layer===1?camera*.19:camera*.32;
+  const baseline=ground-(layer===0?175:layer===1?112:48);
+  const colors=['#b2cad8','#78d4a5','#42b96b'];
+  ctx.fillStyle=colors[layer];
+  ctx.beginPath();ctx.moveTo(0,ground);
+  for(let x=-120;x<=W+120;x+=35){
+   const y=baseline+Math.sin((x+offset)*.009+layer)*36+
+        Math.sin((x+offset)*.023+layer*1.4)*13;
+   ctx.lineTo(x,y);
+  }
+  ctx.lineTo(W+120,ground);ctx.closePath();ctx.fill();
+ }
+ // Midground fantasy trees and green sandstone ruins
+ for(let j=-1;j<11;j++){
+  const x=((j*191-camera*.48)%(W+390)+(W+390))%(W+390)-160;
+  if(x<-100||x>W+100)continue;
+  const y=ground-28+Math.sin(j*2.1)*19;
+  ctx.fillStyle='#876342';ctx.fillRect(x-8,y-93,16,74);
+  const crown=ctx.createRadialGradient(x-18,y-108,8,x,y-120,72);
+  crown.addColorStop(0,'#d8fa63');crown.addColorStop(.6,'#69d854');crown.addColorStop(1,'#258c5a');
+  ctx.fillStyle=crown;
+  for(const [ox,oy,r] of [[-31,-117,35],[28,-119,40],[1,-145,43]]){
+   ctx.beginPath();ctx.arc(x+ox,y+oy,r,0,Math.PI*2);ctx.fill();
+  }
+  ctx.fillStyle='#ffda5d';for(let k=0;k<5;k++){
+   const xx=x+Math.sin(k*6+j)*39,yy=y-122+Math.cos(k*2+j)*33;
+   ctx.beginPath();ctx.arc(xx,yy,4,0,Math.PI*2);ctx.fill();
+  }
+ }
+ const soil=ctx.createLinearGradient(0,ground,0,H);
+ soil.addColorStop(0,'#a5d660');soil.addColorStop(.17,'#98734b');soil.addColorStop(1,'#4c3b56');
+ ctx.fillStyle=soil;ctx.fillRect(0,ground,W,H-ground);
+ ctx.fillStyle='#5acb47';ctx.fillRect(0,ground-12,W,17);
+ ctx.fillStyle='#d1fa63';ctx.fillRect(0,ground-13,W,5);
+ for(let j=0;j<100;j++){
+  const x=((j*53-camera*.75)%(W+180)+(W+180))%(W+180)-90;
+  const y=ground-12-(j%4)*3;
+  ctx.strokeStyle=j%2?'#32aa50':'#8ee76a';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(x,ground-10);ctx.lineTo(x-4,y-8);ctx.stroke();
+  if(j%3===0){
+   ctx.fillStyle=['#ff78be','#ffe36a','#f6faff'][j%3];
+   ctx.beginPath();ctx.arc(x,y-9,4,0,Math.PI*2);ctx.fill();
+  }
+ }
+};
+
 const originalBase=drawBase;
 drawBase=function(b){
  if(!enabled()||!b?.alive||!loaded(current()))return originalBase(b);
