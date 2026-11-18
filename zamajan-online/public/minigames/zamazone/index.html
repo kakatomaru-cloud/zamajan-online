@@ -3846,6 +3846,7 @@ if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
 // ZAMAZONE_STONE_RECOVERY_V9_20261118
 // ZAMAZONE_DEBUG_BOSS_SHOP_RETRY_V10_20261118
 // ZAMAZONE_MOBILE_DEBUG_SHOP_EXIT_V11_20261118
+// ZAMAZONE_DEBUG_PURCHASE_STATE_V12_20261118
 // Stage-2 real combat replacement. Uses images extracted from the approved MANA3 demo.
 // Debug-boss-only preparation and retry flow. Regular campaign shop remains unchanged.
 let zbPrepActive=false,zbPrepReturnMode='bossIntro',zbPrepChoice=null;
@@ -3951,7 +3952,41 @@ v2ShopRender=function(){
  const head=contentEl.querySelector('.shop12-head');
  if(head)head.textContent='ボス戦用の装備を選択 / 金額制限なし（性能上限は有効）';
  const foot=contentEl.querySelector('.shop12-foot');
- if(foot)foot.textContent='好きなだけ装備を購入してからボス戦へ。 所持金は消費しません。';
+ if(foot)foot.textContent='金額制限なし。永続強化は現在の段階を表示 / 武器は装備中を表示 / 回復とボムは補充回数を表示';
+ // The debug shop has no currency economy. Do not show escalating prices.
+ // Each entry explains what was bought and how many upgrades remain.
+ const cards=[...contentEl.querySelectorAll('.shop12 article')];
+ cards.forEach((card,i)=>{
+  const it=V2_ITEMS[i],count=v2Purchased[i],limit=it[5],button=card.querySelector('button[data-buy]');
+  if(!button)return;
+  const price=card.querySelectorAll('strong')[1];
+  if(price)price.textContent='無料（デバッグ）';
+  const status=document.createElement('div');
+  status.className='zb-debug-item-status';
+  status.setAttribute('data-debug-status',String(i));
+  const isWeapon=i>=1&&i<=4;
+  const repeatable=i===8||i===10||i===11;
+  const equipment=player.tempGun===it[3]&&isWeapon;
+  let text;
+  if(isWeapon){
+   text=equipment?'✓ 現在装備中（'+count+'回選択）':count?'✓ 購入済み '+count+'回 / 現在は別の武器':'未装備';
+   button.textContent=equipment?'装備中・再装備':'この武器を装備';
+   // Switching weapons is allowed. This is not a cumulative upgrade.
+  }else if(repeatable){
+   text=count?'✓ 利用済み '+count+'回':'未使用';
+   button.textContent=i===8?'HPを回復':i===10?'シールドを張る':'ボムを補充';
+  }else{
+   text=count>=limit?'✓ 最大まで強化済み（'+count+'/'+limit+'）':count?'✓ 強化済み '+count+'/'+limit+'段階':'未購入 0/'+limit;
+   button.textContent=count>=limit?'強化完了':count?'さらに強化する':'強化する';
+  }
+  if(button.disabled&&i===8&&player.hp>=player.maxHp)button.textContent='HP満タン';
+  if(button.disabled&&!isWeapon&&!repeatable)button.textContent='強化完了';
+  status.textContent=text;
+  status.style.cssText='font-size:13px;font-weight:900;line-height:1.45;padding:7px 5px;border-radius:7px;background:'+(count?'#c8f3d9':'#f0e7cd')+';color:#1f5137;min-height:20px;';
+  status.setAttribute('aria-live','polite');
+  button.before(status);
+  card.classList.toggle('zb-debug-purchased',count>0);
+ });
  zbAttachShopControls();
  zbMountMobileDock();
 };
@@ -4021,6 +4056,8 @@ window.ZAMAZONE_DEBUG_BOSS_QA=()=>({
  shopVisible:!panelWrap.classList.contains('hidden')&&mode==='shop',
  exitVisible:!!document.getElementById('zb-debug-shop-start'),
  mobileDock:!!document.getElementById('zb-mobile-shop-exit'),
+ itemStatus:[...contentEl.querySelectorAll('[data-debug-status]')].map(e=>e.textContent),
+ itemPrices:[...contentEl.querySelectorAll('.shop12 article')].map(e=>e.querySelectorAll('strong')[1]?.textContent||''),
  money:player?.money??0,purchases:[...v2Purchased],
  retry:!!document.getElementById('zb-debug-retry'),select:!!document.getElementById('zb-debug-select')
 });
