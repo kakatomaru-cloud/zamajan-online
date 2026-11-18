@@ -44,6 +44,8 @@ jobs:
           assert s.count('ZAMAZONE_BOARD_STAGE1356_V1_20261118')==1
           for name in ('grass','ocean','snow','neon','digital'):
               assert (p/'assets/board_stage1356'/f'{name}.png').stat().st_size>2000
+          assert (p/'assets/board_stage1356/grass_hq.webp').stat().st_size>30000
+          assert 'ZAMAZONE_STAGE1_SOURCE_ART_HQ_V4_20261118' in s
           for i in range(16):assert (p/'assets/pyramid_eye'/('body_%02d.webp'%i)).stat().st_size>2000
           for i in range(8):assert (p/'assets/pyramid_eye'/('orb_%02d.webp'%i)).stat().st_size>2000
           assert (p/'assets/pyramid_eye/rock.webp').stat().st_size>2000
@@ -166,6 +168,8 @@ jobs:
             await grassPage.waitForTimeout(2800);
             const grassLive=await grassPage.evaluate(()=>window.ZAMAZONE_BOARD_STAGE1356_QA());
             console.log('STAGE1_LIVE_RENDER',JSON.stringify(grassLive));
+            if(!grassLive.grassHQ||grassLive.grassArtVersion!=='source-HQ-160px'||grassLive.size['1']!==1120)
+              throw Error('Grass must use full-sized ORIGINAL sprites, not placeholder vector shapes '+JSON.stringify(grassLive));
             if(!grassLive.active||grassLive.stage!==1||grassLive.ground<30||
                grassLive.air<5||grassLive.enemy<3||grassLive.grassSky<30||grassLive.grassScenery<30)
               throw Error('Real stage 1 still uses old sprites '+JSON.stringify(grassLive));
