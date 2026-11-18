@@ -44,7 +44,8 @@ function paint(index,x,y,w,h,opts={}){
  if(opts.rotation)ctx.rotate(opts.rotation);
  if(opts.alpha!==undefined)ctx.globalAlpha=opts.alpha;
  if(opts.red)ctx.filter=redFilter;
- ctx.imageSmoothingEnabled=false;
+ ctx.imageSmoothingEnabled=true;
+ ctx.imageSmoothingQuality='high';
  // Source art is pre-separated into an alpha-matted single sprite per cell.
  ctx.drawImage(img,src(index),0,48,48,-w/2,-h/2,w,h);
  ctx.restore();
