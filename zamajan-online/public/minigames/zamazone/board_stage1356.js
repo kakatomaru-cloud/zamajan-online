@@ -1,5 +1,5 @@
-/* ZAMAZONE_BOARD_STAGE1356_V2_GRASSLAND_VISUAL_FIX_20261118
-ZAMAZONE_BOARD_STAGE1356_V1_20261118
+/* ZAMAZONE_BOARD_STAGE1356_V1_20261118
+ * ZAMAZONE_BOARD_STAGE1356_V2_GRASSLAND_VISUAL_FIX_20261118
  * Approved original sprite art cropped from the supplied five-row design board.
  * Each stage atlas is 7 transparent 48x48 sprites: five mobs, air base, ground base.
  * Stage 2 remains on the separately approved desert art.
