@@ -25,7 +25,10 @@ const loaded=id=>!!(atlas[id]?.complete&&atlas[id].naturalWidth===336&&atlas[id]
 let forceStage=0,spawnCount=0,lastStage=0,drawCount=Array(7).fill(0);
 const deaths=[],counters={enemy:0,air:0,ground:0,enemyDefeats:0,baseDefeats:0,fragments:0,shots:0};
 const current=()=>forceStage||stage;
-const enabled=()=>!riichiMode&&!!artStages[current()];
+// The desert's own Stage-2 smoke harness can temporarily force its stage
+// while the main level is grassland; respect that override without intercepting.
+const enabled=()=>!riichiMode&&!!artStages[current()]&&
+ !(window.ZAMAZONE_DESERT_REDESIGN_QA?.()?.active);
 const src=i=>i*48;
 const enemyScale={1:91,3:91,4:88,5:94,6:94};
 const baseScale={1:194,3:194,4:196,5:206,6:202};
