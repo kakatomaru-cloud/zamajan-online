@@ -343,6 +343,21 @@ jobs:
             if(!await mobile.locator('[data-dbg-boss="3"]').count())throw Error('Phone failed to return to boss selection');
             if(mobileErrors.length)throw Error('Mobile runtime errors '+mobileErrors.slice(0,5).join(' | '));
             await phone.close();
+            // A new campaign life-zero event must animate before the panel appears.
+            const crystal=await page.evaluate(()=>window.ZAMAZONE_CRYSTAL_DEATH_TEST.normal());
+            console.log('CRYSTAL_GAME_OVER_START',JSON.stringify(crystal));
+            if(!crystal.active||crystal.shards<75||crystal.mode!=='crystalDeath'||!crystal.panelHidden)
+              throw Error('Crystal shatter must begin before game-over panel '+JSON.stringify(crystal));
+            await page.waitForTimeout(1150);
+            const flight=await page.evaluate(()=>window.ZAMAZONE_CRYSTAL_DEATH_QA());
+            console.log('CRYSTAL_GAME_OVER_FLIGHT',JSON.stringify(flight));
+            if(!flight.active||flight.time<.7)throw Error('Crystal animation stopped prematurely');
+            await page.screenshot({path:'zamazone-crystal-shatter.png',fullPage:true});
+            await page.waitForFunction(()=>window.ZAMAZONE_CRYSTAL_DEATH_QA?.()?.mode==='lose',null,{timeout:5000});
+            const end=await page.evaluate(()=>window.ZAMAZONE_CRYSTAL_DEATH_QA());
+            console.log('CRYSTAL_GAME_OVER_END',JSON.stringify(end));
+            if(end.active||end.deathCount<1)throw Error('Game over did not appear after crystal animation');
+            if(errors.length)throw Error('Post-crystal runtime errors '+errors.slice(0,5).join(' | '));
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
@@ -356,6 +371,7 @@ jobs:
             desert-base-enemy-art.png
             pyramid-eye-natural-attacks.png
             pyramid-eye-mobile-shop.png
+            zamazone-crystal-shatter.png
       - name: Commit integration to staging (production untouched)
         run: |
           git config user.name "github-actions[bot]"
