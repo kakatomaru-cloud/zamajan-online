@@ -6,6 +6,9 @@ on:
       - 'scripts/apply_zamazone_pyramid_eye_stage2.py'
       - 'scripts/zamazone_pyramid_eye_stage2_v1.js'
       - 'scripts/apply_zamazone_desert_redesign.py'
+      - 'scripts/apply_zamazone_board_stage1356.py'
+      - 'zamajan-online/public/minigames/zamazone/board_stage1356.js'
+      - 'zamajan-online/public/minigames/zamazone/assets/board_stage1356/**'
       - 'zamajan-online/public/minigames/zamazone/desert_redesign_stage2.js'
       - 'zamajan-online/public/minigames/zamazone/assets/desert_redesign/**'
       - '.github/workflows/zamazone_pyramid_eye_stage2.yml'
@@ -27,6 +30,8 @@ jobs:
         run: python3 scripts/apply_zamazone_pyramid_eye_stage2.py
       - name: Integrate approved ground/air desert bases and enemies
         run: python3 scripts/apply_zamazone_desert_redesign.py
+      - name: Integrate source-approved board art for stages 1,3,4,5,6
+        run: python3 scripts/apply_zamazone_board_stage1356.py
       - name: Verify artwork, integration, and JavaScript syntax
         run: |
           python3 - <<'PY'
@@ -36,6 +41,9 @@ jobs:
           s=(p/'index.html').read_text(encoding='utf8')
           assert s.count('// ZAMAZONE_PYRAMID_EYE_STAGE2_V1_20261116')==1
           assert 'pyramidOn()' in s and 'defeatBoss()' in s
+          assert s.count('ZAMAZONE_BOARD_STAGE1356_V1_20261118')==1
+          for name in ('grass','ocean','snow','neon','digital'):
+              assert (p/'assets/board_stage1356'/f'{name}.png').stat().st_size>2000
           for i in range(16):assert (p/'assets/pyramid_eye'/('body_%02d.webp'%i)).stat().st_size>2000
           for i in range(8):assert (p/'assets/pyramid_eye'/('orb_%02d.webp'%i)).stat().st_size>2000
           assert (p/'assets/pyramid_eye/rock.webp').stat().st_size>2000
@@ -127,6 +135,18 @@ jobs:
               });
             },null,{timeout:20000});
             const desert=await page.evaluate(()=>window.ZAMAZONE_DESERT_REDESIGN_TEST?.smoke());
+            // The five non-desert stage art rows MUST load, display five unique mobs
+            // and the correct air/ground bases; stage 2 remains untouched.
+            await page.waitForFunction(()=>Object.values(window.ZAMAZONE_BOARD_STAGE1356_QA?.()?.loaded||{}).every(Boolean),
+              null,{timeout:20000});
+            const boardStages=await page.evaluate(()=>
+              [1,3,4,5,6].map(id=>window.ZAMAZONE_BOARD_STAGE1356_TEST.smoke(id)));
+            console.log('BOARD_STAGE1356_ALL_FIVE_SMOKE',JSON.stringify(boardStages));
+            if(boardStages.some(a=>!a.loaded||a.variants.join(',')!=='0,1,2,3,4'||
+              a.delta.enemy<5||a.delta.air<1||a.delta.ground<1||
+              a.delta.fragments<1||a.names.length!==7))
+              throw Error('New board sprites failed to draw or shatter '+JSON.stringify(boardStages));
+            await page.screenshot({path:'zamazone-board-all-stages.png',fullPage:true});
             console.log('DESERT_REDESIGN_SMOKE',JSON.stringify(desert));
             if(!desert||!desert.allLoaded||!desert.groundDead||!desert.airDead||
               desert.after.groundDraw<=desert.before.groundDraw||
@@ -372,6 +392,7 @@ jobs:
             pyramid-eye-natural-attacks.png
             pyramid-eye-mobile-shop.png
             zamazone-crystal-shatter.png
+            zamazone-board-all-stages.png
       - name: Commit integration to staging (production untouched)
         run: |
           git config user.name "github-actions[bot]"
