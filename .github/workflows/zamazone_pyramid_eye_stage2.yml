@@ -83,6 +83,19 @@ jobs:
             i=s.rfind(needle)
             print('DEBUG_HOOK',needle, 'INDEX',i, repr(s[max(0,i-900):i+2600]) if i>=0 else '')
           PY
+      - name: Inspect player death and render control flow
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('zamajan-online/public/minigames/zamazone/index.html').read_text('utf8')
+          s=s.split('// ZAMAZONE_PYRAMID_EYE_STAGE2_V1_20261116')[0]
+          for needle in ['function damage(', 'function drawPlayer(', 'function draw(', 'function update(', 'function drawHUD(', 'function showPanel(', 'function gameOver(', 'function launchDebugBoss(', "player.hp<=0", "player.hp <= 0", "mode='dead'", "mode='gameOver'", "mode='gameover'", "mode='over'", 'function selectMusic(', 'function curtainExit(']:
+            positions=[m.start() for m in re.finditer(re.escape(needle),s)]
+            print('PLAYER_DEATH_HOOK',needle,'COUNT',len(positions))
+            for at in positions[-2:]:
+              print('PLAYER_DEATH_SOURCE',needle,repr(s[max(0,at-350):at+2100]))
+          PY
       - name: Install Chromium for playable boss smoke test
         run: |
           npm install --no-save playwright
