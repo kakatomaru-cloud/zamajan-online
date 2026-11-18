@@ -24,7 +24,7 @@ Object.entries(artStages).forEach(([id,file])=>{
 });
 const loaded=id=>!!(atlas[id]?.complete&&atlas[id].naturalWidth===336&&atlas[id].naturalHeight===48);
 let forceStage=0,spawnCount=0,lastStage=0,drawCount=Array(7).fill(0);
-const deaths=[],counters={enemy:0,air:0,ground:0,enemyDefeats:0,baseDefeats:0,fragments:0,shots:0};
+const deaths=[],counters={enemy:0,air:0,ground:0,enemyDefeats:0,baseDefeats:0,fragments:0,shots:0,grassSky:0,grassScenery:0};
 const current=()=>forceStage||stage;
 // The desert's own Stage-2 smoke harness can temporarily force its stage
 // while the main level is grassland; respect that override without intercepting.
@@ -71,6 +71,7 @@ function spawnDeath(index,x,y,size,kind){
 const boardOldSky=drawSky,boardOldScenery=drawScenery;
 drawSky=function(){
  if(riichiMode||stage!==1)return boardOldSky();
+ counters.grassSky++;
  const g=ctx.createLinearGradient(0,75,0,ground);
  g.addColorStop(0,'#4aaeff');g.addColorStop(.49,'#a1eaff');g.addColorStop(1,'#ecfff1');
  ctx.fillStyle=g;ctx.fillRect(0,82,W,ground-82);
@@ -85,6 +86,7 @@ drawSky=function(){
 };
 drawScenery=function(){
  if(riichiMode||stage!==1)return boardOldScenery();
+ counters.grassScenery++;
  // distant blue peaks and closer emerald rolling hills
  for(let layer=0;layer<3;layer++){
   const offset=layer===0?camera*.075:layer===1?camera*.19:camera*.32;
@@ -157,7 +159,11 @@ drawEnemy=function(e){
  if(!enabled()||!e||e.hp<=0||!loaded(current()))return originalEnemy(e);
  const id=current();
  if(e.boardStage!==id){
-  e.boardStage=id;e.boardVariant=spawnCount++%5;
+  e.boardStage=id;
+  // First encounters visibly introduce mushrooms and flowers, rather than
+  // looking like the legacy first-stage bee while the player starts moving.
+  const spawnOrder=id===1?[2,3,1,4,0]:[0,1,2,3,4];
+  e.boardVariant=spawnOrder[spawnCount++%5];
   e.boardLastShot=e.shot;e.boardAttack=0;
  }
  const x=screenX(e.x);
