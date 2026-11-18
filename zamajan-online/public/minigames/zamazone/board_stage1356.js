@@ -1,5 +1,6 @@
 /* ZAMAZONE_BOARD_STAGE1356_V1_20261118
  * ZAMAZONE_BOARD_STAGE1356_V2_GRASSLAND_VISUAL_FIX_20261118
+ * ZAMAZONE_STAGE1_VECTOR_REDRAW_V3_20261118
  * Approved original sprite art cropped from the supplied five-row design board.
  * Each stage atlas is 7 transparent 48x48 sprites: five mobs, air base, ground base.
  * Stage 2 remains on the separately approved desert art.
@@ -36,14 +37,153 @@ const baseScale={1:164,3:194,4:196,5:206,6:202};
 const redFilter='brightness(0) saturate(100%) invert(19%) sepia(99%) saturate(6470%) hue-rotate(345deg)';
 const flashing=o=>(o?.zfxRedUntil&&performance.now()<o.zfxRedUntil&&Math.floor(performance.now()/70)%2===0)||
   (o?.flash>0&&Math.floor(performance.now()/70)%2===0);
+
+// High-definition Stage 1 redraw, faithful to the seven named designs on the
+// supplied concept board. Vector paths avoid enlarging 20px-wide thumbnails.
+function grassVector(index,w,h,t){
+ ctx.save();ctx.scale(w/120,h/120);
+ const outline='#24204c',gold='#f9b728',shine='#fff9b1';
+ function ellipse(x,y,rx,ry,c,stroke=outline,lw=3){
+  ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);
+  ctx.fillStyle=c;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke();}
+ }
+ function grad(c1,c2,y=-45){const g=ctx.createLinearGradient(0,y,0,55);g.addColorStop(0,c1);g.addColorStop(1,c2);return g;}
+ function poly(points,color,stroke=outline,lw=3){
+  ctx.beginPath();ctx.moveTo(...points[0]);
+  for(const p of points.slice(1))ctx.lineTo(...p);
+  ctx.closePath();ctx.fillStyle=color;ctx.fill();
+  if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke();}
+ }
+ function eye(x,y,size=16){
+  ellipse(x,y,size,size*.95,'#fffdfb',outline,3.3);
+  ellipse(x+3,y,6.8*size/16,9*size/16,'#19132c',null);
+  ellipse(x+1,y-5,3*size/16,3*size/16,'white',null);
+ }
+ function jewel(x,y,r=4){ellipse(x,y,r,r,'#75efff','#fff5d8',1.3);ellipse(x-1,y-1,r*.3,r*.3,'white',null);}
+ function cannon(x,y,r=20){
+  ellipse(x,y,r+6,r+6,grad('#fffba1','#ed8e1e'),outline,4);
+  ellipse(x,y,r,r,'#f39e1d','#f9dd75',3);
+  ellipse(x,y,r*.67,r*.67,'#3e1843','#b04c1b',3);
+  ellipse(x-3,y-5,4.3,4.3,'#ffffbf',null);
+ }
+ const wave=Math.sin(t*7),wiggle=Math.sin(t*3.2);
+ if(index===0){
+  // HATCH: golden one-eyed bee, animated cyan glass wings.
+  ellipse(18,6,31,24,grad('#fff365','#d47b13'),outline,3.3);
+  for(const x of [14,27])poly([[x,-13],[x+9,-9],[x+11,20],[x+2,27]],'#4c2a2d',null);
+  ellipse(-8,-26,20,28+wave*3,grad('#e9ffff','#37c7f8'),outline,3);
+  ellipse(24,-30,20,27-wave*3,grad('#edffff','#6ddcff'),outline,3);
+  ellipse(-11,-37,6,11,'#fff',null,0);
+  ellipse(0,3,26,26,grad('#ffe954','#eeb019'),outline,4);
+  eye(-9,2,19);
+  ellipse(-2,35,5,5,gold);ellipse(20,34,5,5,gold);
+  ctx.strokeStyle=outline;ctx.lineWidth=3;ctx.beginPath();
+  ctx.moveTo(-7,-24);ctx.lineTo(-15,-38);ctx.moveTo(3,-22);ctx.lineTo(9,-37);ctx.stroke();
+  ellipse(-15,-39,4,4,shine);ellipse(9,-38,4,4,shine);
+ }else if(index===1){
+  // LEAFUN: bright leaf creature and mobile seed eye.
+  for(let i=0;i<5;i++){
+   const a=-1.2+i*.55+wiggle*.05;
+   ctx.save();ctx.rotate(a);
+   ellipse(9,-30,18,32,grad('#c4ff6d','#2ead3c'),outline,3);
+   ctx.strokeStyle='#e7ff9c';ctx.lineWidth=2;
+   ctx.beginPath();ctx.moveTo(9,-48);ctx.lineTo(9,-14);ctx.stroke();
+   ctx.restore();
+  }
+  ellipse(0,10,34,30,grad('#bfff46','#43b43c'),outline,4);
+  eye(-10,8,19);
+  ellipse(21,13,6,5,'#f4ffb4',null);
+  ellipse(-8,40,7,4,'#f0c840',outline,2);ellipse(16,40,7,4,'#f0c840',outline,2);
+ }else if(index===2){
+  // KINOPI: red mushroom with cream spots and eye-like face.
+  ellipse(0,16,25,30,grad('#fff6af','#dfa028'),outline,4);
+  eye(0,14,19);
+  ellipse(-15,45,8,5,'#ef9c30',outline,2);ellipse(15,45,8,5,'#ef9c30',outline,2);
+  ctx.beginPath();ctx.moveTo(-46,-5);
+  ctx.bezierCurveTo(-42,-60,40,-64,46,-5);
+  ctx.quadraticCurveTo(0,16,-46,-5);ctx.closePath();
+  ctx.fillStyle=grad('#ff7471','#d62340',-55);ctx.fill();
+  ctx.strokeStyle=outline;ctx.lineWidth=4;ctx.stroke();
+  ellipse(-20,-21,9,6,'#fff7d5',null);
+  ellipse(5,-41,11,6,'#fff7d5',null);
+  ellipse(28,-19,8,6,'#fff7d5',null);
+ }else if(index===3){
+  // FLOWAN: five glossy pink petals around one giant eye.
+  for(let i=0;i<6;i++){
+   const a=i*Math.PI/3+t*.12;
+   ctx.save();ctx.rotate(a);
+   ellipse(0,-27,20,26,grad('#fff5f8','#fb4fa4'),outline,3);
+   ellipse(-6,-36,6,7,'#fff5fa',null);
+   ctx.restore();
+  }
+  ellipse(0,0,27,27,grad('#fffda6','#f1ae31'),outline,4);
+  eye(0,0,17);
+  ctx.strokeStyle='#289b3b';ctx.lineWidth=10;ctx.beginPath();
+  ctx.moveTo(0,35);ctx.lineTo(0,52);ctx.stroke();
+  ellipse(11,43,14,6,'#50d84e',outline,2);
+ }else if(index===4){
+  // TOGEMARON: one-eyed orange spiked cog enemy.
+  ctx.save();ctx.rotate(t*.18);
+  for(let i=0;i<12;i++){
+   const a=i*Math.PI/6;
+   ctx.save();ctx.rotate(a);
+   poly([[-10,-28],[0,-55],[11,-28]],grad('#ffd765','#ed611c'),outline,2.5);
+   ctx.restore();
+  }
+  ellipse(0,0,36,36,grad('#ffc95a','#e96c13'),outline,4);
+  for(let i=0;i<9;i++){const a=i*6.28/9;ellipse(Math.cos(a)*27,Math.sin(a)*27,3,3,'#fff3a0',null);}
+  eye(0,0,19);
+  ctx.restore();
+ }else if(index===5){
+  // FLOWER FLYER: pastel airborne flower/cannon fortress.
+  for(let i=0;i<6;i++){
+   const a=i*Math.PI/3+wiggle*.035;
+   ctx.save();ctx.rotate(a);
+   ellipse(0,-30,17,26,grad('#fff9bf','#ff70c2'),outline,3);
+   ctx.restore();
+  }
+  ellipse(-41,7,18,12,grad('#ffea7b','#de7d32'),outline,3);
+  ellipse(41,7,18,12,grad('#ffea7b','#de7d32'),outline,3);
+  ellipse(0,-4,39,31,grad('#f9bbff','#ed55b7'),outline,4);
+  poly([[-51,10],[-35,0],[35,0],[51,10],[39,21],[-39,21]],grad('#ffda67','#de7927'),outline,3);
+  for(const i of [-30,-15,0,15,30])jewel(i,10,3.6);
+  eye(0,-13,15);
+  cannon(0,26,19);
+  ctx.strokeStyle='#ad6826';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,-36);ctx.lineTo(0,-52);ctx.stroke();
+  ctx.save();ctx.translate(0,-52);ctx.rotate(t*9);
+  ellipse(0,0,30,5,'#ffe364',outline,2);ctx.restore();
+ }else if(index===6){
+  // GREEN TREE: planted leafy tower with single eye and golden cannon.
+  poly([[-30,0],[-25,43],[27,43],[31,0]],grad('#e5a44d','#a06132'),outline,4);
+  for(let i=0;i<9;i++){
+   const a=i*2.399+wiggle*.015;
+   const x=Math.sin(a)*35,y=-25+Math.cos(a)*27;
+   ellipse(x,y,27,26,grad('#d9ff7f','#56b940'),outline,3);
+  }
+  ellipse(0,-31,40,35,grad('#b5fd65','#389e42'),outline,3.7);
+  for(let i=0;i<12;i++){
+   const a=i*2.399+wiggle*.06;
+   const x=Math.sin(a)*42,y=-39+Math.cos(a)*31;
+   ellipse(x,y,5,5,['#ff90ce','#fff7a8','#b9eaff'][i%3],outline,1.1);
+  }
+  ellipse(0,-9,32,23,grad('#fcce71','#d47c2d'),outline,4);
+  eye(0,-15,18);
+  for(const x of [-31,-16,0,16,31])jewel(x,11,4);
+  cannon(0,32,17);
+  ellipse(-35,40,10,5,'#58c756',outline,2);ellipse(35,40,10,5,'#58c756',outline,2);
+ }
+ ctx.restore();
+}
+
 function paint(index,x,y,w,h,opts={}){
  const id=current();if(!loaded(id))return false;
- const img=atlas[id],time=opts.time||0;
+ const img=atlas[id],time=opts.time||performance.now()/1000;
  ctx.save();ctx.translate(x,y);
  if(opts.flip)ctx.scale(-1,1);
  if(opts.rotation)ctx.rotate(opts.rotation);
  if(opts.alpha!==undefined)ctx.globalAlpha=opts.alpha;
  if(opts.red)ctx.filter=redFilter;
+ if(id===1){grassVector(index,w,h,time);ctx.restore();return true;}
  ctx.imageSmoothingEnabled=true;
  ctx.imageSmoothingQuality='high';
  // Source art is pre-separated into an alpha-matted single sprite per cell.
