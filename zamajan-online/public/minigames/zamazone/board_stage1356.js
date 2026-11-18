@@ -68,6 +68,13 @@ function spawnDeath(index,x,y,size,kind){
 // Stage 1 art direction from the approved concept board: grassland, not a
 // pink cosmic planet. Background follows the camera while character art
 // remains sprite-based and belongs to its own draw wrappers below.
+const boardOldScreenshotScenery=drawScreenshotScenery;
+drawScreenshotScenery=function(){
+ // Stage 1 used a pre-rendered planet backdrop, which bypassed both
+ // drawSky and drawScenery and hid the approved meadow theme.
+ if(stage===1&&!riichiMode)return false;
+ return boardOldScreenshotScenery();
+};
 const boardOldSky=drawSky,boardOldScenery=drawScenery;
 drawSky=function(){
  if(riichiMode||stage!==1)return boardOldSky();
