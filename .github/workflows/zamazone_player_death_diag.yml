@@ -1,0 +1,26 @@
+name: Diagnose Zamazone player defeat flow
+on:
+  push:
+    branches: [chatgpt-staging]
+    paths: ['.github/workflows/zamazone_player_death_diag.yml']
+  workflow_dispatch:
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt-staging
+      - name: Inspect concise player defeat hooks
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          s=Path('zamajan-online/public/minigames/zamazone/index.html').read_text('utf8')
+          s=s.split('// ZAMAZONE_PYRAMID_EYE_STAGE2_V1_20261116')[0]
+          for needle in ['function damage(', 'function drawPlayer(', 'function draw(', 'function update(', 'function gameOver(', 'function selectMusic(', 'function launchDebugBoss(', "player.hp<=0", "player.hp <= 0", "mode='dead'", "mode='gameOver'", "mode='gameover'", "mode='over'", 'function updateAfterBoss(']:
+            positions=[m.start() for m in re.finditer(re.escape(needle),s)]
+            print('DEATH_DETAIL',needle,'COUNT',len(positions))
+            for at in positions[-1:]:
+              print('DEATH_CONTENT',needle,repr(s[max(0,at-280):at+2200]))
+          PY
