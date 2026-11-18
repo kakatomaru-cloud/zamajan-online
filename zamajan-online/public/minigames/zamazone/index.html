@@ -3849,6 +3849,40 @@ if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
 // ZAMAZONE_DEBUG_PURCHASE_STATE_V12_20261118
 // ZAMAZONE_CRYSTAL_GAME_OVER_V13_20261118
 // Stage-2 real combat replacement. Uses images extracted from the approved MANA3 demo.
+
+// ZAMAZONE_SHOP_EXIT_CONFIRM_V14_20261118
+// Both normal and debug shops require an explicit yes/no confirmation.
+// Placed on document.body to remain touchable regardless of canvas scaling.
+let zShopConfirmNode=null;
+function zShopConfirmClose(){
+ if(zShopConfirmNode){zShopConfirmNode.remove();zShopConfirmNode=null;}
+}
+function zShopConfirmAsk(onYes){
+ if(zShopConfirmNode)return;
+ const overlay=document.createElement('div');overlay.id='z-shop-exit-confirm';
+ overlay.style.cssText='position:fixed!important;inset:0!important;z-index:2147483647!important;background:rgba(4,8,25,.82)!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:20px!important;box-sizing:border-box!important;';
+ const dialog=document.createElement('div');dialog.setAttribute('role','dialog');
+ dialog.setAttribute('aria-modal','true');dialog.setAttribute('aria-label','ショップ退出確認');
+ dialog.style.cssText='background:#173054;color:white;border:3px solid #ffe083;border-radius:16px;box-shadow:0 14px 50px #000b;padding:22px;width:min(92vw,390px);box-sizing:border-box;text-align:center;';
+ const title=document.createElement('h2');title.textContent='ショップを出ますか？';
+ title.style.cssText='font-size:22px;margin:5px 0 18px;color:#fff0ae;';
+ const line=document.createElement('p');line.textContent='装備の購入はここで終了します。';line.style.cssText='font-size:14px;margin-bottom:18px;';
+ const actions=document.createElement('div');actions.style.cssText='display:flex;gap:10px;';
+ for(const [text,id,yes,color] of [['はい','z-shop-exit-yes',true,'#ffdf79'],['いいえ','z-shop-exit-no',false,'#cce8fa']]){
+  const button=document.createElement('button');button.type='button';button.id=id;button.textContent=text;
+  button.style.cssText='flex:1;min-height:58px;border:2px solid white;border-radius:12px;font-size:19px;font-weight:900;color:#142b48;background:'+color+';touch-action:manipulation;cursor:pointer;';
+  button.onclick=e=>{e.preventDefault();e.stopPropagation();zShopConfirmClose();if(yes)onYes();};
+  actions.appendChild(button);
+ }
+ dialog.append(title,line,actions);overlay.appendChild(dialog);
+ document.body.appendChild(overlay);zShopConfirmNode=overlay;
+}
+const zOriginalCurtainExit=curtainExit;
+curtainExit=function(){
+ if(mode==='shop'&&!zbPrepActive){zShopConfirmAsk(zOriginalCurtainExit);return;}
+ return zOriginalCurtainExit();
+};
+
 // Debug-boss-only preparation and retry flow. Regular campaign shop remains unchanged.
 let zbPrepActive=false,zbPrepReturnMode='bossIntro',zbPrepChoice=null;
 const zbOldAllowed=v2Allowed;
@@ -3867,8 +3901,9 @@ v2Buy=function(i){
  player.money=saved;
  v2ShopRender();
 };
-function zbBeginPreparedBoss(){
+function zbBeginPreparedBoss(confirmed=false){
  if(!zbPrepActive)return false;
+ if(!confirmed){zShopConfirmAsk(()=>zbBeginPreparedBoss(true));return true;}
  zbRemoveMobileDock();
  const nextMode=zbPrepReturnMode;
  zbPrepActive=false;
@@ -3917,7 +3952,7 @@ function zbMountMobileDock(){
  function invoke(action,e){
   e?.preventDefault();e?.stopPropagation();
   if(action==='start')zbBeginPreparedBoss();
-  else{zbRemoveMobileDock();zbPrepActive=false;debugBossRunning=false;debugBossMenu();}
+  else{zShopConfirmAsk(()=>{zbRemoveMobileDock();zbPrepActive=false;debugBossRunning=false;debugBossMenu();});}
  }
  for(const [btn,action] of [[start,'start'],[back,'back']]){
   btn.addEventListener('touchend',e=>{lastTouch=performance.now();invoke(action,e);},{passive:false});
@@ -3938,7 +3973,7 @@ function zbAttachShopControls(){
  const backBtn=document.createElement('button');backBtn.id='zb-debug-shop-back';backBtn.type='button';
  backBtn.textContent='← ボス選択に戻る';
  backBtn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();
-  zbPrepActive=false;debugBossRunning=false;debugBossMenu();
+  zShopConfirmAsk(()=>{zbPrepActive=false;debugBossRunning=false;debugBossMenu();});
  });
  bar.append(startBtn,backBtn);
  contentEl.prepend(bar);
@@ -3948,7 +3983,7 @@ function zbAttachShopControls(){
 const zbOldShopRender=v2ShopRender;
 v2ShopRender=function(){
  zbOldShopRender();
- if(!zbPrepActive)return;
+ if(!zbPrepActive){if(mode==='shop')mainAction.onclick=curtainExit;return;}
  titleEl.textContent='BOSS DEBUG / FREE EQUIPMENT SHOP';
  const head=contentEl.querySelector('.shop12-head');
  if(head)head.textContent='ボス戦用の装備を選択 / 金額制限なし（性能上限は有効）';
@@ -4054,6 +4089,7 @@ update=function(dt){
   mode!=='crystalDeath'&&mode!=='bossDeath'&&mode!=='clear'&&mode!=='debugGameOver')zcStartDeath();
 };
 window.ZAMAZONE_DEBUG_BOSS_QA=()=>({
+ exitConfirmOpen:!!zShopConfirmNode,
  prep:zbPrepActive,choice:zbPrepChoice,returnMode:zbPrepReturnMode,
  active:!!debugBossRunning,mode,gameOver:mode==='debugGameOver',
  shopVisible:!panelWrap.classList.contains('hidden')&&mode==='shop',
