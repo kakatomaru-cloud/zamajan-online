@@ -40,5 +40,8 @@ if marker in s:
 else:
     s=s.replace(anchor,js+'\n'+anchor,1)
 assert s.count(marker)==1
+# The supplied concept board specifies STAGE 1 as a nature/forest grassland.
+# Keep the HUD title aligned with the newly drawn environment.
+s=s.replace('パステル惑星','草原の大地')
 index.write_text(s,'utf8')
 print('BOARD_STAGE1356_INTEGRATED 25 source-approved mobs + 10 bases + animated hit/death states')
