@@ -157,6 +157,20 @@ jobs:
               desert.after.deathDraw-desert.before.deathDraw<2)
                throw Error('New Stage 2 desert art/hit boxes/deaths failed '+JSON.stringify(desert));
             await page.screenshot({path:'desert-base-enemy-art.png',fullPage:true});
+            // Verify actual, unforced Stage 1 gameplay rendering, not synthetic smoke.
+            const grassPage=await browser.newPage({viewport:{width:1280,height:720}});
+            await grassPage.goto('http://localhost:8765/minigames/zamazone/index.html?stage2_qa=1',{waitUntil:'domcontentloaded',timeout:120000});
+            await grassPage.waitForSelector('#zb-debug-open',{timeout:30000});
+            await grassPage.waitForFunction(()=>window.ZAMAZONE_BOARD_STAGE1356_QA?.()?.loaded?.['1'],null,{timeout:20000});
+            await grassPage.evaluate(()=>mainAction.click());
+            await grassPage.waitForTimeout(2800);
+            const grassLive=await grassPage.evaluate(()=>window.ZAMAZONE_BOARD_STAGE1356_QA());
+            console.log('STAGE1_LIVE_RENDER',JSON.stringify(grassLive));
+            if(!grassLive.active||grassLive.stage!==1||grassLive.ground<30||
+               grassLive.air<5||grassLive.enemy<3)
+              throw Error('Real stage 1 still uses old sprites '+JSON.stringify(grassLive));
+            await grassPage.screenshot({path:'stage1-live-art.png',fullPage:true});
+            await grassPage.close();
             await page.click('#zb-debug-open');
             await page.click('[data-dbg-boss="3"]');
             await page.waitForSelector('[data-buy="0"]',{timeout:10000});
@@ -184,6 +198,12 @@ jobs:
               throw Error('Equipped weapon not identified '+JSON.stringify(gun));
             if(!prep.exitVisible)throw Error('Debug shop must have a visible start button');
             await page.locator('#zb-debug-shop-start').click();
+            if(!await page.locator('#z-shop-exit-confirm').count())throw Error('Debug exit confirmation missing');
+            await page.locator('#z-shop-exit-no').click();
+            if(!await page.evaluate(()=>window.ZAMAZONE_DEBUG_BOSS_QA()?.shopVisible))
+              throw Error('No should keep shop open');
+            await page.locator('#zb-debug-shop-start').click();
+            await page.locator('#z-shop-exit-yes').click();
             const prepared=await page.evaluate(()=>window.ZAMAZONE_DEBUG_BOSS_QA());
             console.log('DEBUG_SHOP_CLICK_EXIT',JSON.stringify(prepared));
             if(prepared.prep||prepared.shopVisible||prepared.mode==='shop')throw Error('Debug shop failed to resume boss');
@@ -297,6 +317,8 @@ jobs:
             await page.evaluate(()=>window.ZAMAZONE_DEBUG_BOSS_TEST.relaunch(3));
             await page.waitForFunction(()=>window.ZAMAZONE_DEBUG_BOSS_QA?.()?.shopVisible,null,{timeout:8000});
             await page.keyboard.press('Escape');
+            if(!await page.locator('#z-shop-exit-yes').count())throw Error('Keyboard confirmation missing');
+            await page.locator('#z-shop-exit-yes').click();
             const kbExit=await page.evaluate(()=>window.ZAMAZONE_DEBUG_BOSS_QA());
             console.log('DEBUG_SHOP_KEYBOARD_EXIT',JSON.stringify(kbExit));
             if(kbExit.prep||kbExit.shopVisible||kbExit.mode==='shop')throw Error('Keyboard Escape failed to exit shop');
@@ -313,6 +335,8 @@ jobs:
                 {buttons:Array.from({length:16},(_,i)=>({pressed:i===1})),axes:[0,0]}
               ]});
             });
+            await page.waitForSelector('#z-shop-exit-yes',{timeout:2500});
+            await page.locator('#z-shop-exit-yes').click();
             await page.waitForFunction(()=>{
               const q=window.ZAMAZONE_DEBUG_BOSS_QA();return !q.prep&&!q.shopVisible&&q.mode!=='shop';
             },null,{timeout:2500});
@@ -353,12 +377,19 @@ jobs:
               throw Error('Phone cannot see or hit the exit button '+JSON.stringify(bounds));
             await mobile.screenshot({path:'pyramid-eye-mobile-shop.png',fullPage:true});
             await mobile.locator('#zb-mobile-shop-start').tap();
+            if(!await mobile.locator('#z-shop-exit-yes').count())throw Error('Mobile exit dialog missing');
+            await mobile.locator('#z-shop-exit-no').tap();
+            if(!await mobile.evaluate(()=>window.ZAMAZONE_DEBUG_BOSS_QA()?.shopVisible))
+              throw Error('Mobile No did not keep shop open');
+            await mobile.locator('#zb-mobile-shop-start').tap();
+            await mobile.locator('#z-shop-exit-yes').tap();
             const afterTap=await mobile.evaluate(()=>window.ZAMAZONE_DEBUG_BOSS_QA?.());
             console.log('MOBILE_SHOP_TOUCH_EXIT',JSON.stringify(afterTap));
             if(!afterTap||afterTap.prep||afterTap.shopVisible||afterTap.mobileDock||afterTap.mode==='shop')
               throw Error('Phone touch failed to enter boss '+JSON.stringify(afterTap));
             await mobile.evaluate(()=>window.ZAMAZONE_DEBUG_BOSS_TEST.relaunch(3));
             await mobile.locator('#zb-mobile-shop-back').tap();
+            await mobile.locator('#z-shop-exit-yes').tap();
             if(await mobile.locator('#zb-mobile-shop-exit').count())throw Error('Phone dock still visible after back');
             if(!await mobile.locator('[data-dbg-boss="3"]').count())throw Error('Phone failed to return to boss selection');
             if(mobileErrors.length)throw Error('Mobile runtime errors '+mobileErrors.slice(0,5).join(' | '));
@@ -392,6 +423,7 @@ jobs:
             pyramid-eye-natural-attacks.png
             pyramid-eye-mobile-shop.png
             zamazone-crystal-shatter.png
+            stage1-live-art.png
             zamazone-board-all-stages.png
       - name: Commit integration to staging (production untouched)
         run: |
