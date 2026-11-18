@@ -230,69 +230,125 @@ const boardOldSky=drawSky,boardOldScenery=drawScenery;
 drawSky=function(){
  if(riichiMode||stage!==1)return boardOldSky();
  counters.grassSky++;
- const g=ctx.createLinearGradient(0,75,0,ground);
- g.addColorStop(0,'#4aaeff');g.addColorStop(.49,'#a1eaff');g.addColorStop(1,'#ecfff1');
- ctx.fillStyle=g;ctx.fillRect(0,82,W,ground-82);
- ctx.fillStyle='rgba(255,255,255,.82)';
- for(let j=0;j<8;j++){
-  const px=(j*241+Math.sin(time*.11+j)*9-camera*.065)%(W+310)-105;
-  const py=148+(j%3)*69;
-  ctx.beginPath();ctx.ellipse(px,py,88,22,0,0,Math.PI*2);ctx.fill();
-  ctx.beginPath();ctx.ellipse(px-36,py-8,36,29,0,0,Math.PI*2);ctx.fill();
-  ctx.beginPath();ctx.ellipse(px+24,py-10,45,33,0,0,Math.PI*2);ctx.fill();
+ // Saturated Sega-era meadow palette with sunlight, sky banding and cumulus.
+ const g=ctx.createLinearGradient(0,80,0,ground);
+ g.addColorStop(0,'#218cdb');g.addColorStop(.45,'#66c4f6');g.addColorStop(.82,'#b7f9ff');g.addColorStop(1,'#e4fff1');
+ ctx.fillStyle=g;ctx.fillRect(0,80,W,ground-80);
+ const sunX=1054-camera*.012,sunY=173;
+ const glow=ctx.createRadialGradient(sunX,sunY,8,sunX,sunY,205);
+ glow.addColorStop(0,'rgba(255,251,182,.62)');glow.addColorStop(.35,'rgba(255,245,174,.24)');glow.addColorStop(1,'rgba(255,250,210,0)');
+ ctx.fillStyle=glow;ctx.fillRect(sunX-210,sunY-210,420,420);
+ ctx.fillStyle='#fff9cb';ctx.beginPath();ctx.arc(sunX,sunY,43,0,Math.PI*2);ctx.fill();
+ function cloud(cx,cy,scale,opacity){
+  ctx.save();ctx.globalAlpha=opacity;ctx.translate(cx,cy);ctx.scale(scale,scale);
+  ctx.shadowColor='#d7efff';ctx.shadowBlur=15;
+  ctx.fillStyle='#f8ffff';ctx.beginPath();ctx.ellipse(0,11,81,20,0,0,Math.PI*2);ctx.fill();
+  for(const [x,y,r] of [[-45,0,34],[-17,-15,39],[24,-21,35],[54,1,28]]){
+   ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+  }
+  ctx.fillStyle='rgba(101,192,229,.13)';ctx.beginPath();ctx.ellipse(0,15,71,10,0,0,Math.PI);ctx.fill();
+  ctx.restore();
+ }
+ for(let j=-1;j<9;j++){
+  const x=((j*253-camera*.056)%(W+410)+(W+410))%(W+410)-130;
+  cloud(x,176+(j%3)*72,.55+(j%3)*.14,.74);
  }
 };
 drawScenery=function(){
  if(riichiMode||stage!==1)return boardOldScenery();
  counters.grassScenery++;
- // distant blue peaks and closer emerald rolling hills
+ const SW=W,GH=ground;
+ // Crystal-clear mountain silhouette and pastel sandstone spires in the distance.
+ const peaks=[
+  [-80,GH-180],[25,GH-270],[107,GH-205],[217,GH-298],[325,GH-192],
+  [426,GH-252],[540,GH-186],[669,GH-288],[772,GH-213],
+  [891,GH-302],[995,GH-207],[1104,GH-276],[1230,GH-197],[1370,GH-252]
+ ];
+ ctx.save();ctx.translate(-(camera*.027)%240,0);
+ for(let shift=-240;shift<400;shift+=1440){
+  const gradient=ctx.createLinearGradient(0,GH-325,0,GH-65);
+  gradient.addColorStop(0,'#8d92e8');gradient.addColorStop(.55,'#93c7e3');gradient.addColorStop(1,'#8ce1c5');
+  ctx.fillStyle=gradient;ctx.beginPath();ctx.moveTo(-260+shift,GH);
+  for(const [x,y] of peaks)ctx.lineTo(x+shift,y);
+  ctx.lineTo(1550+shift,GH);ctx.closePath();ctx.fill();
+  for(const [x,y] of peaks.filter((_,i)=>i%2===1)){
+   ctx.fillStyle='#fff3e1';ctx.beginPath();
+   ctx.moveTo(x+shift,y);ctx.lineTo(x-33+shift,y+44);ctx.lineTo(x-2+shift,y+30);
+   ctx.lineTo(x+21+shift,y+51);ctx.closePath();ctx.fill();
+  }
+ }
+ ctx.restore();
+ // Mid-distance flower-covered cliffs and gently curved emerald terrain.
  for(let layer=0;layer<3;layer++){
-  const offset=layer===0?camera*.075:layer===1?camera*.19:camera*.32;
-  const baseline=ground-(layer===0?175:layer===1?112:48);
-  const colors=['#b2cad8','#78d4a5','#42b96b'];
-  ctx.fillStyle=colors[layer];
-  ctx.beginPath();ctx.moveTo(0,ground);
-  for(let x=-120;x<=W+120;x+=35){
-   const y=baseline+Math.sin((x+offset)*.009+layer)*36+
-        Math.sin((x+offset)*.023+layer*1.4)*13;
+  const drift=camera*(layer===0?.10:layer===1?.22:.35);
+  const by=GH-(layer===0?138:layer===1?91:48);
+  ctx.fillStyle=['#a4e3b6','#65ca96','#3dad77'][layer];
+  ctx.beginPath();ctx.moveTo(0,GH);
+  for(let x=0;x<=SW+40;x+=18){
+   const y=by+Math.sin((x+drift)*.008+layer*1.2)*28+
+       Math.sin((x+drift)*.023+layer)*9;
    ctx.lineTo(x,y);
   }
-  ctx.lineTo(W+120,ground);ctx.closePath();ctx.fill();
+  ctx.lineTo(SW,GH);ctx.closePath();ctx.fill();
  }
- // Midground fantasy trees and green sandstone ruins
- for(let j=-1;j<11;j++){
-  const x=((j*191-camera*.48)%(W+390)+(W+390))%(W+390)-160;
-  if(x<-100||x>W+100)continue;
-  const y=ground-28+Math.sin(j*2.1)*19;
-  ctx.fillStyle='#876342';ctx.fillRect(x-8,y-93,16,74);
-  const crown=ctx.createRadialGradient(x-18,y-108,8,x,y-120,72);
-  crown.addColorStop(0,'#d8fa63');crown.addColorStop(.6,'#69d854');crown.addColorStop(1,'#258c5a');
-  ctx.fillStyle=crown;
-  for(const [ox,oy,r] of [[-31,-117,35],[28,-119,40],[1,-145,43]]){
-   ctx.beginPath();ctx.arc(x+ox,y+oy,r,0,Math.PI*2);ctx.fill();
-  }
-  ctx.fillStyle='#ffda5d';for(let k=0;k<5;k++){
-   const xx=x+Math.sin(k*6+j)*39,yy=y-122+Math.cos(k*2+j)*33;
-   ctx.beginPath();ctx.arc(xx,yy,4,0,Math.PI*2);ctx.fill();
+ // Ruined pastel stone arches, flower patches and luminous foliage at midground.
+ const scrolling=(n,step,speed)=>((n*step-camera*speed)%(SW+step*4)+(SW+step*4))%(SW+step*4)-step*2;
+ for(let j=-1;j<12;j++){
+  const x=scrolling(j,173,.54);
+  if(x<-130||x>SW+130)continue;
+  const y=GH-28+(j%3)*11;
+  if(j%4===0){
+   ctx.fillStyle='#b8a8d7';ctx.strokeStyle='#65539f';ctx.lineWidth=5;
+   ctx.fillRect(x-23,y-106,19,100);ctx.strokeRect(x-23,y-106,19,100);
+   ctx.fillRect(x+38,y-112,20,109);ctx.strokeRect(x+38,y-112,20,109);
+   ctx.beginPath();ctx.arc(x+16,y-105,48,Math.PI,Math.PI*2);ctx.stroke();
+   for(let p=0;p<4;p++){
+    ctx.fillStyle='#fff7d9';ctx.fillRect(x-21+p%2*61,y-97+p*22,9,5);
+   }
+  }else{
+   ctx.fillStyle='#885d4b';ctx.fillRect(x-6,y-87,13,82);
+   const leafy=ctx.createRadialGradient(x-14,y-95,7,x,y-102,58);
+   leafy.addColorStop(0,'#e3ff87');leafy.addColorStop(.5,'#69dc65');leafy.addColorStop(1,'#248e5f');
+   ctx.fillStyle=leafy;
+   for(const [ox,oy,r] of [[-29,-108,29],[25,-111,32],[0,-129,38]]){
+    ctx.beginPath();ctx.arc(x+ox,y+oy,r,0,Math.PI*2);ctx.fill();
+   }
+   for(let k=0;k<8;k++){
+    const ang=k*2.4+j;
+    ctx.fillStyle=['#fff8b2','#ff84cb','#ffffff'][k%3];
+    ctx.beginPath();ctx.arc(x+Math.sin(ang)*42,y-112+Math.cos(ang)*27,4,0,Math.PI*2);ctx.fill();
+   }
   }
  }
- const soil=ctx.createLinearGradient(0,ground,0,H);
- soil.addColorStop(0,'#a5d660');soil.addColorStop(.17,'#98734b');soil.addColorStop(1,'#4c3b56');
- ctx.fillStyle=soil;ctx.fillRect(0,ground,W,H-ground);
- ctx.fillStyle='#5acb47';ctx.fillRect(0,ground-12,W,17);
- ctx.fillStyle='#d1fa63';ctx.fillRect(0,ground-13,W,5);
- for(let j=0;j<100;j++){
-  const x=((j*53-camera*.75)%(W+180)+(W+180))%(W+180)-90;
-  const y=ground-12-(j%4)*3;
-  ctx.strokeStyle=j%2?'#32aa50':'#8ee76a';ctx.lineWidth=2;
-  ctx.beginPath();ctx.moveTo(x,ground-10);ctx.lineTo(x-4,y-8);ctx.stroke();
+ // Layered soil with patterned stones and colorful flower meadow foreground.
+ const soil=ctx.createLinearGradient(0,GH,0,H);
+ soil.addColorStop(0,'#9a6c51');soil.addColorStop(.36,'#704c66');soil.addColorStop(1,'#423e72');
+ ctx.fillStyle=soil;ctx.fillRect(0,GH,SW,H-GH);
+ ctx.fillStyle='#4abc63';ctx.fillRect(0,GH-17,SW,23);
+ ctx.fillStyle='#c6f46c';ctx.fillRect(0,GH-18,SW,5);
+ for(let j=0;j<140;j++){
+  const x=scrolling(j,32,.82),yy=GH-15-(j%5)*4;
+  const tall=8+(j%4)*4;
+  ctx.strokeStyle=j%2?'#268c53':'#8ade69';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(x,GH-15);ctx.lineTo(x+(j%3-1)*5,yy-tall);ctx.stroke();
   if(j%3===0){
-   ctx.fillStyle=['#ff78be','#ffe36a','#f6faff'][j%3];
-   ctx.beginPath();ctx.arc(x,y-9,4,0,Math.PI*2);ctx.fill();
+   const fx=x+(j%3-1)*5,fy=yy-tall;
+   ctx.strokeStyle='#fdf3b2';ctx.lineWidth=1.1;
+   for(let k=0;k<5;k++){
+    const a=k*Math.PI*2/5;
+    ctx.fillStyle=['#ff70c5','#ffe58b','#fdfcff'][j%3];
+    ctx.beginPath();ctx.arc(fx+Math.cos(a)*4.5,fy+Math.sin(a)*4.5,3.5,0,Math.PI*2);ctx.fill();
+   }
+   ctx.fillStyle='#ffae43';ctx.beginPath();ctx.arc(fx,fy,2.8,0,Math.PI*2);ctx.fill();
   }
  }
-};
-
+ // Small colorful stones in foreground earth, varied but deterministic.
+ for(let j=0;j<75;j++){
+  const x=scrolling(j,51,.84),y=GH+15+(j*47)%78;
+  ctx.fillStyle=['#b98ca1','#645d8e','#c5a27c'][j%3];
+  ctx.beginPath();ctx.ellipse(x,y,5+j%4,2+j%3,0,0,Math.PI*2);ctx.fill();
+ }
+}; 
 const originalBase=drawBase;
 drawBase=function(b){
  if(!enabled()||!b?.alive||!loaded(current()))return originalBase(b);
