@@ -135,6 +135,20 @@ jobs:
             const purchased=await page.evaluate(()=>window.ZAMAZONE_DEBUG_BOSS_QA());
             console.log('FREE_DEBUG_SHOP_PURCHASE',JSON.stringify(purchased));
             if(!purchased.purchases[0]||purchased.money!==beforeMoney)throw Error('Debug equipment must be free');
+            if(purchased.itemStatus.length!==12||!purchased.itemStatus[0].includes('強化済み')||
+               !purchased.itemStatus[0].includes('1/1')||
+               !purchased.itemPrices.every(p=>p==='無料（デバッグ）'))
+              throw Error('Purchased state or free price not visible '+JSON.stringify(purchased));
+            if(!await page.locator('[data-buy="0"]').isDisabled())throw Error('One-time upgrade must become disabled');
+            await page.locator('[data-buy="5"]').click();
+            await page.locator('[data-buy="5"]').click();
+            const level2=await page.evaluate(()=>window.ZAMAZONE_DEBUG_BOSS_QA());
+            if(level2.purchases[5]!==2||!level2.itemStatus[5].includes('2/3')||
+               level2.money!==beforeMoney)throw Error('Upgrade tier not displayed '+JSON.stringify(level2));
+            await page.locator('[data-buy="1"]').click();
+            const gun=await page.evaluate(()=>window.ZAMAZONE_DEBUG_BOSS_QA());
+            if(!gun.itemStatus[1].includes('現在装備中')||!gun.itemPrices.every(p=>p==='無料（デバッグ）'))
+              throw Error('Equipped weapon not identified '+JSON.stringify(gun));
             if(!prep.exitVisible)throw Error('Debug shop must have a visible start button');
             await page.locator('#zb-debug-shop-start').click();
             const prepared=await page.evaluate(()=>window.ZAMAZONE_DEBUG_BOSS_QA());
@@ -286,6 +300,11 @@ jobs:
             await mobile.waitForSelector('#zb-debug-open',{timeout:30000});
             await mobile.locator('#zb-debug-open').tap();
             await mobile.locator('[data-dbg-boss="3"]').tap();
+            await mobile.locator('[data-buy="0"]').tap();
+            const phonePurchase=await mobile.evaluate(()=>window.ZAMAZONE_DEBUG_BOSS_QA?.());
+            console.log('MOBILE_PURCHASE_STATE',JSON.stringify({status:phonePurchase.itemStatus[0],price:phonePurchase.itemPrices[0],count:phonePurchase.purchases[0]}));
+            if(!phonePurchase.itemStatus[0].includes('強化済み')||phonePurchase.itemPrices[0]!=='無料（デバッグ）')
+              throw Error('Mobile purchase status unavailable');
             const bounds=await mobile.evaluate(()=>{
               const dock=document.getElementById('zb-mobile-shop-exit');
               const btn=document.getElementById('zb-mobile-shop-start');
