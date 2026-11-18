@@ -3877,6 +3877,18 @@ function zShopConfirmAsk(onYes){
  dialog.append(title,line,actions);overlay.appendChild(dialog);
  document.body.appendChild(overlay);zShopConfirmNode=overlay;
 }
+if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
+ window.ZAMAZONE_SHOP_EXIT_TEST={
+  openNormal(){
+   zShopConfirmClose();
+   debugBossRunning=false;zbPrepActive=false;
+   start();mode='shop';
+   v2ShopRender();
+   return {mode,open:!panelWrap.classList.contains('hidden')};
+  },
+  status(){return {mode,dialog:!!document.getElementById('z-shop-exit-confirm'),panelHidden:panelWrap.classList.contains('hidden')};}
+ };
+}
 const zOriginalCurtainExit=curtainExit;
 curtainExit=function(){
  if(mode==='shop'&&!zbPrepActive){zShopConfirmAsk(zOriginalCurtainExit);return;}
