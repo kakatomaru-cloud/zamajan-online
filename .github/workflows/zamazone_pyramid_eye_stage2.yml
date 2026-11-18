@@ -167,7 +167,7 @@ jobs:
             const grassLive=await grassPage.evaluate(()=>window.ZAMAZONE_BOARD_STAGE1356_QA());
             console.log('STAGE1_LIVE_RENDER',JSON.stringify(grassLive));
             if(!grassLive.active||grassLive.stage!==1||grassLive.ground<30||
-               grassLive.air<5||grassLive.enemy<3)
+               grassLive.air<5||grassLive.enemy<3||grassLive.grassSky<30||grassLive.grassScenery<30)
               throw Error('Real stage 1 still uses old sprites '+JSON.stringify(grassLive));
             await grassPage.screenshot({path:'stage1-live-art.png',fullPage:true});
             // Ordinary (non-debug) shop must also ask yes/no on exit.
