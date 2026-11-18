@@ -1,6 +1,7 @@
 /* ZAMAZONE_BOARD_STAGE1356_V1_20261118
  * ZAMAZONE_BOARD_STAGE1356_V2_GRASSLAND_VISUAL_FIX_20261118
  * ZAMAZONE_STAGE1_VECTOR_REDRAW_V3_20261118
+ * ZAMAZONE_STAGE1_SOURCE_ART_HQ_V4_20261118
  * Approved original sprite art cropped from the supplied five-row design board.
  * Each stage atlas is 7 transparent 48x48 sprites: five mobs, air base, ground base.
  * Stage 2 remains on the separately approved desert art.
@@ -23,7 +24,11 @@ Object.entries(artStages).forEach(([id,file])=>{
  im.src='assets/board_stage1356/'+file+'.png';
  atlas[id]=im;
 });
-const loaded=id=>!!(atlas[id]?.complete&&atlas[id].naturalWidth===336&&atlas[id].naturalHeight===48);
+const grassHQ=new Image();
+grassHQ.decoding='async';
+grassHQ.src='assets/board_stage1356/grass_hq.webp';
+const grassReady=()=>grassHQ.complete&&grassHQ.naturalWidth===1120&&grassHQ.naturalHeight===160;
+const loaded=id=>id===1?grassReady():!!(atlas[id]?.complete&&atlas[id].naturalWidth===336&&atlas[id].naturalHeight===48);
 let forceStage=0,spawnCount=0,lastStage=0,drawCount=Array(7).fill(0);
 const deaths=[],counters={enemy:0,air:0,ground:0,enemyDefeats:0,baseDefeats:0,fragments:0,shots:0,grassSky:0,grassScenery:0};
 const current=()=>forceStage||stage;
@@ -183,7 +188,12 @@ function paint(index,x,y,w,h,opts={}){
  if(opts.rotation)ctx.rotate(opts.rotation);
  if(opts.alpha!==undefined)ctx.globalAlpha=opts.alpha;
  if(opts.red)ctx.filter=redFilter;
- if(id===1){grassVector(index,w,h,time);ctx.restore();return true;}
+ if(id===1){
+  // Approved character board itself: full 160x160 alpha cut-outs, not vector substitutes.
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+  ctx.drawImage(grassHQ,index*160,0,160,160,-w/2,-h/2,w,h);
+  ctx.restore();return true;
+ }
  ctx.imageSmoothingEnabled=true;
  ctx.imageSmoothingQuality='high';
  // Source art is pre-separated into an alpha-matted single sprite per cell.
@@ -383,7 +393,10 @@ drawProjectiles=function(){
      ty=d.y+((p.sy-18)*d.size/48)+p.vy*t*.8+210*t*t;
    ctx.save();ctx.globalAlpha=alpha;
    ctx.translate(tx,ty);ctx.rotate(t*p.rot);
-   ctx.drawImage(atlas[d.id],src(d.index)+p.sx,p.sy,12,12,-sz*.5,-sz*.5,sz,sz);
+   if(d.id===1 && grassReady())
+     ctx.drawImage(grassHQ,d.index*160+p.sx/12*40,p.sy/12*40,40,40,-sz*.5,-sz*.5,sz,sz);
+   else
+     ctx.drawImage(atlas[d.id],src(d.index)+p.sx,p.sy,12,12,-sz*.5,-sz*.5,sz,sz);
    ctx.restore();counters.fragments++;
   }
   if(t<.32){
@@ -398,7 +411,7 @@ drawProjectiles=function(){
 function status(){
  return {active:enabled(),stage:current(),loaded:Object.fromEntries(Object.keys(artStages).map(x=>[x,loaded(+x)])),
   names:labels[current()]||[],...counters,activeDeaths:deaths.length,
-  renderedVariants:drawCount.slice(0,5),size:Object.fromEntries(Object.keys(artStages).map(x=>[x,atlas[x].naturalWidth]))};
+  renderedVariants:drawCount.slice(0,5),grassHQ:grassReady(),grassArtVersion:'source-HQ-160px',size:Object.fromEntries(Object.keys(artStages).map(x=>[x,x==='1'?grassHQ.naturalWidth:atlas[x].naturalWidth]))};
 }
 window.ZAMAZONE_BOARD_STAGE1356_QA=status;
 if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
