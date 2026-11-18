@@ -170,6 +170,21 @@ jobs:
                grassLive.air<5||grassLive.enemy<3)
               throw Error('Real stage 1 still uses old sprites '+JSON.stringify(grassLive));
             await grassPage.screenshot({path:'stage1-live-art.png',fullPage:true});
+            // Ordinary (non-debug) shop must also ask yes/no on exit.
+            const normal=await grassPage.evaluate(()=>window.ZAMAZONE_SHOP_EXIT_TEST.openNormal());
+            console.log('NORMAL_SHOP_OPEN',JSON.stringify(normal));
+            if(normal.mode!=='shop'||!normal.open)throw Error('Could not enter normal shop');
+            await grassPage.evaluate(()=>mainAction.click());
+            if(!await grassPage.locator('#z-shop-exit-yes').count())throw Error('Normal shop confirmation missing');
+            await grassPage.locator('#z-shop-exit-no').click();
+            const cancelled=await grassPage.evaluate(()=>window.ZAMAZONE_SHOP_EXIT_TEST.status());
+            if(cancelled.mode!=='shop'||cancelled.dialog)throw Error('No must keep normal shop open '+JSON.stringify(cancelled));
+            await grassPage.evaluate(()=>mainAction.click());
+            await grassPage.locator('#z-shop-exit-yes').click();
+            await grassPage.waitForTimeout(850);
+            const normalEnd=await grassPage.evaluate(()=>window.ZAMAZONE_SHOP_EXIT_TEST.status());
+            console.log('NORMAL_SHOP_EXIT_CONFIRMED',JSON.stringify(normalEnd));
+            if(normalEnd.mode!=='play'||!normalEnd.panelHidden)throw Error('Normal shop Yes failed '+JSON.stringify(normalEnd));
             await grassPage.close();
             await page.click('#zb-debug-open');
             await page.click('[data-dbg-boss="3"]');
