@@ -50,6 +50,10 @@ jobs:
           for name in ('grass','ocean','snow','neon','digital'):
               assert (p/'assets/board_stage1356'/f'{name}.png').stat().st_size>2000
           assert (p/'assets/board_stage1356/grass_hq.webp').stat().st_size>30000
+          # Generated files MUST be present in staged commit, not just the local
+          # checkout where Playwright tests otherwise give a false green.
+          for asset in ('grass.png','grass_hq.webp','ocean.png','snow.png','neon.png','digital.png'):
+              print('REQUIRED_PUBLIC_ASSET',asset,(p/'assets/board_stage1356'/asset).stat().st_size)
           assert 'ZAMAZONE_STAGE1_SOURCE_ART_HQ_V4_20261118' in s
           for i in range(16):assert (p/'assets/pyramid_eye'/('body_%02d.webp'%i)).stat().st_size>2000
           for i in range(8):assert (p/'assets/pyramid_eye'/('orb_%02d.webp'%i)).stat().st_size>2000
@@ -559,7 +563,24 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add zamajan-online/public/minigames/zamazone/index.html zamajan-online/public/minigames/zamazone/assets/pyramid_eye/
+          # Publish every generated asset that the public game requests.
+          # Earlier builds committed only index.html and pyramid_eye/, leaving
+          # board_stage1356/{grass,ocean,snow,neon,digital}.png / grass_hq.webp
+          # absent from GitHub; deployed visitors therefore saw ART LOADING.
+          git add zamajan-online/public/minigames/zamazone/index.html \
+                  zamajan-online/public/minigames/zamazone/assets/pyramid_eye/ \
+                  zamajan-online/public/minigames/zamazone/assets/board_stage1356/
+          python3 - <<'PY'
+          import subprocess
+          from pathlib import Path
+          root=Path('zamajan-online/public/minigames/zamazone/assets/board_stage1356')
+          for name in ('grass.png','grass_hq.webp','ocean.png','snow.png','neon.png','digital.png'):
+              file=root/name
+              assert file.is_file() and file.stat().st_size>2000, ('asset not built',str(file))
+              found=subprocess.run(['git','ls-files','--cached','--error-unmatch',str(file)],capture_output=True)
+              assert found.returncode==0, ('asset not staged',str(file))
+              print('PUBLIC_ASSET_STAGED',str(file),file.stat().st_size)
+          PY
           if ! git diff --cached --quiet; then
             git commit -m "feat(zamazone): playable stage2 Pyramid Eye boss and merge bigrock"
             git push origin HEAD:chatgpt-staging
