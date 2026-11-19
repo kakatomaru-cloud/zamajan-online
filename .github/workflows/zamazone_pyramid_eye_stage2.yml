@@ -7,6 +7,8 @@ on:
       - 'scripts/zamazone_pyramid_eye_stage2_v1.js'
       - 'scripts/apply_zamazone_desert_redesign.py'
       - 'scripts/apply_zamazone_board_stage1356.py'
+      - 'scripts/zamazone_mana4_stage3_live.js'
+      - 'scripts/apply_zamazone_mana4_stage3.py'
       - 'zamajan-online/public/minigames/zamazone/board_stage1356.js'
       - 'zamajan-online/public/minigames/zamazone/assets/board_stage1356/**'
       - 'zamajan-online/public/minigames/zamazone/desert_redesign_stage2.js'
@@ -32,6 +34,8 @@ jobs:
         run: python3 scripts/apply_zamazone_desert_redesign.py
       - name: Integrate source-approved board art for stages 1,3,4,5,6
         run: python3 scripts/apply_zamazone_board_stage1356.py
+      - name: Integrate playable mana4 boss on stage 3
+        run: python3 scripts/apply_zamazone_mana4_stage3.py
       - name: Verify artwork, integration, and JavaScript syntax
         run: |
           python3 - <<'PY'
@@ -42,6 +46,7 @@ jobs:
           assert s.count('// ZAMAZONE_PYRAMID_EYE_STAGE2_V1_20261116')==1
           assert 'pyramidOn()' in s and 'defeatBoss()' in s
           assert s.count('ZAMAZONE_BOARD_STAGE1356_V1_20261118')==1
+          assert s.count('ZAMAZONE_MANA4_STAGE3_LIVE_V1_20261119')==1
           for name in ('grass','ocean','snow','neon','digital'):
               assert (p/'assets/board_stage1356'/f'{name}.png').stat().st_size>2000
           assert (p/'assets/board_stage1356/grass_hq.webp').stat().st_size>30000
