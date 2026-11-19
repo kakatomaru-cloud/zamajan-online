@@ -2,6 +2,7 @@
  * ZAMAZONE_BOARD_STAGE1356_V2_GRASSLAND_VISUAL_FIX_20261118
  * ZAMAZONE_STAGE1_VECTOR_REDRAW_V3_20261118
  * ZAMAZONE_STAGE1_SOURCE_ART_HQ_V4_20261118
+ * ZAMAZONE_BOARD_REAL_RENDER_ENFORCEMENT_V5_20261120
  * Approved original sprite art cropped from the supplied five-row design board.
  * Each stage atlas is 7 transparent 48x48 sprites: five mobs, air base, ground base.
  * Stage 2 remains on the separately approved desert art.
@@ -30,6 +31,29 @@ grassHQ.src='assets/board_stage1356/grass_hq.webp';
 const grassReady=()=>grassHQ.complete&&grassHQ.naturalWidth===1120&&grassHQ.naturalHeight===160;
 const loaded=id=>id===1?grassReady():!!(atlas[id]?.complete&&atlas[id].naturalWidth===336&&atlas[id].naturalHeight===48);
 let forceStage=0,spawnCount=0,lastStage=0,drawCount=Array(7).fill(0);
+const sceneRender={};let legacyArtFallbacks=0,assetFailures=0,lastArtError='';
+const actualVariants={};
+function markArt(kind,id,index,source){
+ const row=sceneRender[id]??=( {enemy:0,air:0,ground:0,enemyVariants:[],frames:0,lastAsset:'',oldRenderer:0} );
+ row[kind]++;row.frames++;
+ if(kind==='enemy'&&!row.enemyVariants.includes(index))row.enemyVariants.push(index);
+ row.lastAsset=source;
+}
+const artFail=(id,kind)=>{
+ assetFailures++;
+ if(assetFailures<6||assetFailures%300===0){
+  lastArtError='Stage '+id+' '+kind+' failed to load '+(id===1?'grass_hq.webp':artStages[id]+'.png');
+  console.error('ZAMAZONE_STAGE_ART_UNAVAILABLE',lastArtError);
+ }
+};
+function pendingArt(x,y,kind,id){
+ ctx.save();ctx.translate(x,y);
+ ctx.strokeStyle=accents[id]||'#f9df83';ctx.lineWidth=4;
+ ctx.setLineDash([9,5]);ctx.strokeRect(-47,-37,94,74);ctx.setLineDash([]);
+ ctx.textAlign='center';ctx.font='bold 13px system-ui';
+ ctx.fillStyle='#fff';ctx.fillText('ART '+id+' LOADING',0,5);
+ ctx.restore();artFail(id,kind);
+}
 const deaths=[],counters={enemy:0,air:0,ground:0,enemyDefeats:0,baseDefeats:0,fragments:0,shots:0,grassSky:0,grassScenery:0};
 const current=()=>forceStage||stage;
 // The desert's own Stage-2 smoke harness can temporarily force its stage
@@ -37,8 +61,8 @@ const current=()=>forceStage||stage;
 const enabled=()=>!riichiMode&&!!artStages[current()]&&
  !(window.ZAMAZONE_DESERT_REDESIGN_QA?.()?.active);
 const src=i=>i*48;
-const enemyScale={1:112,3:91,4:88,5:94,6:94};
-const baseScale={1:164,3:194,4:196,5:206,6:202};
+const enemyScale={1:128,3:115,4:112,5:119,6:119};
+const baseScale={1:206,3:226,4:228,5:234,6:230};
 const redFilter='brightness(0) saturate(100%) invert(19%) sepia(99%) saturate(6470%) hue-rotate(345deg)';
 const flashing=o=>(o?.zfxRedUntil&&performance.now()<o.zfxRedUntil&&Math.floor(performance.now()/70)%2===0)||
   (o?.flash>0&&Math.floor(performance.now()/70)%2===0);
@@ -192,12 +216,14 @@ function paint(index,x,y,w,h,opts={}){
   // Approved character board itself: full 160x160 alpha cut-outs, not vector substitutes.
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
   ctx.drawImage(grassHQ,index*160,0,160,160,-w/2,-h/2,w,h);
+  markArt(opts.kind||'enemy',id,index,'grass_hq.webp#'+index);
   ctx.restore();return true;
  }
  ctx.imageSmoothingEnabled=true;
  ctx.imageSmoothingQuality='high';
  // Source art is pre-separated into an alpha-matted single sprite per cell.
  ctx.drawImage(img,src(index),0,48,48,-w/2,-h/2,w,h);
+ markArt(opts.kind||'enemy',id,index,artStages[id]+'.png#'+index);
  ctx.restore();
  return true;
 }
@@ -351,17 +377,21 @@ drawScenery=function(){
 }; 
 const originalBase=drawBase;
 drawBase=function(b){
- if(!enabled()||!b?.alive||!loaded(current()))return originalBase(b);
+ if(!enabled())return originalBase(b);
+ if(!b?.alive)return;
  const x=screenX(b.x),isAir=!!(b.flying||b.air);
  if(x<-190||x>W+190)return;
  const size=baseScale[current()],t=animate(current(),b);
  const y=isAir?b.y+Math.sin(t*2.5)*7:ground-size*.48+5;
+ if(!loaded(current())){pendingArt(x,y,isAir?'air':'ground',current());return;}
  const index=isAir?5:6;
  // Idle animation: 4-phase bob, head tilt, rhythmic cannon/jewel gleam.
  const cyc=Math.floor((t%2.4)/.6);
  const ang=isAir?Math.sin(t*2.1)*.045:(cyc===2?.018:cyc===3?-.018:0);
  const pulse=(cyc===2?1.035:cyc===3?.985:1);
- if(!paint(index,x,y,size*pulse,size*pulse,{rotation:ang,red:flashing(b)}))return originalBase(b);
+ if(!paint(index,x,y,size*pulse,size*pulse,{rotation:ang,red:flashing(b),kind:isAir?'air':'ground'})){
+  pendingArt(x,y,isAir?'air':'ground',current());return;
+ }
  if((cyc===2||cyc===3)&&!flashing(b)){
   ctx.save();ctx.globalAlpha=.15;ctx.fillStyle=accents[current()];
   ctx.beginPath();ctx.arc(x,y+size*.18,12+cyc*3,0,Math.PI*2);ctx.fill();ctx.restore();
@@ -370,7 +400,8 @@ drawBase=function(b){
 };
 const originalEnemy=drawEnemy;
 drawEnemy=function(e){
- if(!enabled()||!e||e.hp<=0||!loaded(current()))return originalEnemy(e);
+ if(!enabled())return originalEnemy(e);
+ if(!e||e.hp<=0)return;
  const id=current();
  if(e.boardStage!==id){
   e.boardStage=id;
@@ -378,10 +409,12 @@ drawEnemy=function(e){
   // looking like the legacy first-stage bee while the player starts moving.
   const spawnOrder=id===1?[2,3,1,4,0]:[0,1,2,3,4];
   e.boardVariant=spawnOrder[spawnCount++%5];
+  e.artKey='stage'+id+'_mob'+e.boardVariant;
   e.boardLastShot=e.shot;e.boardAttack=0;
  }
  const x=screenX(e.x);
- if(x<-130||x>W+130)return;
+ if(x<-160||x>W+160)return;
+ if(!loaded(id)){pendingArt(x,e.y,'enemy',id);return;}
  const t=animate(id,e),index=e.boardVariant;
  const size=enemyScale[id]*(index===4?.93:1),phase=Math.floor(t*6)%4;
  const attack=e.boardAttack>0;
@@ -389,7 +422,9 @@ drawEnemy=function(e){
  const bob=Math.sin(t*(index===1?7:4.4))*5;
  const stretch=phase===0?1:phase===2?.94:1.04;
  const red=flashing(e);
- paint(index,x,e.y+bob,size*stretch,size/stretch,{rotation:wobble,flip:e.vx<0,red});
+ if(!paint(index,x,e.y+bob,size*stretch,size/stretch,{rotation:wobble,flip:e.vx<0,red,kind:'enemy'})){
+  pendingArt(x,e.y,'enemy',id);return;
+ }
  // The muzzle lights up for an attack instead of drawing an unrelated stock projectile.
  if(attack){
   ctx.save();ctx.globalAlpha=Math.min(1,e.boardAttack/.12)*.86;
@@ -399,6 +434,8 @@ drawEnemy=function(e){
  }
  counters.enemy++;
 };
+// The game's base hitbox/damage code remains unchanged. The last-stage
+// renderers above are authoritative for all approved non-desert levels.
 const originalHitBase=hitBase;
 hitBase=function(b,damageAmount){
  if(!enabled()||!b?.alive)return originalHitBase(b,damageAmount);
@@ -466,6 +503,7 @@ drawProjectiles=function(){
 };
 function status(){
  return {active:enabled(),stage:current(),loaded:Object.fromEntries(Object.keys(artStages).map(x=>[x,loaded(+x)])),
+  realDraws:JSON.parse(JSON.stringify(sceneRender)),legacyArtFallbacks,assetFailures,lastArtError,
   names:labels[current()]||[],...counters,activeDeaths:deaths.length,
   renderedVariants:drawCount.slice(0,5),grassHQ:grassReady(),grassArtVersion:'source-HQ-160px',size:Object.fromEntries(Object.keys(artStages).map(x=>[x,x==='1'?grassHQ.naturalWidth:atlas[x].naturalWidth]))};
 }
