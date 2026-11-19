@@ -221,7 +221,7 @@ function renderAttacks(){
  }
  // Integrated boss status: intact arms and effective core state.
  g.save();g.fillStyle='#0f144acb';g.fillRect(W/2-225,24,450,24);
- g.fillStyle='#ed4ad8';g.fillRect(W/2-218,30,(436*((state==='final'?coreHP/coreMax*.16:(.16+.84*arms.reduce((a,v)=>a+v.hp,0)/24))),12);
+ g.fillStyle='#ed4ad8';const healthRatio=state==='final'?coreHP/coreMax*.16:(.16+.84*arms.reduce((sum,a)=>sum+a.hp,0)/24);g.fillRect(W/2-218,30,436*healthRatio,12);
  g.fillStyle='white';g.font='bold 17px system-ui';g.textAlign='center';g.fillText('mana4 | '+(state==='final'?'CORE '+coreHP:'触手 '+arms.filter(a=>!a.broken).length+'/8'),W/2,19);
  g.restore();
 }
