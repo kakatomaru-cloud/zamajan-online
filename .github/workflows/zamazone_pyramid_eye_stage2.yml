@@ -169,7 +169,28 @@ jobs:
             await grassPage.goto('http://localhost:8765/minigames/zamazone/index.html?stage2_qa=1',{waitUntil:'domcontentloaded',timeout:120000});
             await grassPage.waitForSelector('#zb-debug-open',{timeout:30000});
             await grassPage.waitForFunction(()=>window.ZAMAZONE_BOARD_STAGE1356_QA?.()?.loaded?.['1'],null,{timeout:20000});
-            await grassPage.evaluate(()=>mainAction.click());
+            const startUI=await grassPage.evaluate(()=>{
+              const btn=document.getElementById('mainAction');
+              const ref=typeof mainAction!=='undefined'?mainAction:btn;
+              const r=ref?.getBoundingClientRect();
+              const center=r?document.elementFromPoint(r.left+r.width/2,r.top+r.height/2):null;
+              return {buttonOuter:ref?.outerHTML?.slice(0,650),mode:typeof mode==='undefined'?'unknown':mode,
+                panelHidden:document.getElementById('panelWrap')?.classList.contains('hidden'),
+                rect:r?{x:r.x,y:r.y,w:r.width,h:r.height}:null,
+                center:center?.outerHTML?.slice(0,250),
+                visible:!!ref&&!!r&&r.width>1&&r.height>1};
+            });
+            console.log('PC_REAL_START_PRECHECK',JSON.stringify(startUI));
+            if(!startUI.visible)throw Error('Main start button invisible '+JSON.stringify(startUI));
+            try {await grassPage.locator('#mainAction').click({timeout:5000});}
+            catch(e){console.log('PC_REAL_START_CLICK_ERROR',e.message.slice(0,750));await grassPage.evaluate(()=>mainAction.click());}
+            await grassPage.waitForTimeout(300);
+            console.log('PC_REAL_START_AFTER',JSON.stringify(await grassPage.evaluate(()=>({
+              mode:typeof mode==='undefined'?'unknown':mode,
+              title:document.getElementById('panelTitle')?.textContent,
+              panelHidden:document.getElementById('panelWrap')?.classList.contains('hidden'),
+              err:window.ZAMAZONE_BOARD_STAGE1356_QA?.()
+            }))));
             await grassPage.waitForTimeout(2800);
             const grassLive=await grassPage.evaluate(()=>window.ZAMAZONE_BOARD_STAGE1356_QA());
             console.log('STAGE1_LIVE_RENDER',JSON.stringify(grassLive));
