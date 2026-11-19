@@ -1,0 +1,77 @@
+name: Validate standalone mana4 preview
+on:
+  push:
+    branches: [chatgpt-staging]
+    paths:
+      - 'zamajan-online/public/minigames/zamazone/mana4-boss-only.html'
+      - '.github/workflows/zamazone_mana4_standalone_test.yml'
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt-staging
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate embedded JS syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('zamajan-online/public/minigames/zamazone/mana4-boss-only.html').read_text('utf8')
+          assert s.count('<script>')==1 and s.count('</script>')==1
+          Path('/tmp/mana4-standalone.js').write_text(s.split('<script>')[1].split('</script>')[0])
+          PY
+          node --check /tmp/mana4-standalone.js
+      - name: Install headless browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Exercise real preview animation on mobile and desktop
+        run: |
+          python3 -m http.server 8765 --directory zamajan-online/public >/tmp/mana4-http.log 2>&1 &
+          sleep 2
+          node <<'JS'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+            for(const mobile of [false,true]){
+              const context=await browser.newContext(mobile?{viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasTouch:true}:{viewport:{width:1440,height:1000}});
+              const page=await context.newPage(),errors=[];
+              page.on('pageerror',e=>errors.push(e.message));
+              await page.goto('http://localhost:8765/minigames/zamazone/mana4-boss-only.html',{waitUntil:'domcontentloaded'});
+              const boot=await page.evaluate(()=>window.ZAMAZONE_MANA4_QA());
+              if(boot.stage!=='intro')throw Error('Boss should start entering from top '+JSON.stringify(boot));
+              const normal=await page.evaluate(()=>window.ZAMAZONE_MANA4_TEST.advance(3));
+              if(normal.stage!=='normal')throw Error('Boss entrance failed');
+              const volley=await page.evaluate(()=>window.ZAMAZONE_MANA4_TEST.volley());
+              console.log('MANA4_VOLLEY',mobile,JSON.stringify(volley));
+              if(volley.lastVolleySize<3||volley.lastVolleySize>5||volley.warning.length!==volley.lastVolleySize)
+                throw Error('Expected 3-5 simultaneous glowing tentacles');
+              const before=volley.armTip;
+              const moving=await page.evaluate(()=>window.ZAMAZONE_MANA4_TEST.advance(.28));
+              const after=moving.armTip;
+              if(!after.length||after.some(x=>!Number.isFinite(x.x)||!Number.isFinite(x.y)))
+                throw Error('Smooth extension coordinates invalid');
+              if(before.every(v=>!after.some(a=>a.i===v.i&&Math.hypot(a.x-v.x,a.y-v.y)>35)))
+                throw Error('Tentacles did not extend');
+              const bubbles=await page.evaluate(()=>{window.ZAMAZONE_MANA4_TEST.bubble();return window.ZAMAZONE_MANA4_TEST.advance(2.6)});
+              console.log('MANA4_BUBBLES',mobile,JSON.stringify({bubbles:bubbles.bubbles,waves:bubbles.bubbleWaveCount,lane:bubbles.safeLane}));
+              if(bubbles.stage!=='bubble'||bubbles.bubbles<50||bubbles.bubbleWaveCount<9||bubbles.bubbles>160)
+                throw Error('Bubble rain density incorrect');
+              await page.screenshot({path:mobile?'mana4-mobile.png':'mana4-desktop.png',fullPage:true});
+              if(errors.length)throw Error('Browser errors: '+errors.join(' | '));
+              await context.close();
+            }
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mana4-preview-validation
+          path: |
+            mana4-mobile.png
+            mana4-desktop.png
