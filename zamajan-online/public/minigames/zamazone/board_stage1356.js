@@ -510,6 +510,16 @@ function status(){
 window.ZAMAZONE_BOARD_STAGE1356_QA=status;
 if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
  window.ZAMAZONE_BOARD_STAGE1356_TEST={
+  // Actual campaign update/draw loops, but choose the intended stage to
+  // check its real renderer independently of multi-minute level progression.
+  enterLiveStage(sid){
+   if(riichiMode||!artStages[sid])return {error:'invalid stage'};
+   start();
+   stage=sid;forceStage=0;spawnCount=0;lastStage=sid;
+   for(const e of enemies){delete e.boardStage;delete e.boardVariant;}
+   mode='play';
+   return status();
+  },
   smoke(sid){
    if(riichiMode||!artStages[sid])return {error:'invalid stage'};
    const old=forceStage;forceStage=sid;
