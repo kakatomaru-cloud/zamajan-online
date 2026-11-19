@@ -447,7 +447,7 @@ jobs:
             await stage3Page.waitForTimeout(2300);
             const bubbles=await stage3Page.evaluate(()=>window.ZAMAZONE_MANA4_LIVE_QA());
             console.log('MANA4_LIVE_BUBBLES',JSON.stringify(bubbles));
-            if(bubbles.bubbles<35||bubbles.bubbles>145)throw Error('Live bubbles incorrect');
+            if(bubbles.bubbles<35||bubbles.bubbles>145)throw Error('Live bubbles incorrect; JS_ERRORS '+JSON.stringify(stage3Errors));
             await stage3Page.screenshot({path:'mana4-live-boss-bubbles.png',fullPage:true});
             for(let k=0;k<8;k++)await stage3Page.evaluate(i=>window.ZAMAZONE_MANA4_LIVE_TEST.damageArm(i,3),k);
             const final=await stage3Page.evaluate(()=>window.ZAMAZONE_MANA4_LIVE_QA());
