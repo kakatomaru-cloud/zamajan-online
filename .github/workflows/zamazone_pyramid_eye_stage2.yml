@@ -185,6 +185,10 @@ jobs:
             try {await grassPage.locator('#mainAction').click({timeout:5000});}
             catch(e){console.log('PC_REAL_START_CLICK_ERROR',e.message.slice(0,750));await grassPage.evaluate(()=>mainAction.click());}
             await grassPage.waitForTimeout(300);
+            const pcClick=await grassPage.evaluate(()=>window.ZAMAZONE_PC_START_QA?.());
+            console.log('PC_START_RECOVERY',JSON.stringify(pcClick));
+            if(!pcClick?.gameStarted||pcClick.clicks!==1||pcClick.failures!==0||!pcClick.panelHidden)
+              throw Error('Real PC click did not start game '+JSON.stringify(pcClick));
             console.log('PC_REAL_START_AFTER',JSON.stringify(await grassPage.evaluate(()=>({
               mode:typeof mode==='undefined'?'unknown':mode,
               title:document.getElementById('panelTitle')?.textContent,
@@ -216,6 +220,17 @@ jobs:
             console.log('NORMAL_SHOP_EXIT_CONFIRMED',JSON.stringify(normalEnd));
             if(normalEnd.mode!=='play'||!normalEnd.panelHidden)throw Error('Normal shop Yes failed '+JSON.stringify(normalEnd));
             await grassPage.close();
+            // Keyboard activation must work for the same real title-screen action.
+            const keyPage=await browser.newPage({viewport:{width:1280,height:800}});
+            await keyPage.goto('http://localhost:8765/minigames/zamazone/index.html',{waitUntil:'domcontentloaded',timeout:120000});
+            await keyPage.waitForSelector('#mainAction',{timeout:30000});
+            await keyPage.locator('#mainAction').focus();
+            await keyPage.keyboard.press('Enter');
+            const kb=await keyPage.evaluate(()=>window.ZAMAZONE_PC_START_QA?.());
+            console.log('PC_KEYBOARD_START',JSON.stringify(kb));
+            if(!kb?.gameStarted||kb.clicks!==1||kb.failures!==0)
+              throw Error('PC keyboard start failed '+JSON.stringify(kb));
+            await keyPage.close();
             await page.click('#zb-debug-open');
             await page.click('[data-dbg-boss="3"]');
             await page.waitForSelector('[data-buy="0"]',{timeout:10000});
