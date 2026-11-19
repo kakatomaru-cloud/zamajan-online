@@ -12,6 +12,7 @@ const smooth=t=>{t=clamp(t,0,1);return t*t*(3-2*t)};
 const rand=(a,b)=>a+Math.random()*(b-a);
 const palette=['#e944f6','#b134dd','#fb75ef','#8b2cc8','#d444ed','#c72dd6','#ed4cdd','#9c27c9'];
 const TOTAL=.90,WARN=.17,EXTEND=.19,HOLD=.22,RETRACT=.32;
+const ATTACK_TOTAL=TOTAL,ATTACK_WARNING=WARN,ATTACK_EXTEND=EXTEND,ATTACK_HOLD=HOLD,ATTACK_RETRACT=RETRACT;
 let clock=0,state='intro',body={x:640,y:-215};
 const arms=[],bubbles=[],shards=[];
 let introTime=0,phaseTime=0,nextVolley=.8,bubbleWave=0,safeLane=640,attackCount=0,lastGroup=0,hitCooldown=0,coreHP=22,coreMax=22,drawFrames=0,damageCount=0,shotsHit=0,bubbleHits=0,defeated=false;
