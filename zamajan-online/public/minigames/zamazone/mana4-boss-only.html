@@ -1,36 +1,51 @@
 <!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>ZAMAZONE mana4 — ボス単体確認版</title><style>
 :root{color-scheme:dark;--ink:#dffaff;--pink:#ff62e8;--border:#4bb5ff}*{box-sizing:border-box}html,body{margin:0;background:#051027;color:var(--ink);font-family:system-ui,-apple-system,'Noto Sans JP',sans-serif;min-height:100%}body{display:flex;align-items:center;flex-direction:column;background:radial-gradient(ellipse at 48% 23%,#113e74 0%,#071733 55%,#020919 100%)}.app{width:min(100%,1440px);padding:clamp(6px,2vw,20px) clamp(6px,2vw,18px) 22px}.top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:0 0 10px}.logo{font-weight:950;letter-spacing:.035em;text-shadow:0 2px 7px #ab19f4,0 0 14px #ff2fcd;font-size:clamp(15px,2.3vw,27px)}.tag{color:#8be4ff;font-size:12px;border:1px solid #38739d;border-radius:100px;padding:5px 12px;white-space:nowrap}#canvasWrap{border:2px solid #3cd6ff;border-radius:15px;box-shadow:0 0 0 3px #143a7a,inset 0 0 20px #3c3eff,0 12px 50px #0009;overflow:hidden;background:#034978;position:relative;touch-action:manipulation}canvas{display:block;width:100%;height:auto;aspect-ratio:16/9;touch-action:manipulation;cursor:crosshair}.badge{position:absolute;left:16px;top:14px;pointer-events:none;background:linear-gradient(100deg,#311058ee,#08133bcd);border:2px solid #fd67f9;box-shadow:0 3px 15px #12092a;border-radius:10px;padding:7px 12px;font-weight:900;font-size:clamp(12px,1.5vw,20px)}.phase{position:absolute;right:12px;top:12px;padding:7px 11px;background:#071a45dd;border:1px solid #5bd3ff;border-radius:8px;font-weight:800;font-size:clamp(11px,1.4vw,17px);pointer-events:none}#flash{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-weight:1000;font-size:clamp(22px,4vw,58px);color:white;text-shadow:0 0 18px #ff45c7,0 0 26px #260062;opacity:0;pointer-events:none;transition:opacity .17s}.tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;justify-content:center}button{font-family:inherit;font-weight:850;cursor:pointer;background:linear-gradient(#174d7f,#0a2954);color:#e9fcff;border:1px solid #74d8ff;border-radius:11px;padding:12px 14px;min-height:47px;font-size:clamp(12px,1.35vw,15px);touch-action:manipulation}button:hover,button:focus-visible{background:linear-gradient(#2767a0,#194b75);outline:2px solid #9dfaff}button.primary{background:linear-gradient(#ee66df,#9c2fc1);border-color:#ffa6ef}button.danger{background:linear-gradient(#8b2c83,#5d2055);border-color:#ff8fe6}.status{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap;margin:10px 2px 0}.small{font-size:12px;color:#a2c6e2;line-height:1.6}.hpwrap{min-width:200px;display:flex;gap:9px;align-items:center;flex:1}.hpbox{height:14px;flex:1;border:2px solid #a76bfa;background:#271037;border-radius:20px;overflow:hidden}.hpfill{background:linear-gradient(90deg,#c13cf6,#ff6dcf,#ffbaee);height:100%;width:100%;transition:width .35s}.spec{margin-top:12px;padding:13px 17px;border:1px solid #235985;background:#051a38bd;border-radius:12px;font-size:13px;color:#c7e8fd;line-height:1.7}.spec strong{color:#ffe48b}.spec p{margin:3px 0}.strip{display:flex;gap:15px;flex-wrap:wrap}.strip span{white-space:nowrap}@media(max-width:650px){.badge{left:6px;top:6px;padding:4px 6px}.phase{right:6px;top:6px;padding:4px 6px}.tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}button{padding:9px 7px}.spec{font-size:12px}.status{gap:6px}}
-</style></head><body><main class="app"><header class="top"><div class="logo">ザマゾーン ～ザマザマの大冒険～ ／ mana4</div><div class="tag">STAGE 3 · 海底の神殿 · ボス単体確認版</div></header><div id="canvasWrap"><canvas id="game" width="1280" height="720" aria-label="mana4ボスの動くプレビュー。触手をタップするとその触手にダメージ"></canvas><div class="badge">BOSS ONLY / mana4</div><div class="phase" id="phase">登場中</div><div id="flash">TENTACLE BREAK!</div></div><div class="tools"><button class="primary" id="restart">↻ 最初から見る</button><button id="tentacle">✦ 触手を1本破壊</button><button id="bubble">◯ シャボン攻撃を見る</button><button class="danger" id="last">◆ 最終形態を見る</button><button id="auto">自動進行：ON</button><button id="sound">🔇 効果音：OFF</button></div><div class="status"><div class="hpwrap"><strong style="font-size:13px">BOSS mana4</strong><div class="hpbox"><div class="hpfill" id="hp"></div></div></div><div class="small" id="info">触手 8 / 8　｜　タップで破壊テスト</div></div><section class="spec"><p><strong>確認操作：</strong>触手をタップすると命中した触手だけが赤点滅し、3回で折れます。「触手を1本破壊」で順番に破壊できます。「シャボン攻撃」で触手を完全に収納し、大小の泡を上から降らせます。「最終形態」で丸いコアだけが高速で跳ね返ります。</p><p>プレイヤー・雑魚・ショップは表示せず、ボスの登場／触手／泡／最終形態だけを確認する独立デモです。音楽・効果音はオリジナルのWeb Audio生成で、初期状態は無音です。</p></section></main><script>
+</style></head><body><main class="app"><header class="top"><div class="logo">ザマゾーン ～ザマザマの大冒険～ ／ mana4</div><div class="tag">STAGE 3 · 海底の神殿 · ボス単体確認版</div></header><div id="canvasWrap"><canvas id="game" width="1280" height="720" aria-label="mana4ボスの動くプレビュー。触手をタップするとその触手にダメージ"></canvas><div class="badge">BOSS ONLY / mana4</div><div class="phase" id="phase">登場中</div><div id="flash">TENTACLE BREAK!</div></div><div class="tools"><button class="primary" id="restart">↻ 最初から見る</button><button id="tentacle">✦ 触手を1本破壊</button><button id="bubble">◯ シャボン攻撃を見る</button><button class="danger" id="last">◆ 最終形態を見る</button><button id="auto">自動進行：ON</button><button id="sound">🔇 効果音：OFF</button></div><div class="status"><div class="hpwrap"><strong style="font-size:13px">BOSS mana4</strong><div class="hpbox"><div class="hpfill" id="hp"></div></div></div><div class="small" id="info">触手 8 / 8　｜　タップで破壊テスト</div></div><section class="spec"><p><strong>確認操作：</strong>触手が約4本同時に光ってから高速で伸びます。タップすると命中した触手だけが赤点滅し、3回で折れます。「触手を1本破壊」で順番に破壊できます。「シャボン攻撃」で触手を完全に収納し、大小の泡を上から降らせます。「最終形態」で丸いコアだけが高速で跳ね返ります。</p><p>プレイヤー・雑魚・ショップは表示せず、ボスの登場／触手／泡／最終形態だけを確認する独立デモです。音楽・効果音はオリジナルのWeb Audio生成で、初期状態は無音です。</p></section></main><script>
 (()=>{'use strict';
 const c=document.getElementById('game'),g=c.getContext('2d'),W=1280,H=720,phaseEl=document.getElementById('phase'),infoEl=document.getElementById('info'),hpEl=document.getElementById('hp'),flash=document.getElementById('flash');
 const TAU=Math.PI*2,rand=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.min(b,Math.max(a,v)),lerp=(a,b,t)=>a+(b-a)*t,ease=t=>1-Math.pow(1-clamp(t,0,1),3);
 let clock=0,last=0,stage='intro',phaseTime=0,shake=0,auto=true,soundOn=false,audio=null,autoHitTimer=0,bubbles=[],bits=[],pops=[],debugHit=0;
+let nextVolleyAt=.75,volleyCount=0,lastVolleySize=0,bubbleWaveCount=0,safeLane=640;
+const ATTACK_TOTAL=.90,ATTACK_WARNING=.17,ATTACK_EXTEND=.19,ATTACK_HOLD=.22,ATTACK_RETRACT=.32;
+const smooth=t=>{t=clamp(t,0,1);return t*t*(3-2*t)};
 const body={x:640,y:-240,targetX:640,targetY:340,r:172,vx:790,vy:630,hp:14,maxHp:14};
 let arms=[];
 const palette=['#e944f6','#b134dd','#fb75ef','#8b2cc8','#d444ed','#c72dd6','#ed4cdd','#9c27c9'];
-function init(){arms=Array.from({length:8},(_,i)=>({i,hp:3,max:3,angle:(i+.45)*TAU/8,flash:0,broken:false,len:145,offset:rand(0,9),attack:0,edge:0,aimX:0,aimY:0,hitX:0,hitY:0}));clock=0;phaseTime=0;stage='intro';body.x=640;body.y=-230;body.vx=790;body.vy=620;body.hp=body.maxHp;autoHitTimer=0;bubbles=[];bits=[];pops=[];shake=0;debugHit=0;setText('上から登場中');}
+function init(){arms=Array.from({length:8},(_,i)=>({i,hp:3,max:3,angle:(i+.45)*TAU/8,flash:0,broken:false,len:145,offset:rand(0,9),attack:0,edge:0,aimX:0,aimY:0,hitX:0,hitY:0,warning:0}));clock=0;phaseTime=0;stage='intro';body.x=640;body.y=-230;body.vx=790;body.vy=620;body.hp=body.maxHp;autoHitTimer=0;bubbles=[];bits=[];pops=[];shake=0;debugHit=0;nextVolleyAt=.75;volleyCount=0;lastVolleySize=0;bubbleWaveCount=0;safeLane=640;setText('上から登場中');}
 const BG=(()=>{const a=[];for(let i=0;i<75;i++)a.push({x:rand(0,W),y:rand(0,H),r:rand(1,7),v:rand(8,45),phase:rand(0,TAU)});return a})();
 function setText(s){phaseEl.textContent=s;}function easeOut(t){return 1-Math.pow(1-clamp(t,0,1),4)}
 function tone(f,d=.13,t='sine',vol=.05){if(!soundOn)return;try{audio??=new (window.AudioContext||window.webkitAudioContext)();audio.resume();const o=audio.createOscillator(),v=audio.createGain(),now=audio.currentTime;o.type=t;o.frequency.setValueAtTime(f,now);o.frequency.exponentialRampToValueAtTime(Math.max(40,f*.68),now+d);v.gain.setValueAtTime(.0001,now);v.gain.linearRampToValueAtTime(vol,now+.012);v.gain.exponentialRampToValueAtTime(.0001,now+d);o.connect(v).connect(audio.destination);o.start();o.stop(now+d+.02);}catch{}}
 function burst(x,y,n=20,paletteIn=['#ff73ef','#fff6fa','#ffc861','#8af7ff'],force=1){for(let i=0;i<n;i++){let a=rand(0,TAU),sp=rand(80,380)*force;bits.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-100,r:rand(2.5,8),life:rand(.35,1.4),max:1.4,a:rand(0,TAU),da:rand(-6,6),color:paletteIn[i%paletteIn.length]});}if(bits.length>900)bits.splice(0,bits.length-900);}
 function getCenter(arm){return {x:body.x+Math.cos(arm.angle)*88,y:body.y+Math.sin(arm.angle)*72};}
-function getTip(arm){const a=arm.angle,cy=body.y;let angle=a+.12*Math.sin(clock*.8+arm.i);let len=(stage==='bubble'?44:200)+(arm.i%3)*24;const at=arm.attack;
- if(stage==='intro')len=140+ease(phaseTime/2.35)*70;
- if(stage==='final'||arm.broken)len=0;
+function getTip(arm){
+ const a=arm.angle,angle=a+.12*Math.sin(clock*.8+arm.i),len=200+(arm.i%3)*24;
  if(stage==='bubble')return{x:body.x+Math.cos(a)*58,y:body.y+Math.sin(a)*46};
- if(at>0){const e=arm.edge;if(e===0)return {x:-35,y:clamp(arm.aimY,34,H-35)};if(e===1)return{x:W+35,y:clamp(arm.aimY,30,H-40)};if(e===2)return{x:clamp(arm.aimX,35,W-35),y:-40};return{x:clamp(arm.aimX,35,W-35),y:H+55};}
- return {x:body.x+Math.cos(angle)*len,y:cy+Math.sin(angle)*(len*.86)+Math.sin(clock*2.3+arm.i)*19};}
+ if(stage==='final'||arm.broken)return{x:body.x,y:body.y};
+ const home={x:body.x+Math.cos(angle)*len,y:body.y+Math.sin(angle)*(len*.86)+Math.sin(clock*2.3+arm.i)*19};
+ if(arm.attack<=0)return home;
+ const elapsed=ATTACK_TOTAL-arm.attack;
+ let reach=0;
+ if(elapsed<ATTACK_WARNING)reach=0;
+ else if(elapsed<ATTACK_WARNING+ATTACK_EXTEND)reach=smooth((elapsed-ATTACK_WARNING)/ATTACK_EXTEND);
+ else if(elapsed<ATTACK_WARNING+ATTACK_EXTEND+ATTACK_HOLD)reach=1;
+ else reach=1-smooth((elapsed-ATTACK_WARNING-ATTACK_EXTEND-ATTACK_HOLD)/ATTACK_RETRACT);
+ const e=arm.edge;
+ const aim=e===0?{x:-45,y:clamp(arm.aimY,34,H-35)}:
+ e===1?{x:W+45,y:clamp(arm.aimY,34,H-35)}:
+ e===2?{x:clamp(arm.aimX,35,W-35),y:-50}:{x:clamp(arm.aimX,35,W-35),y:H+65};
+ return{x:lerp(home.x,aim.x,reach),y:lerp(home.y,aim.y,reach)};
+}
 function curve(arm){const s=getCenter(arm),t=getTip(arm);const dx=t.x-s.x,dy=t.y-s.y,mag=Math.hypot(dx,dy);const wave=(stage==='final'?0:1)*(stage==='bubble'?.3:1);const swirl=Math.sin(clock*1.7+arm.i*1.75)*35*wave;const perpendicular={x:-dy/(mag||1),y:dx/(mag||1)};
  const cp1={x:s.x+dx*.28+perpendicular.x*(swirl+36),y:s.y+dy*.28+perpendicular.y*(swirl+36)};
  const cp2={x:s.x+dx*.72-perpendicular.x*(swirl*1.9+28),y:s.y+dy*.72-perpendicular.y*(swirl*1.9+28)};
- if(arm.attack>0){cp1.x+=perpendicular.x*75;cp1.y+=perpendicular.y*75;cp2.x-=perpendicular.x*80;cp2.y-=perpendicular.y*80;}
+ if(arm.attack>0){const thrust=smooth((ATTACK_TOTAL-arm.attack)/.38);cp1.x+=perpendicular.x*75*thrust;cp1.y+=perpendicular.y*75*thrust;cp2.x-=perpendicular.x*80*thrust;cp2.y-=perpendicular.y*80*thrust;}
  return {s,cp1,cp2,t};}
 function bez(p,u){let v=1-u;return{x:p.s.x*v*v*v+3*p.cp1.x*v*v*u+3*p.cp2.x*v*u*u+p.t.x*u*u*u,y:p.s.y*v*v*v+3*p.cp1.y*v*v*u+3*p.cp2.y*v*u*u+p.t.y*u*u*u};}
 function pathArm(p){g.moveTo(p.s.x,p.s.y);g.bezierCurveTo(p.cp1.x,p.cp1.y,p.cp2.x,p.cp2.y,p.t.x,p.t.y)}
 function drawArm(arm){if(arm.broken||stage==='final')return;const p=curve(arm),scale=stage==='bubble'?.36:1,red=arm.flash>0&&Math.floor(clock*22)%2===0;let w=48*scale;
- g.save();g.lineCap='round';g.lineJoin='round';g.shadowBlur=stage==='bubble'?5:10;g.shadowColor='#22045a';
+ g.save();g.lineCap='round';g.lineJoin='round';g.shadowBlur=arm.warning>0?29:stage==='bubble'?5:10;g.shadowColor=arm.warning>0?'#fff8a5':'#22045a';
  g.beginPath();pathArm(p);g.lineWidth=w+19*scale;g.strokeStyle='#41157a';g.stroke();
- const grad=g.createLinearGradient(p.s.x,p.s.y,p.t.x,p.t.y);grad.addColorStop(0,red?'#ff2e46':palette[arm.i]);grad.addColorStop(.5,red?'#ff678a':'#f951ee');grad.addColorStop(1,red?'#ea1237':'#8f1bce');g.lineWidth=w+10*scale;g.strokeStyle=grad;g.stroke();
+ const warn=arm.warning>0&&Math.floor(clock*32)%2===0;const grad=g.createLinearGradient(p.s.x,p.s.y,p.t.x,p.t.y);grad.addColorStop(0,red?'#ff2e46':warn?'#fffbd1':palette[arm.i]);grad.addColorStop(.5,red?'#ff678a':warn?'#ffff78':'#f951ee');grad.addColorStop(1,red?'#ea1237':warn?'#ffedaa':'#8f1bce');g.lineWidth=w+10*scale;g.strokeStyle=grad;g.stroke();
  g.beginPath();pathArm(p);g.lineWidth=19*scale;g.strokeStyle=red?'#ff9fa9':'#f8a8ef';g.stroke();
  for(let k=1;k<=10;k++){const u=k/12,q=bez(p,u);const b=bez(p,Math.min(.99,u+.017));const angle=Math.atan2(b.y-q.y,b.x-q.x)+Math.PI/2;
  g.save();g.translate(q.x,q.y);g.rotate(angle);g.fillStyle=red?'#ffc1cf':'#ffd0b3';g.strokeStyle='#8a3189';g.lineWidth=2*scale;g.beginPath();g.ellipse(0,19*scale,10*scale,7*scale,0,0,TAU);g.fill();g.stroke();g.fillStyle='#ac528c';g.beginPath();g.ellipse(0,19*scale,4*scale,3*scale,0,0,TAU);g.fill();g.restore();}
@@ -62,22 +77,47 @@ function drawOcean(){let grd=g.createLinearGradient(0,0,0,H);grd.addColorStop(0,
  for(let i=0;i<19;i++){let x=i*87+20,y=620+Math.sin(i*1.8)*15;g.lineWidth=6;g.strokeStyle=i%2?'#ab55e5':'#ff75a6';for(let k=0;k<5;k++){g.beginPath();g.moveTo(x,y+55);g.quadraticCurveTo(x+(k-2)*16,y-10,x+(k-2)*21,y-25-(k%2)*15);g.stroke();}}
  g.restore();}
 function drawBubble(b){let x=b.x,y=b.y,r=b.r;g.save();g.globalAlpha=clamp(b.life/1.3,0,.85);const grad=g.createRadialGradient(x-r*.3,y-r*.3,1,x,y,r);grad.addColorStop(0,'#ffffff44');grad.addColorStop(.6,'#66b9f522');grad.addColorStop(.85,'#dd91ff44');grad.addColorStop(1,'#9feaffcc');g.beginPath();g.arc(x,y,r,0,TAU);g.fillStyle=grad;g.fill();g.strokeStyle='#e2e7ff';g.lineWidth=r*.075;g.stroke();g.strokeStyle='#fff';g.lineWidth=r*.09;g.beginPath();g.arc(x,y,r*.65,3.7,5.1);g.stroke();g.restore();}
-function spawnBubbles(){for(let i=0;i<8;i++)bubbles.push({x:rand(36,W-35),y:rand(-150,-20),r:rand(12,70),vy:rand(210,520),vx:rand(-50,50),life:5});if(bubbles.length>140)bubbles.splice(0,bubbles.length-140);tone(850,.12,'sine',.018);}
-function nextAttack(){if(stage!=='normal')return;const valid=arms.filter(a=>!a.broken);if(!valid.length){enterFinal();return;}let arm=valid[Math.floor(rand(0,valid.length))];arm.attack=1.35;arm.edge=Math.floor(rand(0,4));arm.aimX=rand(100,W-100);arm.aimY=rand(105,H-105);setText('触手突進・なぎ払い');tone(195,.26,'sawtooth',.026);}
+// Dense falling bubble curtains with a guaranteed free dodge corridor.
+function spawnBubbles(){
+ bubbleWaveCount++;safeLane=clamp(safeLane+rand(-90,90),170,W-170);
+ let n=0;const columns=16,step=W/columns;
+ for(let i=0;i<columns;i++){
+  const x=(i+.5)*step+rand(-10,10),r=i%5===0?rand(29,40):rand(11,32),vx=rand(-12,12);
+  if(Math.abs(x+vx*1.9-safeLane)<147+r+12)continue;
+  bubbles.push({x,y:rand(-110,-20),r,vy:rand(315,465),vx,life:4});n++;
+ }
+ if(bubbles.length>160)bubbles.splice(0,bubbles.length-160);
+ if(bubbleWaveCount%3===0)tone(850,.09,'sine',.014);
+ return n;
+}
+function nextAttack(){
+ if(stage!=='normal')return;
+ const valid=arms.filter(a=>!a.broken&&a.attack<=0);
+ if(!valid.length){if(arms.every(a=>a.broken))enterFinal();return;}
+ const count=Math.min(valid.length,Math.random()<.75?4:Math.random()<.5?3:5);
+ for(let i=valid.length-1;i>0;i--){const j=Math.floor(rand(0,i+1));[valid[i],valid[j]]=[valid[j],valid[i]];}
+ valid.slice(0,count).forEach((a,i)=>{
+  a.attack=ATTACK_TOTAL;a.warning=ATTACK_WARNING;a.edge=(volleyCount+i)%4;
+  a.aimX=rand(90,W-90);a.aimY=rand(80,H-80);
+ });
+ volleyCount++;lastVolleySize=count;
+ setText('触手 '+count+'本同時！ 光った後に高速突進');
+ tone(900,.12,'triangle',.035);
+}
 function hitArm(arm,power=1){if(!arm||arm.broken||stage==='final'||stage==='intro')return;arm.hp=Math.max(0,arm.hp-power);arm.flash=.25;const p=curve(arm),q=bez(p,.68);burst(q.x,q.y,11,['#ffeffd','#ff66cc','#fcb9f1','#ffc26d'],.7);shake=5;debugHit++;tone(320,.12,'triangle',.043);if(arm.hp<=0){arm.broken=true;burst(q.x,q.y,60);shake=13;tone(115,.38,'sawtooth',.075);setFlash('触手破壊！');if(arms.every(a=>a.broken))enterFinal();}}
 function hitNext(){const a=arms.find(v=>!v.broken);if(a){hitArm(a,3);return;}enterFinal();}
-function enterBubble(){if(stage==='final')return;stage='bubble';phaseTime=0;setText('泡攻撃中（触手は縮小）');bubbles=[];tone(660,.2,'sine',.05);}
+function enterBubble(){if(stage==='final')return;stage='bubble';phaseTime=0;arms.forEach(a=>{a.attack=0;a.warning=0;});setText('大量シャボン攻撃（安全な隙間あり）');bubbles=[];bubbleWaveCount=0;safeLane=640;tone(660,.2,'sine',.05);}
 function enterFinal(){if(stage==='final')return;arms.forEach(a=>{a.hp=0;a.broken=true;});stage='final';phaseTime=0;body.vx=rand(780,990);body.vy=rand(580,880);setText('最終形態・高速バウンド');setFlash('FINAL PHASE');burst(body.x,body.y,130);shake=19;tone(116,.7,'sawtooth',.08);}
 let flashCounter=0;function setFlash(t){flash.textContent=t;flash.style.opacity='1';flashCounter=.85;}
-function update(dt){clock+=dt;phaseTime+=dt;shake=Math.max(0,shake-30*dt);for(const a of arms){a.flash=Math.max(0,a.flash-dt);a.attack=Math.max(0,a.attack-dt);}flashCounter=Math.max(0,flashCounter-dt);if(flashCounter===0)flash.style.opacity='0';
- if(stage==='intro'){body.y=lerp(-230,340,easeOut(phaseTime/2.5));if(phaseTime>=2.5){stage='normal';phaseTime=0;setText('通常・ランダム触手攻撃');}}
+function update(dt){clock+=dt;phaseTime+=dt;shake=Math.max(0,shake-30*dt);for(const a of arms){a.flash=Math.max(0,a.flash-dt);a.attack=Math.max(0,a.attack-dt);a.warning=a.attack>ATTACK_TOTAL-ATTACK_WARNING?a.attack-(ATTACK_TOTAL-ATTACK_WARNING):0;}flashCounter=Math.max(0,flashCounter-dt);if(flashCounter===0)flash.style.opacity='0';
+ if(stage==='intro'){body.y=lerp(-230,340,easeOut(phaseTime/2.5));if(phaseTime>=2.5){stage='normal';phaseTime=0;nextVolleyAt=.75;setText('通常・同時触手攻撃');}}
  else if(stage==='normal'){body.y=340+Math.sin(clock*1.2)*8;body.x=640+Math.sin(clock*.73)*18;
- if(Math.floor((phaseTime-dt)/2.6)!==Math.floor(phaseTime/2.6))nextAttack();
+ if(phaseTime>=nextVolleyAt){nextAttack();nextVolleyAt=phaseTime+rand(1.45,2.05);}
  if(phaseTime>12.4){enterBubble();}
  }
  else if(stage==='bubble'){body.y=340+Math.sin(clock*2)*11;body.x=640+Math.sin(clock*1.1)*28;
- if(Math.floor((phaseTime-dt)/.25)!==Math.floor(phaseTime/.25))spawnBubbles();
- if(phaseTime>5){stage='normal';phaseTime=0;setText('通常・ランダム触手攻撃');}
+ if(Math.floor((phaseTime-dt)/.24)!==Math.floor(phaseTime/.24))spawnBubbles();
+ if(phaseTime>5){stage='normal';phaseTime=0;nextVolleyAt=.75;setText('通常・同時触手攻撃');}
  }
  else if(stage==='final'){const r=69;body.x+=body.vx*dt;body.y+=body.vy*dt;
  if(body.x<r||body.x>W-r){body.x=clamp(body.x,r,W-r);body.vx*=-1;shake=8;burst(body.x,body.y,12);tone(250,.07,'triangle',.045)}
@@ -86,7 +126,7 @@ function update(dt){clock+=dt;phaseTime+=dt;shake=Math.max(0,shake-30*dt);for(co
  for(const b of bubbles){b.y+=b.vy*dt;b.x+=b.vx*dt;b.life-=dt;}bubbles=bubbles.filter(b=>b.y<H+90&&b.life>0);
  for(const p of bits){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=460*dt;p.a+=p.da*dt;p.life-=dt;}bits=bits.filter(p=>p.life>0);
  if(auto&&stage==='normal'){autoHitTimer+=dt;if(autoHitTimer>2.5){autoHitTimer=0;const live=arms.filter(a=>!a.broken);if(live.length){const a=live[Math.floor(rand(0,live.length))];hitArm(a,1);}}}
- const remaining=arms.filter(a=>!a.broken).length;hpEl.style.width=Math.round((stage==='final'?.19:(.19+remaining/8*.81))*100)+'%';infoEl.textContent=stage==='final'?'全触手破壊｜丸いコアが壁と地面を高速バウンド':'触手 '+remaining+' / 8　｜　'+(stage==='bubble'?'大小シャボン大量降下中':'触手をタップ：3回命中で破壊');
+ const remaining=arms.filter(a=>!a.broken).length;hpEl.style.width=Math.round((stage==='final'?.19:(.19+remaining/8*.81))*100)+'%';infoEl.textContent=stage==='final'?'全触手破壊｜丸いコアが壁と地面を高速バウンド':'触手 '+remaining+' / 8　｜　'+(stage==='bubble'?'シャボン '+bubbles.length+'個・回避レーンあり':'触手をタップ：3回命中で破壊');
 }
 function render(){g.save();if(shake>0)g.translate(rand(-shake,shake),rand(-shake,shake));drawOcean();
  // Shadow and winding tentacles are behind the core.
@@ -103,7 +143,8 @@ c.addEventListener('pointerdown',pointer);
 document.getElementById('restart').onclick=init;document.getElementById('tentacle').onclick=hitNext;document.getElementById('bubble').onclick=enterBubble;document.getElementById('last').onclick=enterFinal;
 document.getElementById('auto').onclick=e=>{auto=!auto;e.target.textContent='自動進行：'+(auto?'ON':'OFF');};document.getElementById('sound').onclick=e=>{soundOn=!soundOn;e.target.textContent=(soundOn?'🔊':'🔇')+' 効果音：'+(soundOn?'ON':'OFF');tone(600,.14);};
 document.addEventListener('keydown',e=>{if(e.code==='KeyR')init();if(e.code==='Space'){e.preventDefault();hitNext();}if(e.code==='KeyB')enterBubble();if(e.code==='KeyF')enterFinal();});
-window.ZAMAZONE_MANA4_QA=()=>({stage,remaining:arms.filter(a=>!a.broken).length,shards:bits.length,bubbles:bubbles.length,body:{x:body.x,y:body.y},attacking:arms.filter(a=>a.attack>0).map(a=>a.i),touches:debugHit,auto});
+window.ZAMAZONE_MANA4_QA=()=>({stage,remaining:arms.filter(a=>!a.broken).length,shards:bits.length,bubbles:bubbles.length,body:{x:body.x,y:body.y},attacking:arms.filter(a=>a.attack>0).map(a=>a.i),warning:arms.filter(a=>a.warning>0).map(a=>a.i),touches:debugHit,auto,volleyCount,lastVolleySize,bubbleWaveCount,safeLane,armTip:arms.filter(a=>a.attack>0).map(a=>({i:a.i,...getTip(a)}))});
+window.ZAMAZONE_MANA4_TEST={advance(seconds,dt=1/60){let n=Math.ceil(seconds/dt);while(n-->0)update(dt);return window.ZAMAZONE_MANA4_QA();},bubble(){enterBubble();return window.ZAMAZONE_MANA4_QA();},volley(){if(stage!=='normal'){stage='normal';phaseTime=0;}nextAttack();return window.ZAMAZONE_MANA4_QA();}};
 init();requestAnimationFrame(tick);
 })();
 </script></body></html>
