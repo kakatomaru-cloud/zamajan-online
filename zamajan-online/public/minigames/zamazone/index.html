@@ -5029,6 +5029,45 @@ const zcOldStart=start;
 start=function(){zcDeath=null;return zcOldStart();};
 const zcOldDebugLaunch=launchDebugBoss;
 launchDebugBoss=function(n){zcDeath=null;return zcOldDebugLaunch(n);};
+
+// ZAMAZONE_PC_START_RECOVERY_V15_20261119
+// Use the current start() implementation rather than the stale function
+// reference captured by showPanel() before game hooks were installed.
+// Capture-phase handler deliberately only applies on the title screen,
+// never to shop, debug selection, or game-over menus.
+let zaPcStartClicks=0,zaPcStartFailures=0,zaPcStartLastError='';
+function zaPcStartFromTitle(event){
+ if(riichiMode||mode!=='intro'||panelWrap.classList.contains('hidden')||
+    !/通常ゲーム|ゲームスタート|START/i.test(mainAction.textContent||''))return;
+ event.preventDefault();event.stopImmediatePropagation();
+ zaPcStartClicks++;
+ try{
+  zShopConfirmClose();
+  zbRemoveMobileDock();
+  start(); // latest wrapped start(), not the old reference in onclick
+  if(mode!=='play')throw Error('start returned but mode='+mode);
+  const canvasEl=document.querySelector('canvas');
+  if(canvasEl)canvasEl.scrollIntoView({block:'nearest',behavior:'instant'});
+ }catch(error){
+  zaPcStartFailures++;zaPcStartLastError=String(error?.message||error);
+  console.error('ZAMAZONE_PC_START_FAILED',error);
+  const existing=document.getElementById('za-pc-start-error');
+  if(existing)existing.remove();
+  const msg=document.createElement('p');msg.id='za-pc-start-error';
+  msg.textContent='ゲームの開始に失敗しました。ページを再読み込みしてください。詳細: '+zaPcStartLastError;
+  msg.style.cssText='font-weight:bold;color:#ffcf9c;padding:12px;background:#631b35;border-radius:9px';
+  contentEl.appendChild(msg);
+  panelWrap.classList.remove('hidden');
+ }
+}
+mainAction.addEventListener('click',zaPcStartFromTitle,true);
+window.ZAMAZONE_PC_START_QA=()=>({
+ clicks:zaPcStartClicks,failures:zaPcStartFailures,lastError:zaPcStartLastError,
+ mode,gameStarted:mode==='play',
+ titleButton:/通常ゲーム|ゲームスタート|START/i.test(mainAction.textContent||''),
+ panelHidden:panelWrap.classList.contains('hidden')
+});
+
 window.ZAMAZONE_CRYSTAL_DEATH_QA=()=>({
  active:!!zcDeath,time:zcDeath?.time??null,
  shards:zcDeath?.shards.length??0,deathCount:zcDeathCount,
