@@ -198,6 +198,27 @@ jobs:
             await grassPage.waitForTimeout(2800);
             const grassLive=await grassPage.evaluate(()=>window.ZAMAZONE_BOARD_STAGE1356_QA());
             console.log('STAGE1_LIVE_RENDER',JSON.stringify(grassLive));
+            const stage1Real=grassLive.realDraws?.['1'];
+            if(!stage1Real||stage1Real.enemy<1||stage1Real.ground<1||
+               stage1Real.air<1||grassLive.legacyArtFallbacks!==0)
+              throw Error('Stage 1 real sprite calls missing or older art is still visible '+JSON.stringify(grassLive));
+            console.log('STAGE1_REAL_ART_SOURCE',JSON.stringify(stage1Real));
+            // Exercise genuine game update/draw for all non-desert stages,
+            // not merely synthetic sprite smoke calls.
+            for(const id of [3,4,5,6]){
+              const init=await grassPage.evaluate(sid=>window.ZAMAZONE_BOARD_STAGE1356_TEST.enterLiveStage(sid),id);
+              if(init.stage!==id)throw Error('Cannot select gameplay stage '+id);
+              await grassPage.waitForTimeout(1650);
+              const live=await grassPage.evaluate(()=>window.ZAMAZONE_BOARD_STAGE1356_QA());
+              const draws=live.realDraws?.[id];
+              console.log('LIVE_STAGE_ART_CHECK',id,JSON.stringify({draws,failures:live.assetFailures,loaded:live.loaded[id]}));
+              if(!draws||draws.enemy<2||draws.air<2||draws.ground<2||
+                 live.legacyArtFallbacks!==0||!live.loaded[id])
+                throw Error('Actual game is not drawing new stage '+id+' art '+JSON.stringify(live));
+              await grassPage.screenshot({path:'stage'+id+'-new-enemies-and-bases.png',fullPage:true});
+            }
+            // Restore Stage 1 for the existing normal shop path test.
+            await grassPage.evaluate(()=>window.ZAMAZONE_BOARD_STAGE1356_TEST.enterLiveStage(1));
             if(!grassLive.grassHQ||grassLive.grassArtVersion!=='source-HQ-160px'||grassLive.size['1']!==1120)
               throw Error('Grass must use full-sized ORIGINAL sprites, not placeholder vector shapes '+JSON.stringify(grassLive));
             if(!grassLive.active||grassLive.stage!==1||grassLive.ground<30||
@@ -527,6 +548,10 @@ jobs:
             pyramid-eye-mobile-shop.png
             zamazone-crystal-shatter.png
             stage1-live-art.png
+            stage6-new-enemies-and-bases.png
+            stage5-new-enemies-and-bases.png
+            stage4-new-enemies-and-bases.png
+            stage3-new-enemies-and-bases.png
             mana4-live-boss-bubbles.png
             mana4-live-core.png
             zamazone-board-all-stages.png
