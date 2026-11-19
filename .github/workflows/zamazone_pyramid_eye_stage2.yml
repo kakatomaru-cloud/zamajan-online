@@ -418,6 +418,49 @@ jobs:
             if(!await mobile.locator('[data-dbg-boss="3"]').count())throw Error('Phone failed to return to boss selection');
             if(mobileErrors.length)throw Error('Mobile runtime errors '+mobileErrors.slice(0,5).join(' | '));
             await phone.close();
+            // Integration regression: select mana4 from real boss debug UI and
+            // fight with the main game's shot/damage hooks (not the standalone).
+            const stage3Page=await browser.newPage({viewport:{width:1280,height:820}});
+            const stage3Errors=[];stage3Page.on('pageerror',e=>stage3Errors.push(e.message));
+            await stage3Page.goto('http://localhost:8765/minigames/zamazone/index.html?stage2_qa=1',{waitUntil:'domcontentloaded',timeout:120000});
+            await stage3Page.waitForSelector('#zb-debug-open',{timeout:30000});
+            await stage3Page.click('#zb-debug-open');
+            await stage3Page.click('[data-dbg-boss="4"]');
+            const selected=await stage3Page.evaluate(()=>window.ZAMAZONE_MANA4_LIVE_QA());
+            console.log('MANA4_LIVE_SELECTED',JSON.stringify(selected));
+            if(!selected.active||selected.stage!==3||selected.arms.length!==8||selected.mode!=='shop')
+              throw Error('Stage3 mana4 boss not integrated '+JSON.stringify(selected));
+            await stage3Page.click('#zb-debug-shop-start');
+            await stage3Page.click('#z-shop-exit-yes');
+            await stage3Page.waitForFunction(()=>window.ZAMAZONE_MANA4_LIVE_QA?.()?.mode==='play',null,{timeout:13000});
+            const entering=await stage3Page.evaluate(()=>window.ZAMAZONE_MANA4_LIVE_QA());
+            console.log('MANA4_LIVE_ENTERED',JSON.stringify(entering));
+            if(entering.drawFrames<10)throw Error('Live boss not rendering');
+            const hit=await stage3Page.evaluate(()=>window.ZAMAZONE_MANA4_LIVE_TEST.actualShot(0));
+            console.log('MANA4_LIVE_SHOT',JSON.stringify(hit));
+            if(hit.shotLife!==0||hit.arms[0].hp>=3)throw Error('Main-game projectile did not damage independent arm');
+            const volley=await stage3Page.evaluate(()=>window.ZAMAZONE_MANA4_LIVE_TEST.forceVolley());
+            if(volley.lastGroup<3||volley.lastGroup>5||volley.arms.filter(a=>a.warning>0).length!==volley.lastGroup)
+              throw Error('Live boss must warn 3-5 arms simultaneously '+JSON.stringify(volley));
+            const rain=await stage3Page.evaluate(()=>window.ZAMAZONE_MANA4_LIVE_TEST.forceBubble());
+            if(rain.state!=='bubble')throw Error('Mana4 bubble phase failed');
+            await stage3Page.waitForTimeout(2300);
+            const bubbles=await stage3Page.evaluate(()=>window.ZAMAZONE_MANA4_LIVE_QA());
+            console.log('MANA4_LIVE_BUBBLES',JSON.stringify(bubbles));
+            if(bubbles.bubbles<35||bubbles.bubbles>145)throw Error('Live bubbles incorrect');
+            await stage3Page.screenshot({path:'mana4-live-boss-bubbles.png',fullPage:true});
+            for(let k=0;k<8;k++)await stage3Page.evaluate(i=>window.ZAMAZONE_MANA4_LIVE_TEST.damageArm(i,3),k);
+            const final=await stage3Page.evaluate(()=>window.ZAMAZONE_MANA4_LIVE_QA());
+            console.log('MANA4_LIVE_FINAL',JSON.stringify(final));
+            if(final.state!=='final'||final.arms.some(a=>!a.broken)||final.coreHP!==22)
+              throw Error('Core phase not triggered after all arms broken');
+            await stage3Page.waitForTimeout(120);
+            await stage3Page.screenshot({path:'mana4-live-core.png',fullPage:true});
+            const defeated=await stage3Page.evaluate(()=>window.ZAMAZONE_MANA4_LIVE_TEST.hitCore(22));
+            console.log('MANA4_LIVE_DEFEATED',JSON.stringify(defeated));
+            if(!defeated||defeated.bossAlive)throw Error('Core defeat did not trigger boss destruction');
+            if(stage3Errors.length)throw Error('Mana4 live browser errors '+stage3Errors.join(' | '));
+            await stage3Page.close();
             // A new campaign life-zero event must animate before the panel appears.
             const crystal=await page.evaluate(()=>window.ZAMAZONE_CRYSTAL_DEATH_TEST.normal());
             console.log('CRYSTAL_GAME_OVER_START',JSON.stringify(crystal));
@@ -448,6 +491,8 @@ jobs:
             pyramid-eye-mobile-shop.png
             zamazone-crystal-shatter.png
             stage1-live-art.png
+            mana4-live-boss-bubbles.png
+            mana4-live-core.png
             zamazone-board-all-stages.png
       - name: Commit integration to staging (production untouched)
         run: |
