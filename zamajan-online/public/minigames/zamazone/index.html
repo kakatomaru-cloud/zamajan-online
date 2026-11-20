@@ -6226,6 +6226,7 @@ refresh();
 window.ZAMAZONE_MOBILE_CONTROLLER_QA=()=>({
  present:!!dock.isConnected,mobile:mobileQuery.matches,visible:!dock.hidden,pressEvents,legacyHidden:legacyRow?.id==='zama-mobile-legacy-row'&&getComputedStyle(legacyRow).display==='none',
  viewport:{width:innerWidth,height:innerHeight},keys:[...dock.querySelectorAll('[data-zmc-key]')].map(b=>b.dataset.zmcKey),
+ gameplay:{mode,playerX:player?.x??null,playerY:player?.y??null,bullets:bullets?.length??0,bombs:bombs?.length??0},
  held:[...held.entries()].filter(([k,p])=>p.size).map(([k])=>k),
  pointerStates:['ArrowLeft','ArrowUp','ArrowDown','ArrowRight','j','k','shoot','bomb'].filter(k=>pressed.has(k)),
  bounds:(()=>{const r=dock.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,bottom:r.bottom};})(),layout:getComputedStyle(dock).position,hitKeys:[...dock.querySelectorAll('[data-zmc-key]')].every(b=>{const r=b.getBoundingClientRect();return r.width>35&&r.height>35&&document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)===b;})
