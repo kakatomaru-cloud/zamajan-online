@@ -5,6 +5,7 @@ on:
     paths:
       - 'scripts/zamazone_mobile_fixed_controls_v1.js'
       - 'scripts/zamazone_mana4_stage3_live.js'
+      - 'scripts/zamazone_full_stage_visual_test.js'
       - 'zamajan-online/public/minigames/zamazone/board_stage1356.js'
       - 'scripts/apply_zamazone_mobile_controls.py'
       - '.github/workflows/zamazone_mobile_controller_validation.yml'
@@ -136,6 +137,13 @@ jobs:
             await context.close();await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
+      - name: Test all six stages, sprite edges and destruction animations
+        run: node scripts/zamazone_full_stage_visual_test.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zamazone-six-stage-visual-evidence
+          path: zamazone-visual-evidence/
       - uses: actions/upload-artifact@v4
         if: always()
         with:
