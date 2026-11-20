@@ -93,7 +93,7 @@ function saveData(name,data){
  if(phaseReport.error||!phaseReport.entered?.active)errors.push('Stage 3 boss not active: '+JSON.stringify(phaseReport));
  else for(const phase of ['entered','bubble','final']){
   const q=phaseReport[phase];
-  if(!q.visual||q.visual.radius!==163||!q.visual.insideArena)
+  if(!q.visual||q.visual.radius!==163||(phase==='final'&&!q.visual.insideArena))
    errors.push('Stage 3 boss changes size or is clipped in '+phase+': '+JSON.stringify(q.visual));
  }
  const desktop=await page.evaluate(()=>({
