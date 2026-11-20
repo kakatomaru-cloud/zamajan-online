@@ -452,6 +452,16 @@ jobs:
             await mobile.waitForFunction(()=>window.ZAMAZONE_MOBILE_CONTROLLER_QA?.().visible,null,{timeout:4500});
             const mobileStart=await mobile.evaluate(()=>window.ZAMAZONE_MOBILE_CONTROLLER_QA());
             console.log('MOBILE_DOCK_START',JSON.stringify(mobileStart));
+            const layoutReport=await mobile.evaluate(()=>{
+              const q=el=>{const r=el.getBoundingClientRect();return {tag:el.tagName,id:el.id,cls:String(el.className).slice(0,70),rect:[Math.round(r.x),Math.round(r.y),Math.round(r.width),Math.round(r.height)],display:getComputedStyle(el).display}};
+              const orig=[...document.querySelectorAll('[data-key]')].filter(el=>!el.closest('#zama-mobile-controller'));
+              return {legacy:orig.map(el=>({key:el.dataset.key,...q(el)})),parents:[...new Set(orig.map(el=>el.parentElement))].map(q),
+              sounds:[...document.querySelectorAll('#soundBtn')].map(q),
+              canvas:[...document.querySelectorAll('canvas')].map(q),
+              dock:q(document.getElementById('zama-mobile-controller')),
+              bodyHeight:document.body.scrollHeight};
+            });
+            console.log('MOBILE_LAYOUT_LEGACY',JSON.stringify(layoutReport));
             if(mobileStart.keys.length!==6||mobileStart.bounds.bottom>852||mobileStart.bounds.y<550||mobileStart.bounds.width<350)
               throw Error('Fixed controller is not in phone bottom region '+JSON.stringify(mobileStart));
             // Hold movement and shot simultaneously using two pointer IDs.
