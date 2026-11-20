@@ -27,11 +27,11 @@ function saveData(name,data){
   const d=window.ZAMAZONE_DESERT_REDESIGN_QA?.();
   return q&&Object.values(q.loaded).every(Boolean)&&d&&Object.values(d.assets).every(x=>{const [n,m]=x.split('/').map(Number);return n===m;});
  },{timeout:60000});
- const assetAudit=await page.evaluate(()=>{
+ const assetAudit=await page.evaluate(async()=>{
   const cvs=document.createElement('canvas'),ctx2=cvs.getContext('2d',{willReadFrequently:true});
-  function spriteAudit(file,parts,sw,sh){
+  async function spriteAudit(file,parts,sw,sh){
    const img=new Image();img.src=file;
-   if(!img.complete||!img.naturalWidth)return {file,error:'image unavailable'};
+   try{await img.decode();}catch{return {file,error:'image unavailable'};}
    if(img.naturalWidth!==sw*parts||img.naturalHeight!==sh)return {file,error:'atlas dimensions mismatch',width:img.naturalWidth,height:img.naturalHeight};
    cvs.width=img.naturalWidth;cvs.height=img.naturalHeight;ctx2.clearRect(0,0,cvs.width,cvs.height);ctx2.drawImage(img,0,0);
    const px=ctx2.getImageData(0,0,cvs.width,cvs.height).data;
@@ -48,9 +48,9 @@ function saveData(name,data){
    }
    return {file,width:cvs.width,height:cvs.height,cells};
   }
-  const arr=[spriteAudit('assets/board_stage1356/grass_hq.webp',7,160,160)];
-  for(const name of ['ocean','snow','neon','digital'])arr.push(spriteAudit('assets/board_stage1356/'+name+'.png',7,48,48));
-  return arr;
+  const promises=[spriteAudit('assets/board_stage1356/grass_hq.webp',7,160,160)];
+  for(const name of ['ocean','snow','neon','digital'])promises.push(spriteAudit('assets/board_stage1356/'+name+'.png',7,48,48));
+  return Promise.all(promises);
  });
  fs.writeFileSync(path.join(out,'asset-audit.json'),JSON.stringify(assetAudit,null,2));
  for(const asset of assetAudit){
