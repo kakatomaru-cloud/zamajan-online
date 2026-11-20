@@ -7,6 +7,7 @@ on:
       - 'scripts/zamazone_mana4_stage3_live.js'
       - 'scripts/zamazone_full_stage_visual_test.js'
       - 'zamajan-online/public/minigames/zamazone/board_stage1356.js'
+      - 'zamajan-online/public/minigames/zamazone/desert_redesign_stage2.js'
       - 'scripts/apply_zamazone_mobile_controls.py'
       - '.github/workflows/zamazone_mobile_controller_validation.yml'
   workflow_dispatch:
