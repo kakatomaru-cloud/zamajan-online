@@ -164,8 +164,10 @@ function advance(dt){
   if(phaseTime>=5.1){state='normal';phaseTime=0;nextVolley=.7;}
  }else if(state==='final'){
   body.x+=body.vx*d;body.y+=body.vy*d;
-  if(body.x<65||body.x>W-65){body.x=clamp(body.x,65,W-65);body.vx*=-1;shake=6;}
-  if(body.y<80||body.y>H-100){body.y=clamp(body.y,80,H-100);body.vy*=-1;shake=6;}
+  // Full-size final phase must remain inside arena instead of clipping at edges.
+  const marginX=Math.min(180,W*.30),marginY=Math.min(185,H*.30);
+  if(body.x<marginX||body.x>W-marginX){body.x=clamp(body.x,marginX,W-marginX);body.vx*=-1;shake=6;}
+  if(body.y<marginY||body.y>H-marginY){body.y=clamp(body.y,marginY,H-marginY);body.vy*=-1;shake=6;}
  }
  for(const a of arms){
   a.flash=Math.max(0,a.flash-d);a.attack=Math.max(0,a.attack-d);
