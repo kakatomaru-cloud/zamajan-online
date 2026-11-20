@@ -1,0 +1,114 @@
+name: Validate and publish mobile controller
+on:
+  push:
+    branches: [chatgpt-staging]
+    paths:
+      - 'scripts/zamazone_mobile_fixed_controls_v1.js'
+      - 'scripts/apply_zamazone_mobile_controls.py'
+      - '.github/workflows/zamazone_mobile_controller_validation.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt-staging
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Rebuild complete game and all generated artwork
+        run: |
+          python3 scripts/apply_zamazone_pyramid_eye_stage2.py
+          python3 scripts/apply_zamazone_desert_redesign.py
+          python3 scripts/apply_zamazone_board_stage1356.py
+          python3 scripts/apply_zamazone_mana4_stage3.py
+          python3 scripts/apply_zamazone_mobile_controls.py
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('zamajan-online/public/minigames/zamazone/index.html').read_text('utf8')
+          assert s.count('ZAMAZONE_MOBILE_FIXED_CONTROLLER_V1_20261120')==1
+          code=re.findall(r'<script[^>]*>(.*?)</script>',s,re.S)
+          for i,v in enumerate(code):
+           if v.strip():Path(f'/tmp/zamajs{i}.js').write_text(v)
+          PY
+          for f in /tmp/zamajs*.js; do node --check "$f"; done
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Verify smartphone geometry and physical touch inputs
+        run: |
+          python3 -m http.server 8765 --directory zamajan-online/public > /tmp/game.log 2>&1 &
+          sleep 2
+          node <<'JS'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+            const context=await browser.newContext({viewport:{width:393,height:852},isMobile:true,hasTouch:true,deviceScaleFactor:3});
+            const page=await context.newPage();const errors=[];
+            page.on('pageerror',e=>errors.push(e.message));
+            await page.goto('http://localhost:8765/minigames/zamazone/index.html',{waitUntil:'domcontentloaded',timeout:120000});
+            await page.waitForSelector('#mainAction',{timeout:30000});
+            await page.locator('#mainAction').tap();
+            await page.waitForFunction(()=>window.ZAMAZONE_MOBILE_CONTROLLER_QA?.().visible,null,{timeout:5000});
+            const q=await page.evaluate(()=>{
+              const qa=window.ZAMAZONE_MOBILE_CONTROLLER_QA();
+              const canvas=document.querySelector('#game').getBoundingClientRect();
+              const dock=document.querySelector('#zama-mobile-controller').getBoundingClientRect();
+              return {...qa,canvas:{top:canvas.top,bottom:canvas.bottom},row:{top:dock.top,bottom:dock.bottom}};
+            });
+            console.log('ZAMA_MOBILE_GEOMETRY',JSON.stringify(q));
+            if(!q.legacyHidden||!q.hitKeys||q.layout!=='relative'||q.bounds.y<q.canvas.bottom-2||
+               q.bounds.bottom>852||q.bounds.width<350)throw Error('Controller overlaps game or legacy UI');
+            const kinds=['ArrowLeft','ArrowUp','ArrowDown','ArrowRight','j','k'];
+            for(const key of kinds){
+              await page.locator('[data-zmc-key="'+key+'"]').tap({timeout:7000});
+            }
+            const afterTap=await page.evaluate(()=>window.ZAMAZONE_MOBILE_CONTROLLER_QA());
+            console.log('ZAMA_MOBILE_REAL_TAPS',JSON.stringify(afterTap));
+            if(afterTap.pressEvents<6||afterTap.held.length||afterTap.pointerStates.length)
+              throw Error('Real touchscreen tap failed or key stuck');
+            const combo=await page.evaluate(()=>{
+              const left=document.querySelector('[data-zmc-key="ArrowLeft"]');
+              const shoot=document.querySelector('[data-zmc-key="j"]');
+              left.dispatchEvent(new PointerEvent('pointerdown',{pointerId:201,pointerType:'touch',bubbles:true}));
+              shoot.dispatchEvent(new PointerEvent('pointerdown',{pointerId:202,pointerType:'touch',bubbles:true}));
+              return window.ZAMAZONE_MOBILE_CONTROLLER_QA();
+            });
+            console.log('ZAMA_MOBILE_SIMULTANEOUS',JSON.stringify(combo));
+            if(!combo.held.includes('ArrowLeft')||!combo.held.includes('j')||
+               !combo.pointerStates.includes('shoot'))throw Error('Movement+shot multi-touch invalid');
+            await page.evaluate(()=>{
+              for(const [key,pid] of [['ArrowLeft',201],['j',202]]){
+                document.querySelector('[data-zmc-key="'+key+'"]').dispatchEvent(new PointerEvent('pointerup',{pointerId:pid,pointerType:'touch',bubbles:true}));
+              }
+            });
+            const free=await page.evaluate(()=>window.ZAMAZONE_MOBILE_CONTROLLER_QA());
+            if(free.held.length||free.pointerStates.length)throw Error('Held input survived release');
+            await page.screenshot({path:'mobile-controls-portrait.png',fullPage:true});
+            if(errors.length)throw Error('Runtime errors: '+errors.join(' | '));
+            await context.close();await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verified-mobile-controls
+          path: mobile-controls-portrait.png
+      - name: Publish verified staging build (never main)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add zamajan-online/public/minigames/zamazone/index.html \
+             zamajan-online/public/minigames/zamazone/assets/pyramid_eye/ \
+             zamajan-online/public/minigames/zamazone/assets/board_stage1356/
+          if ! git diff --cached --quiet; then
+            git commit -m "fix(zamazone): published collision-free working mobile controller"
+            git pull --rebase origin chatgpt-staging
+            git push origin HEAD:chatgpt-staging
+          fi
