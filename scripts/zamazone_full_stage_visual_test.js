@@ -81,6 +81,21 @@ function saveData(name,data){
    errors.push('Stage '+stage+' missing sprites or animated fragmentation: '+JSON.stringify(x));
   if(result.quality.assetFailures>0)errors.push('Stage '+stage+' art load errors '+result.quality.lastArtError);
  }
+ const phaseReport=await page.evaluate(()=>{
+  const test=window.ZAMAZONE_MANA4_LIVE_TEST;
+  if(!test)return {error:'stage 3 boss test API missing'};
+  const entered=test.enter();
+  const bubble=test.forceBubble();
+  const final=test.forceFinal();
+  return {entered,bubble,final};
+ });
+ fs.writeFileSync(path.join(out,'stage-3-boss-phases.json'),JSON.stringify(phaseReport,null,2));
+ if(phaseReport.error||!phaseReport.entered?.active)errors.push('Stage 3 boss not active: '+JSON.stringify(phaseReport));
+ else for(const phase of ['entered','bubble','final']){
+  const q=phaseReport[phase];
+  if(!q.visual||q.visual.radius!==163||!q.visual.insideArena)
+   errors.push('Stage 3 boss changes size or is clipped in '+phase+': '+JSON.stringify(q.visual));
+ }
  const desktop=await page.evaluate(()=>({
    legacy:[...document.querySelectorAll('[data-key]')].filter(el=>getComputedStyle(el).display!=='none').length,
    dock:document.querySelector('#zama-mobile-controller')?getComputedStyle(document.querySelector('#zama-mobile-controller')).display:null
