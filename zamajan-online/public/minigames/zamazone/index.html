@@ -6089,7 +6089,7 @@ if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
 })();
 
 /* ZAMAZONE_MOBILE_FIXED_CONTROLLER_V1_20261120
- * Thumb-friendly touch controller below the playfield.
+ * Thumb-friendly touch controller in a dedicated row below the playfield.
  * Uses the game's own `pressed` set, supports multi-touch, safe-area inset,
  * and never overlays shop or dialog modes. Desktop keyboard unchanged.
  */
@@ -6099,11 +6099,11 @@ const mobileQuery=window.matchMedia('(pointer:coarse) and (max-width: 900px)');
 const style=document.createElement('style');
 style.id='zama-mobile-controller-style';
 style.textContent=`
-#zama-mobile-controller{display:none;box-sizing:border-box;position:fixed;bottom:0;left:0;right:0;z-index:4000;
+#zama-mobile-controller{display:none;box-sizing:border-box;position:relative;bottom:auto;left:auto;right:auto;z-index:2;width:100%;
  padding:8px max(10px,env(safe-area-inset-right)) calc(9px + env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));
  background:linear-gradient(180deg,#0b2048f7,#091027fd);
  border-top:3px solid #8edaff;box-shadow:0 -8px 28px #05102688;
- align-items:center;justify-content:space-between;gap:10px;touch-action:none;user-select:none;-webkit-user-select:none}
+ align-items:center;justify-content:space-between;gap:10px;touch-action:none;user-select:none;-webkit-user-select:none;overscroll-behavior:contain}
 #zama-mobile-controller[hidden]{display:none!important}
 #zama-mobile-controller .zama-dpad{display:grid;grid-template-columns:repeat(3,minmax(0,56px));
  grid-template-rows:repeat(2,54px);gap:5px;flex:0 1 auto}
@@ -6116,13 +6116,15 @@ style.textContent=`
 #zama-mobile-controller button.zmc-pressed{transform:translateY(3px);background:linear-gradient(#ffbf76,#e66c9f);box-shadow:0 1px 0 #061536}
 #zama-mobile-controller .zama-actions{display:flex;gap:9px;align-items:center;justify-content:flex-end;flex:1}
 #zama-mobile-controller .zama-actions button{height:86px;min-width:74px;width:min(22vw,95px);
- font-size:16px;line-height:1.2;border-radius:22px;flex-shrink:0}
+ font-size:16px;line-height:1.2;border-radius:22px;flex-shrink:0;white-space:pre-line}
 #zama-mobile-controller .zama-actions button.zmc-shot{background:linear-gradient(#ffba64,#e45183);border-color:#fff3c6}
 #zama-mobile-controller .zama-actions button.zmc-bomb{background:linear-gradient(#7bd5ff,#326acb);border-color:#c3f1ff}
 #zama-mobile-controller .zama-actions button.zmc-pressed{background:linear-gradient(#ffeb9b,#fc6691)}
 #zama-mobile-controller .zama-actions .zmc-sound{width:42px;min-width:42px;height:47px;font-size:18px;border-radius:12px}
-body.zama-mobile-control-active{padding-bottom:calc(145px + env(safe-area-inset-bottom))!important}
-body.zama-mobile-control-active [data-key]:not(#zama-mobile-controller [data-key]){display:none!important}
+body.zama-mobile-control-active{padding-bottom:0!important}
+body.zama-mobile-control-active [data-key]{display:none!important}
+body.zama-mobile-control-active #soundBtn{display:none!important}
+body.zama-mobile-control-active #zama-mobile-legacy-row{display:none!important}
 @media (max-width:400px){#zama-mobile-controller{gap:5px;padding-left:5px;padding-right:5px}
  #zama-mobile-controller .zama-dpad{grid-template-columns:repeat(3,49px);grid-template-rows:repeat(2,51px);gap:3px}
  #zama-mobile-controller .zama-actions{gap:5px}
@@ -6133,7 +6135,7 @@ body.zama-mobile-control-active [data-key]:not(#zama-mobile-controller [data-key
  #zama-mobile-controller .zama-dpad{grid-template-rows:repeat(2,42px);grid-template-columns:repeat(3,47px)}
  #zama-mobile-controller button{min-height:40px}
  #zama-mobile-controller .zama-actions button{height:70px}
- body.zama-mobile-control-active{padding-bottom:calc(111px + env(safe-area-inset-bottom))!important}
+ body.zama-mobile-control-active{padding-bottom:0!important}
 }
 `;
 document.head.appendChild(style);
@@ -6141,7 +6143,24 @@ const dock=document.createElement('nav');
 dock.id='zama-mobile-controller';dock.setAttribute('aria-label','ゲーム操作コントローラ');
 const dpad=document.createElement('div');dpad.className='zama-dpad';
 const actions=document.createElement('div');actions.className='zama-actions';
-dock.append(dpad,actions);document.body.appendChild(dock);
+dock.append(dpad,actions);
+const legacyKeys=[...document.querySelectorAll('[data-key]')];
+// The existing controls are in the game panel already. Replace that row
+// in normal document flow rather than adding a second viewport-fixed overlay.
+// Existing controls have separate movement and action groups. Find their
+// shared row, never place the new controller inside one of the groups.
+let legacyRow=legacyKeys[0]||null;
+while(legacyRow&&!legacyKeys.every(el=>legacyRow.contains(el)))legacyRow=legacyRow.parentElement;
+const gameCanvas=document.querySelector('canvas');
+if(legacyRow&&(legacyRow===document.body||(gameCanvas&&legacyRow.contains(gameCanvas))))legacyRow=null;
+if(legacyRow){
+ legacyRow.id='zama-mobile-legacy-row';
+ legacyRow.insertAdjacentElement('afterend',dock);
+}else{
+ if(gameCanvas){gameCanvas.insertAdjacentElement('afterend',dock);}
+ else document.body.appendChild(dock);
+}
+let pressEvents=0;
 const keys=[['ArrowLeft','◀',0,1],['ArrowUp','▲',1,0],['ArrowDown','▼',1,1],['ArrowRight','▶',2,1]];
 const held=new Map();
 function release(key,pointerId){
@@ -6150,6 +6169,8 @@ function release(key,pointerId){
   if(set.size) return;
  }
  pressed.delete(key);
+ if(key==='j')pressed.delete('shoot');
+ if(key==='k')pressed.delete('bomb');
  const button=dock.querySelector('[data-zmc-key="'+key+'"]');
  if(button)button.classList.remove('zmc-pressed');
 }
@@ -6162,7 +6183,10 @@ function makeButton(key,label,group,cls=''){
   try{b.setPointerCapture(e.pointerId);}catch{}
   if(!held.has(key))held.set(key,new Set());
   held.get(key).add(e.pointerId);
-  pressed.add(key);b.classList.add('zmc-pressed');
+  pressed.add(key);
+  if(key==='j')pressed.add('shoot');
+  if(key==='k')pressed.add('bomb');
+  b.classList.add('zmc-pressed');pressEvents++;
  });
  for(const type of ['pointerup','pointercancel','lostpointercapture']){
   b.addEventListener(type,e=>{e.preventDefault();release(key,e.pointerId);});
@@ -6200,11 +6224,11 @@ const oldUpdate=update;
 update=function(dt){oldUpdate(dt);refresh();};
 refresh();
 window.ZAMAZONE_MOBILE_CONTROLLER_QA=()=>({
- present:!!dock.isConnected,mobile:mobileQuery.matches,visible:!dock.hidden,
+ present:!!dock.isConnected,mobile:mobileQuery.matches,visible:!dock.hidden,pressEvents,legacyHidden:legacyRow?.id==='zama-mobile-legacy-row'&&getComputedStyle(legacyRow).display==='none',
  viewport:{width:innerWidth,height:innerHeight},keys:[...dock.querySelectorAll('[data-zmc-key]')].map(b=>b.dataset.zmcKey),
  held:[...held.entries()].filter(([k,p])=>p.size).map(([k])=>k),
- pointerStates:['ArrowLeft','ArrowUp','ArrowDown','ArrowRight','j','k'].filter(k=>pressed.has(k)),
- bounds:(()=>{const r=dock.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,bottom:r.bottom};})()
+ pointerStates:['ArrowLeft','ArrowUp','ArrowDown','ArrowRight','j','k','shoot','bomb'].filter(k=>pressed.has(k)),
+ bounds:(()=>{const r=dock.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,bottom:r.bottom};})(),layout:getComputedStyle(dock).position,hitKeys:[...dock.querySelectorAll('[data-zmc-key]')].every(b=>{const r=b.getBoundingClientRect();return r.width>35&&r.height>35&&document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)===b;})
 });
 })();
 
