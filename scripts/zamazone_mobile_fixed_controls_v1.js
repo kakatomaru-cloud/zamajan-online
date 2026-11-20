@@ -57,13 +57,17 @@ dock.append(dpad,actions);
 const legacyKeys=[...document.querySelectorAll('[data-key]')];
 // The existing controls are in the game panel already. Replace that row
 // in normal document flow rather than adding a second viewport-fixed overlay.
-const legacyRow=legacyKeys.length?legacyKeys[0].parentElement:null;
-if(legacyRow&&legacyKeys.every(el=>legacyRow.contains(el))&&!legacyRow.querySelector('canvas')){
+// Existing controls have separate movement and action groups. Find their
+// shared row, never place the new controller inside one of the groups.
+let legacyRow=legacyKeys[0]||null;
+while(legacyRow&&!legacyKeys.every(el=>legacyRow.contains(el)))legacyRow=legacyRow.parentElement;
+const gameCanvas=document.querySelector('canvas');
+if(legacyRow&&(legacyRow===document.body||(gameCanvas&&legacyRow.contains(gameCanvas))))legacyRow=null;
+if(legacyRow){
  legacyRow.id='zama-mobile-legacy-row';
  legacyRow.insertAdjacentElement('afterend',dock);
 }else{
- const canvas=document.querySelector('canvas');
- if(canvas){canvas.insertAdjacentElement('afterend',dock);}
+ if(gameCanvas){gameCanvas.insertAdjacentElement('afterend',dock);}
  else document.body.appendChild(dock);
 }
 let pressEvents=0;
@@ -75,6 +79,8 @@ function release(key,pointerId){
   if(set.size) return;
  }
  pressed.delete(key);
+ if(key==='j')pressed.delete('shoot');
+ if(key==='k')pressed.delete('bomb');
  const button=dock.querySelector('[data-zmc-key="'+key+'"]');
  if(button)button.classList.remove('zmc-pressed');
 }
@@ -87,7 +93,10 @@ function makeButton(key,label,group,cls=''){
   try{b.setPointerCapture(e.pointerId);}catch{}
   if(!held.has(key))held.set(key,new Set());
   held.get(key).add(e.pointerId);
-  pressed.add(key);b.classList.add('zmc-pressed');pressEvents++;
+  pressed.add(key);
+  if(key==='j')pressed.add('shoot');
+  if(key==='k')pressed.add('bomb');
+  b.classList.add('zmc-pressed');pressEvents++;
  });
  for(const type of ['pointerup','pointercancel','lostpointercapture']){
   b.addEventListener(type,e=>{e.preventDefault();release(key,e.pointerId);});
@@ -128,7 +137,7 @@ window.ZAMAZONE_MOBILE_CONTROLLER_QA=()=>({
  present:!!dock.isConnected,mobile:mobileQuery.matches,visible:!dock.hidden,pressEvents,legacyHidden:legacyRow?.id==='zama-mobile-legacy-row'&&getComputedStyle(legacyRow).display==='none',
  viewport:{width:innerWidth,height:innerHeight},keys:[...dock.querySelectorAll('[data-zmc-key]')].map(b=>b.dataset.zmcKey),
  held:[...held.entries()].filter(([k,p])=>p.size).map(([k])=>k),
- pointerStates:['ArrowLeft','ArrowUp','ArrowDown','ArrowRight','j','k'].filter(k=>pressed.has(k)),
+ pointerStates:['ArrowLeft','ArrowUp','ArrowDown','ArrowRight','j','k','shoot','bomb'].filter(k=>pressed.has(k)),
  bounds:(()=>{const r=dock.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,bottom:r.bottom};})(),layout:getComputedStyle(dock).position,hitKeys:[...dock.querySelectorAll('[data-zmc-key]')].every(b=>{const r=b.getBoundingClientRect();return r.width>35&&r.height>35&&document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)===b;})
 });
 })();
