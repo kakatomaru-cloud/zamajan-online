@@ -6,6 +6,7 @@
 (()=>{
 'use strict';
 const mobileQuery=window.matchMedia('(pointer:coarse) and (max-width: 900px)');
+const desktopQuery=window.matchMedia('(hover: hover) and (pointer: fine) and (min-width: 901px)');
 const style=document.createElement('style');
 style.id='zama-mobile-controller-style';
 style.textContent=`
@@ -15,6 +16,9 @@ style.textContent=`
  border-top:3px solid #8edaff;box-shadow:0 -8px 28px #05102688;
  align-items:center;justify-content:space-between;gap:10px;touch-action:none;user-select:none;-webkit-user-select:none;overscroll-behavior:contain}
 #zama-mobile-controller[hidden]{display:none!important}
+@media (hover:hover) and (pointer:fine) and (min-width:901px){
+ #zama-mobile-controller,#zama-mobile-legacy-row,[data-key],.touch-controls,.mobile-controls,.virtual-controller{display:none!important}
+}
 #zama-mobile-controller .zama-dpad{display:grid;grid-template-columns:repeat(3,minmax(0,56px));
  grid-template-rows:repeat(2,54px);gap:5px;flex:0 1 auto}
 #zama-mobile-controller button{appearance:none;-webkit-appearance:none;touch-action:none;
@@ -117,7 +121,7 @@ soundButton.addEventListener('click',()=>{
 });actions.appendChild(soundButton);
 let wasVisible=false;
 function refresh(){
- const mobile=mobileQuery.matches;
+ const mobile=mobileQuery.matches&&!desktopQuery.matches;
  const playable=mode==='play'||mode==='bossIntro';
  const visible=mobile&&playable&&panelWrap.classList.contains('hidden');
  if(visible!==wasVisible){
@@ -127,8 +131,10 @@ function refresh(){
  dock.hidden=!visible;
  dock.style.display=visible?'flex':'none';
  document.body.classList.toggle('zama-mobile-control-active',mobile);
+ document.body.classList.toggle('zama-desktop-control-hidden',desktopQuery.matches);
 }
 if(mobileQuery.addEventListener)mobileQuery.addEventListener('change',refresh);
+if(desktopQuery.addEventListener)desktopQuery.addEventListener('change',refresh);
 window.addEventListener('blur',()=>{for(const key of held.keys())release(key);held.clear();});
 const oldUpdate=update;
 update=function(dt){oldUpdate(dt);refresh();};
