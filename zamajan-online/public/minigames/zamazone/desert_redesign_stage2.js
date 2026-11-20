@@ -39,7 +39,7 @@
    const air=!!(b.flying||b.air),phase=b.phase||0,cyc=phase%3.3;
    const frame=cyc<2.03?0:cyc<2.19?1:cyc<2.68?2:3;
    const ok=air?
-      sprite(images.air_idle[frame],x,b.y+Math.sin(phase*2.7)*7,204,204,red(b)):
+      sprite(images.air_idle[frame],x,Math.min(ground-112,Math.max(112,b.y+Math.sin(phase*2.7)*7)),204,204,red(b)):
       sprite(images.ground_idle[frame],x,ground-100,210,202,red(b));
    if(ok){counters[air?'airDraw':'groundDraw']++;return;}
    if(!warned){console.warn('ZAMAZONE desert art not ready; showing original until decoded.');warned=true;}
@@ -70,7 +70,7 @@
    const result=prevHitBase(b,amount);
    if(wasAlive&&!b.alive&&before>0){
      const air=!!(b.flying||b.air);
-     deaths.push({x:b.x,y:air?b.y:ground+2,air,time:0});
+     deaths.push({x:b.x,y:air?Math.min(ground-112,Math.max(112,b.y)):ground+2,air,time:0});
      counters[air?'airDestroyed':'groundDestroyed']++;
    }
    return result;
