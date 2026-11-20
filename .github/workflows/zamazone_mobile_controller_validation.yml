@@ -83,6 +83,15 @@ jobs:
             console.log('ZAMA_MOBILE_SIMULTANEOUS',JSON.stringify(combo));
             if(!combo.held.includes('ArrowLeft')||!combo.held.includes('j')||
                !combo.pointerStates.includes('shoot'))throw Error('Movement+shot multi-touch invalid');
+            await page.waitForTimeout(380);
+            const actual=await page.evaluate(()=>window.ZAMAZONE_MOBILE_CONTROLLER_QA());
+            console.log('ZAMA_MOBILE_GAMEPLAY_MOVEMENT',JSON.stringify({
+              before:combo.gameplay,after:actual.gameplay,held:actual.held
+            }));
+            if(Math.abs(actual.gameplay.playerX-combo.gameplay.playerX)<5)
+              throw Error('Holding direction did not move player in actual game');
+            if(actual.gameplay.bullets<1)
+              throw Error('Holding Shot did not create gameplay bullets');
             await page.evaluate(()=>{
               for(const [key,pid] of [['ArrowLeft',201],['j',202]]){
                 document.querySelector('[data-zmc-key="'+key+'"]').dispatchEvent(new PointerEvent('pointerup',{pointerId:pid,pointerType:'touch',bubbles:true}));
