@@ -462,8 +462,9 @@ jobs:
               bodyHeight:document.body.scrollHeight};
             });
             console.log('MOBILE_LAYOUT_LEGACY',JSON.stringify(layoutReport));
-            if(mobileStart.keys.length!==6||mobileStart.bounds.bottom>852||mobileStart.bounds.y<550||mobileStart.bounds.width<350)
-              throw Error('Fixed controller is not in phone bottom region '+JSON.stringify(mobileStart));
+            if(mobileStart.keys.length!==6||mobileStart.bounds.width<350||
+               mobileStart.layout!=='relative'||!mobileStart.legacyHidden||!mobileStart.hitKeys)
+              throw Error('Mobile pad must occupy its own row with no overlapping legacy buttons '+JSON.stringify(mobileStart));
             // Hold movement and shot simultaneously using two pointer IDs.
             const moving=await mobile.evaluate(()=>{
               const left=document.querySelector('#zama-mobile-controller [data-zmc-key="ArrowLeft"]');
@@ -485,6 +486,15 @@ jobs:
             const released=await mobile.evaluate(()=>window.ZAMAZONE_MOBILE_CONTROLLER_QA());
             if(released.held.length||released.pointerStates.length)
               throw Error('Touch controls stuck after release '+JSON.stringify(released));
+            // Exercise actual touch events, not only synthetic pointer events,
+            // and ensure taps land on the intended button rather than old UI.
+            await mobile.locator('#zama-mobile-controller [data-zmc-key="ArrowRight"]').tap();
+            await mobile.locator('#zama-mobile-controller [data-zmc-key="j"]').tap();
+            await mobile.locator('#zama-mobile-controller [data-zmc-key="k"]').tap();
+            const realTaps=await mobile.evaluate(()=>window.ZAMAZONE_MOBILE_CONTROLLER_QA());
+            console.log('MOBILE_DOCK_REAL_TAPS',JSON.stringify(realTaps));
+            if(realTaps.pressEvents<5||!realTaps.hitKeys||realTaps.held.length)
+              throw Error('Real touchscreen taps did not reach all controller buttons '+JSON.stringify(realTaps));
             await mobile.screenshot({path:'zamazone-mobile-fixed-dock.png',fullPage:true});
             // Reload to the title screen before pre-existing boss-shop tests.
             await mobile.reload({waitUntil:'domcontentloaded',timeout:120000});
