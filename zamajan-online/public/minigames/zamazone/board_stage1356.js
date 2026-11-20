@@ -381,8 +381,8 @@ drawBase=function(b){
  if(!b?.alive)return;
  const x=screenX(b.x),isAir=!!(b.flying||b.air);
  if(x<-190||x>W+190)return;
- const size=baseScale[current()],t=animate(current(),b);
- const y=isAir?b.y+Math.sin(t*2.5)*7:ground-size*.48+5;
+ const size=Math.min(baseScale[current()],Math.max(115,(ground-95)*.52)),t=animate(current(),b);
+ const y=isAir?Math.max(size*.53+12,Math.min(ground-size*.53-12,b.y+Math.sin(t*2.5)*7)):ground-size*.5-13;
  if(!loaded(current())){pendingArt(x,y,isAir?'air':'ground',current());return;}
  const index=isAir?5:6;
  // Idle animation: 4-phase bob, head tilt, rhythmic cannon/jewel gleam.
@@ -440,7 +440,7 @@ const originalHitBase=hitBase;
 hitBase=function(b,damageAmount){
  if(!enabled()||!b?.alive)return originalHitBase(b,damageAmount);
  const before=b.alive,idx=b.flying||b.air?5:6,origX=b.x,
- y=b.flying||b.air?b.y:ground-baseScale[current()]*.48+5,sz=baseScale[current()];
+ y=b.flying||b.air?b.y:ground-Math.min(baseScale[current()],Math.max(115,(ground-95)*.52))*.5-13,sz=Math.min(baseScale[current()],Math.max(115,(ground-95)*.52));
  const result=originalHitBase(b,damageAmount);
  if(before&&!b.alive)spawnDeath(idx,origX,y,sz,'base');
  return result;
@@ -451,7 +451,7 @@ update=function(dt){
  previousUpdate(dt);
  const d=Math.min(.05,Math.max(0,dt));
  deaths.forEach(a=>a.time+=d);
- for(let i=deaths.length-1;i>=0;i--)if(deaths[i].time>1.5)deaths.splice(i,1);
+ for(let i=deaths.length-1;i>=0;i--)if(deaths[i].time>2.25)deaths.splice(i,1);
  if(!enabled())return;
  if(id!==lastStage){spawnCount=0;lastStage=id;}
  if(before){
@@ -476,14 +476,21 @@ drawProjectiles=function(){
  // Reuse tiles from the actual attached sprite, never generic geometric stickers.
  for(const d of deaths){
   if(!loaded(d.id))continue;
-  const x=screenX(d.x),t=d.time,progress=Math.min(1,t/1.3);
+  const x=screenX(d.x),t=d.time,progress=Math.min(1,t/1.9);
   if(x<-200||x>W+200)continue;
-  const alpha=Math.min(1,Math.max(0,(1.5-t)/.38));
+  const alpha=Math.min(1,Math.max(0,(2.25-t)/.55));
   const sz=d.size/4;
   ctx.save();ctx.imageSmoothingEnabled=true;
+  // Stage-2-quality staged dismantling: the original body shakes, splits and scatters.
+  if(d.kind==='base'&&t<.48){
+    const sh=Math.sin(t*92)*(2+t*19),collapse=1-Math.pow(t/.48,2)*.22;
+    paint(d.index,x+sh,d.y+Math.min(14,t*24),d.size*collapse,d.size*collapse,
+      {red:t>.14&&Math.sin(t*49)>0,alpha:Math.max(0,1-t/.48),kind:'death'});
+  }
   for(const p of d.parts){
-   const i=(p.sy/12)*4+(p.sx/12),tx=x+((p.sx-18)*d.size/48)+p.vx*t*.8,
-     ty=d.y+((p.sy-18)*d.size/48)+p.vy*t*.8+210*t*t;
+   const i=(p.sy/12)*4+(p.sx/12),explode=Math.max(0,t-(d.kind==='base'?.25:0)),
+     tx=x+((p.sx-18)*d.size/48)+p.vx*explode*.9,
+     ty=d.y+((p.sy-18)*d.size/48)+p.vy*explode*.9+175*explode*explode;
    ctx.save();ctx.globalAlpha=alpha;
    ctx.translate(tx,ty);ctx.rotate(t*p.rot);
    if(d.id===1 && grassReady())
@@ -492,10 +499,10 @@ drawProjectiles=function(){
      ctx.drawImage(atlas[d.id],src(d.index)+p.sx,p.sy,12,12,-sz*.5,-sz*.5,sz,sz);
    ctx.restore();counters.fragments++;
   }
-  if(t<.32){
-   ctx.save();ctx.globalAlpha=(.32-t)/.32*.8;
+  if(t<.48){
+   ctx.save();ctx.globalAlpha=(.48-t)/.48*.8;
    ctx.strokeStyle=accents[d.id];ctx.shadowColor=accents[d.id];ctx.shadowBlur=20;
-   ctx.lineWidth=5;ctx.beginPath();ctx.arc(x,d.y,(d.size*.2)+t*130,0,Math.PI*2);
+   ctx.lineWidth=5;ctx.beginPath();ctx.arc(x,d.y,(d.size*.2)+t*170,0,Math.PI*2);
    ctx.stroke();ctx.restore();
   }
   ctx.restore();
