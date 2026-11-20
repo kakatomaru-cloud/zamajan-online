@@ -476,11 +476,11 @@ jobs:
             if(released.held.length||released.pointerStates.length)
               throw Error('Touch controls stuck after release '+JSON.stringify(released));
             await mobile.screenshot({path:'zamazone-mobile-fixed-dock.png',fullPage:true});
-            await mobile.evaluate(()=>window.ZAMAZONE_DEBUG_BOSS_TEST?.relaunch?.(3)||null);
-            await mobile.waitForFunction(()=>!window.ZAMAZONE_MOBILE_CONTROLLER_QA().visible,null,{timeout:2000});
-            // Return to selector so the existing shop regression still starts cleanly.
-            await mobile.evaluate(()=>{if(typeof debugBossMenu==='function')debugBossMenu();});
-            await mobile.waitForSelector('#zb-debug-open',{state:'detached',timeout:2000}).catch(()=>{});
+            // Reload to the title screen before pre-existing boss-shop tests.
+            await mobile.reload({waitUntil:'domcontentloaded',timeout:120000});
+            await mobile.waitForSelector('#zb-debug-open',{timeout:30000});
+            const menuDock=await mobile.evaluate(()=>window.ZAMAZONE_MOBILE_CONTROLLER_QA());
+            if(menuDock.visible)throw Error('Mobile dock must hide on title screen');
 
             await mobile.locator('#zb-debug-open').tap();
             await mobile.locator('[data-dbg-boss="3"]').tap();
