@@ -4,6 +4,8 @@ on:
     branches: [chatgpt-staging]
     paths:
       - 'scripts/zamazone_mobile_fixed_controls_v1.js'
+      - 'scripts/zamazone_mana4_stage3_live.js'
+      - 'zamajan-online/public/minigames/zamazone/board_stage1356.js'
       - 'scripts/apply_zamazone_mobile_controls.py'
       - '.github/workflows/zamazone_mobile_controller_validation.yml'
   workflow_dispatch:
@@ -37,6 +39,21 @@ jobs:
            if v.strip():Path(f'/tmp/zamajs{i}.js').write_text(v)
           PY
           for f in /tmp/zamajs*.js; do node --check "$f"; done
+      - name: Validate desktop controller and stage-3 balance source
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('zamajan-online/public/minigames/zamazone/index.html')
+          s=p.read_text('utf8')
+          assert 'ZAMAZONE_MANA4_STAGE3_LIVE_V1_20261119' in s
+          assert 'const scale=state===\'bubble\'?.90:1' in s
+          assert 'let r=163;' in s
+          assert 'let w=68*scale;' in s
+          assert 'zama-desktop-control-hidden' in s
+          assert 'const columns=19' in s
+          assert 'if(d.kind===\'base\'&&t<.48)' in s
+          print('Verified mobile/desktop control modes, stage-3 boss size, thicker arms, destruction stages')
+          PY
       - name: Install Chromium
         run: |
           npm install --no-save playwright
@@ -99,6 +116,21 @@ jobs:
             });
             const free=await page.evaluate(()=>window.ZAMAZONE_MOBILE_CONTROLLER_QA());
             if(free.held.length||free.pointerStates.length)throw Error('Held input survived release');
+            // Desktop must never display the on-screen controls.
+            const desk=await browser.newContext({viewport:{width:1366,height:768},hasTouch:false});
+            const dp=await desk.newPage();
+            await dp.goto('http://localhost:8765/minigames/zamazone/index.html',{waitUntil:'domcontentloaded'});
+            await dp.waitForSelector('#mainAction',{timeout:30000});
+            await dp.locator('#mainAction').click();
+            await dp.waitForTimeout(350);
+            const desktop=await dp.evaluate(()=>({
+              mobileQA:window.ZAMAZONE_MOBILE_CONTROLLER_QA?.(),
+              touchKeys:[...document.querySelectorAll('[data-key]')].filter(e=>getComputedStyle(e).display!=='none').length,
+              mobileDock:getComputedStyle(document.querySelector('#zama-mobile-controller')).display
+            }));
+            console.log('ZAMA_DESKTOP_CONTROL_AUDIT',JSON.stringify(desktop));
+            if(desktop.touchKeys!==0||desktop.mobileDock!=='none')throw Error('Desktop shows touch controller');
+            await desk.close();
             await page.screenshot({path:'mobile-controls-portrait.png',fullPage:true});
             if(errors.length)throw Error('Runtime errors: '+errors.join(' | '));
             await context.close();await browser.close();
