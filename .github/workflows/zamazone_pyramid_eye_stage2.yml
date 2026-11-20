@@ -9,6 +9,8 @@ on:
       - 'scripts/apply_zamazone_board_stage1356.py'
       - 'scripts/zamazone_mana4_stage3_live.js'
       - 'scripts/apply_zamazone_mana4_stage3.py'
+      - 'scripts/zamazone_mobile_fixed_controls_v1.js'
+      - 'scripts/apply_zamazone_mobile_controls.py'
       - 'zamajan-online/public/minigames/zamazone/board_stage1356.js'
       - 'zamajan-online/public/minigames/zamazone/assets/board_stage1356/**'
       - 'zamajan-online/public/minigames/zamazone/desert_redesign_stage2.js'
@@ -36,6 +38,8 @@ jobs:
         run: python3 scripts/apply_zamazone_board_stage1356.py
       - name: Integrate playable mana4 boss on stage 3
         run: python3 scripts/apply_zamazone_mana4_stage3.py
+      - name: Add fixed smartphone controller
+        run: python3 scripts/apply_zamazone_mobile_controls.py
       - name: Verify artwork, integration, and JavaScript syntax
         run: |
           python3 - <<'PY'
@@ -47,6 +51,7 @@ jobs:
           assert 'pyramidOn()' in s and 'defeatBoss()' in s
           assert s.count('ZAMAZONE_BOARD_STAGE1356_V1_20261118')==1
           assert s.count('ZAMAZONE_MANA4_STAGE3_LIVE_V1_20261119')==1
+          assert s.count('ZAMAZONE_MOBILE_FIXED_CONTROLLER_V1_20261120')==1
           for name in ('grass','ocean','snow','neon','digital'):
               assert (p/'assets/board_stage1356'/f'{name}.png').stat().st_size>2000
           assert (p/'assets/board_stage1356/grass_hq.webp').stat().st_size>30000
@@ -440,6 +445,43 @@ jobs:
             mobile.on('pageerror',e=>mobileErrors.push(e.message));
             await mobile.goto('http://localhost:8765/minigames/zamazone/index.html?stage2_qa=1',{waitUntil:'domcontentloaded',timeout:120000});
             await mobile.waitForSelector('#zb-debug-open',{timeout:30000});
+            const preDock=await mobile.evaluate(()=>window.ZAMAZONE_MOBILE_CONTROLLER_QA());
+            console.log('MOBILE_DOCK_TITLE',JSON.stringify(preDock));
+            if(!preDock.present||!preDock.mobile||preDock.visible)throw Error('Mobile controls must not overlay intro UI');
+            await mobile.locator('#mainAction').tap();
+            await mobile.waitForFunction(()=>window.ZAMAZONE_MOBILE_CONTROLLER_QA?.().visible,null,{timeout:4500});
+            const mobileStart=await mobile.evaluate(()=>window.ZAMAZONE_MOBILE_CONTROLLER_QA());
+            console.log('MOBILE_DOCK_START',JSON.stringify(mobileStart));
+            if(mobileStart.keys.length!==6||mobileStart.bounds.bottom>852||mobileStart.bounds.y<550||mobileStart.bounds.width<350)
+              throw Error('Fixed controller is not in phone bottom region '+JSON.stringify(mobileStart));
+            // Hold movement and shot simultaneously using two pointer IDs.
+            const moving=await mobile.evaluate(()=>{
+              const left=document.querySelector('#zama-mobile-controller [data-zmc-key="ArrowLeft"]');
+              const shot=document.querySelector('#zama-mobile-controller [data-zmc-key="j"]');
+              left.dispatchEvent(new PointerEvent('pointerdown',{pointerId:201,bubbles:true,pointerType:'touch'}));
+              shot.dispatchEvent(new PointerEvent('pointerdown',{pointerId:202,bubbles:true,pointerType:'touch'}));
+              return window.ZAMAZONE_MOBILE_CONTROLLER_QA();
+            });
+            console.log('MOBILE_DOCK_MULTITOUCH',JSON.stringify(moving));
+            if(!moving.held.includes('ArrowLeft')||!moving.held.includes('j')||
+               !moving.pointerStates.includes('ArrowLeft')||!moving.pointerStates.includes('j'))
+              throw Error('Direction and shot must function together');
+            await mobile.evaluate(()=>{
+              for(const [k,id] of [['ArrowLeft',201],['j',202]]){
+               const btn=document.querySelector('#zama-mobile-controller [data-zmc-key="'+k+'"]');
+               btn.dispatchEvent(new PointerEvent('pointerup',{pointerId:id,bubbles:true,pointerType:'touch'}));
+              }
+            });
+            const released=await mobile.evaluate(()=>window.ZAMAZONE_MOBILE_CONTROLLER_QA());
+            if(released.held.length||released.pointerStates.length)
+              throw Error('Touch controls stuck after release '+JSON.stringify(released));
+            await mobile.screenshot({path:'zamazone-mobile-fixed-dock.png',fullPage:true});
+            await mobile.evaluate(()=>window.ZAMAZONE_DEBUG_BOSS_TEST?.relaunch?.(3)||null);
+            await mobile.waitForFunction(()=>!window.ZAMAZONE_MOBILE_CONTROLLER_QA().visible,null,{timeout:2000});
+            // Return to selector so the existing shop regression still starts cleanly.
+            await mobile.evaluate(()=>{if(typeof debugBossMenu==='function')debugBossMenu();});
+            await mobile.waitForSelector('#zb-debug-open',{state:'detached',timeout:2000}).catch(()=>{});
+
             await mobile.locator('#zb-debug-open').tap();
             await mobile.locator('[data-dbg-boss="3"]').tap();
             await mobile.locator('[data-buy="0"]').tap();
@@ -550,6 +592,7 @@ jobs:
             desert-base-enemy-art.png
             pyramid-eye-natural-attacks.png
             pyramid-eye-mobile-shop.png
+            zamazone-mobile-fixed-dock.png
             zamazone-crystal-shatter.png
             stage1-live-art.png
             stage6-new-enemies-and-bases.png
