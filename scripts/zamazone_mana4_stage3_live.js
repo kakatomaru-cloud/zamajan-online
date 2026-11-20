@@ -290,7 +290,8 @@ function snapshot(){
  return {active:on(),stage,mode,state,drawFrames,attackCount,lastGroup,
   arms:arms.map(a=>({i:a.i,hp:a.hp,attack:a.attack,warning:a.warning,broken:a.broken})),
   bubbles:bubbles.length,bubbleWave,safeLane,coreHP,damageCount,shotsHit,bubbleHits,
-  bossAlive:!!boss?.alive,introTime,playerHP:player?.hp||0};
+  bossAlive:!!boss?.alive,introTime,playerHP:player?.hp||0,
+  visual:{radius:163,x:body.x,y:body.y,insideArena:state==='intro'||(body.x>=163&&body.x<=W-163&&body.y>=163&&body.y<=H-163)}};
 }
 window.ZAMAZONE_MANA4_LIVE_QA=snapshot;
 if(new URLSearchParams(location.search).get('stage2_qa')==='1'){
