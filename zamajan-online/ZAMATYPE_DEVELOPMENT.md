@@ -27,3 +27,11 @@
 
 ## 公開テスト版の必須ルール
 - 修正後は必ず GitHub に反映し、コミット固定のブラウザで直接プレイできる最新テスト版 URL を提示する。HTML 添付のみを完了扱いしない。公開反映できない場合は未完了と明記し、旧版 URL を修正版として提示しない。
+
+## 最新公開版 v1.7.1 (2026-11-22 JST)
+- 最新ゲームファイル: `zamajan-online/public/zamatype-v16-integrated-test.html`
+- ゲーム修正コミット: `5dfb48cc02d215bcb02df7aef9a53580c6911277`
+- main blob: `0154aa21fe34295b22f25a401add2ecef1bc5e36`（反映後確認済み）
+- テストURL: https://rawcdn.githack.com/kakatomaru-cloud/zamajan-online/5dfb48cc02d215bcb02df7aef9a53580c6911277/zamajan-online/public/zamatype-v16-integrated-test.html
+- v1.7.1 修正版HTMLを公開。火・雷・氷・回復の3段階透過エフェクトと合成音、ボスサイズ・崩壊演出、長文ランダム出題を変更。全3スクリプトの Node 構文検査合格。ブラウザ実プレイ・CDN配信は未検証。
+- この節が以前の最新版記載に優先する。今後の修正はこの main blob を基準にする。
