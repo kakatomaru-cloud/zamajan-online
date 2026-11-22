@@ -13,6 +13,50 @@
     return [art,texture];
   }));
 
+  const sampleMix = {
+    fire: [.27,.38,.50],
+    thunder: [.21,.31,.42],
+    ice: [.24,.34,.46],
+    heal: [.22,.27,.32]
+  };
+  const samples = new Map();
+  const loading = new Set();
+
+  function preloadSounds(audio) {
+    for (const art of Object.keys(sampleMix)) {
+      if (samples.has(art) || loading.has(art)) continue;
+      loading.add(art);
+      fetch(`sfx/${art}.mp3`)
+        .then(response=>{
+          if (!response.ok) throw new Error('Spell sound could not be loaded');
+          return response.arrayBuffer();
+        })
+        .then(bytes=>audio.decodeAudioData(bytes))
+        .then(buffer=>samples.set(art,buffer))
+        .catch(()=>{})
+        .finally(()=>loading.delete(art));
+    }
+  }
+
+  function playSample(audio,art,rank) {
+    const buffer=samples.get(art);
+    if (!buffer) return false;
+    const source=audio.createBufferSource();
+    const gain=audio.createGain();
+    const time=audio.currentTime;
+    const rate=[1.13,1,.89][rank-1];
+    const duration=Math.min(buffer.duration/rate,[1.16,1.8,3.5][rank-1]);
+    source.buffer=buffer;
+    source.playbackRate.value=rate;
+    gain.gain.setValueAtTime(sampleMix[art][rank-1],time);
+    gain.gain.setValueAtTime(sampleMix[art][rank-1],time+Math.max(0,duration-.18));
+    gain.gain.linearRampToValueAtTime(0,time+duration);
+    source.connect(gain).connect(audio.destination);
+    source.start(time);
+    source.stop(time+duration);
+    return true;
+  }
+
   function createScene(x,y,width,height,family,rank,wide=false,delay=0) {
     const scene=document.createElement('div');
     scene.className=`spellScene spellScene--${family.art}${wide?' spellScene--wide':''}`;
@@ -85,7 +129,7 @@
       batch.append(createScene(rect.left-bounds.left+rect.width*.5,rect.bottom-bounds.top,width,height,family,rank,false,index*12));
     }
     layer.append(batch);
-    if(audio?.state!=='running') return;
+    if(audio?.state!=='running'||playSample(audio,family.art,rank)) return;
     const time=audio.currentTime;
     const tone=audio.createOscillator(), gain=audio.createGain();
     tone.type=family.art==='fire'?'triangle':'sine';
@@ -98,5 +142,5 @@
     tone.start(time);
     tone.stop(time+.34);
   }
-  window.ZamaSpellFX={families,render};
+  window.ZamaSpellFX={families,render,preloadSounds};
 })();

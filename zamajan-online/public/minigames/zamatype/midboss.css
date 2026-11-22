@@ -1,0 +1,123 @@
+#stage.midbossBattle .bossPerspective {inset: 11% 15% 23%}
+#stage.midbossBattle .bossFigure {
+  width: min(100%, 112cqh);
+  height: 100%;
+  margin-top: 0;
+  top: 0;
+}
+#stage.midbossBattle #boss .bossFigure img {
+  opacity: 1;
+  object-fit: contain;
+  object-position: center 85%;
+}
+#stage.midbossBattle .midbossImpact {
+  left: 50%; top: 51%; width: 43%; height: 40%;
+}
+#stage.midbossBattle .bossScenery::after {
+  background: radial-gradient(ellipse at 50% 67%, #a7634229, transparent 42%);
+}
+#stage.midbossBattle .heroZone {bottom: 22%; height: 13%}
+#stage.midbossBattle .heroZone:has(.count1) .heroTag {
+  left: 20%; width: 60%; white-space: nowrap;
+}
+.midbossHealth {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  width: min(42%, 380px);
+  margin: .35rem auto 0;
+  color: #fff1d9;
+  white-space: nowrap;
+  font-size: clamp(10px, 1vw, 13px);
+  font-variant-numeric: tabular-nums;
+}
+.midbossHealth .bar {flex: 1; height: 6px}
+.midbossHealth .bar i {background: linear-gradient(90deg,#9a4034,#ffb96b)}
+.midbossPrompts {
+  position: absolute;
+  inset: auto 2% 3.5%;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  align-items: stretch;
+  gap: .4rem;
+}
+.midbossPrompt {
+  border: 1px solid #887897;
+  border-top: 2px solid #bda0d4;
+  background: linear-gradient(135deg,#181324f2,#080d18f2);
+  padding: .5rem .6rem;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.midbossPrompt.aimed {
+  border-color: #f2c785;
+  box-shadow: 0 0 14px #ffb95c48;
+}
+#stage.midbossBattle .zama-summoning .bossRig,
+#stage.midbossBattle .zama-summoning .bossScenery {animation-duration: 3s}
+#stage.midbossBattle .zama-summoning .midbossPrompts {animation: abyss-targets 3s ease-out both}
+#stage.midbossBattle .midbossDefeated .bossPerspective {animation: midboss-vanish 1.5s ease-out both}
+@keyframes midboss-vanish {
+  0% {opacity: 1; transform: none}
+  16% {opacity: 1; transform: scale(1.04) translateY(-2%); filter: brightness(1.75)}
+  47% {opacity: .75; filter: saturate(.45) brightness(.86)}
+  100% {opacity: 0; transform: scale(.76) translateY(21%); filter: saturate(0) brightness(.5)}
+}
+.legendaryChip {
+  background: linear-gradient(135deg,#3e3027,#171726);
+  border: 1px solid #b99862;
+  color: #ffdc98;
+}
+.legendarySweep {
+  position: absolute;
+  width: min(75%,580px);
+  height: min(55%,310px);
+  z-index: 110;
+  pointer-events: none;
+  transform: translate(-50%,-50%);
+  text-align: center;
+  display: grid;
+  place-items: center;
+}
+.legendarySweep i {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 54% 46%,#fff 0 2%,var(--blade) 22%,transparent 65%);
+  clip-path: polygon(0 84%,30% 60%,57% 45%,80% 24%,100% 0,93% 27%,68% 57%,29% 81%);
+  animation: legendary-cut .7s cubic-bezier(.14,.71,.22,1) both;
+}
+.legendarySweep i:nth-child(2) {
+  scale: -1 1;
+  animation-delay: .11s;
+}
+.legendarySweep strong {
+  font: 700 clamp(19px,3vw,40px) system-ui,sans-serif;
+  color: #fff8e8;
+  text-shadow: 0 2px 6px #000,0 0 18px var(--blade);
+  animation: legendary-title 1s ease-out both;
+}
+@keyframes legendary-cut {
+  0% {transform: translate(-17%,12%) scale(.55);opacity:0}
+  15% {opacity:1;filter: brightness(1.65)}
+  100% {transform: translate(17%,-12%) scale(1.17);opacity:0}
+}
+@keyframes legendary-title {
+  0% {transform: translateY(14px);opacity:0}
+  18%, 66% {opacity:1}
+  100% {transform: translateY(-14px);opacity:0}
+}
+@media(max-width:650px) {
+  #stage.midbossBattle .bossPerspective {inset: 12% 4% 31%}
+  #stage.midbossBattle .heroZone {bottom: 31%;height: 12%}
+  .midbossPrompts {grid-template-columns: 1fr;gap:.22rem; bottom: 2%}
+  .midbossPrompt {padding:.2rem .4rem}
+}
+@media(prefers-reduced-motion:reduce) {
+  #stage.midbossBattle .zama-summoning .midbossPrompts {animation:none}
+  #stage.midbossBattle .midbossDefeated .bossPerspective {animation:midboss-fade .2s linear both}
+  .legendarySweep i, .legendarySweep strong {animation:none}
+}
+@keyframes midboss-fade {to {opacity:0}}
