@@ -69,3 +69,56 @@ html, body {background:#020406;color:var(--ink)}
   border: 1px solid #587da4;
   border-radius: 5px;
 }
+
+.bgmControl {display:inline-flex;align-items:center;gap:.4rem;white-space:nowrap;color:#dbe9fa}
+.bgmControl input {width:85px;accent-color:#85bded}
+.bgmControl output {min-width:3ch;font-variant-numeric:tabular-nums;text-align:right}
+#stage #boss {display:block;inset:2% 25% 2% 1%;padding:0}
+#stage #boss.hidden {display:none}
+#stage #boss h2 {position:relative;z-index:3;text-align:center;font-size:clamp(14px,2vw,24px);margin:0;color:#f1dcff}
+.bossCounter {position:relative;z-index:3;text-align:center;color:#e2d6f3;font-size:.82rem}
+.bossFigure {position:absolute;top:14%;bottom:1%;left:50%;height:85%;aspect-ratio:3/4;transform:translateX(-50%);filter:drop-shadow(0 0 13px #7139a588)}
+#stage #boss .bossFigure img,.bossSlice {position:absolute;inset:0;width:100%;height:100%;max-height:none;object-fit:fill;animation:none;filter:none;pointer-events:none}
+#stage #boss .bossFigure img {opacity:.17}
+.bossSlice {background:url("abyss-lord.webp") center/100% 100% no-repeat}
+.bossSlice.head {clip-path:polygon(32% 0,68% 0,68% 17%,61% 21%,39% 21%,32% 17%)}
+.bossSlice.torso {clip-path:polygon(39% 21%,61% 21%,67% 30%,65% 53%,59% 68%,55% 91%,45% 91%,41% 68%,35% 53%,33% 30%)}
+.bossSlice.left-arm {clip-path:polygon(0 0,32% 0,32% 17%,39% 21%,33% 30%,35% 53%,30% 55%,0 58%)}
+.bossSlice.right-arm {clip-path:polygon(100% 0,68% 0,68% 17%,61% 21%,67% 30%,65% 53%,70% 55%,100% 58%)}
+.bossSlice.left-leg {clip-path:polygon(0 58%,30% 55%,35% 53%,41% 68%,45% 91%,50% 100%,0 100%)}
+.bossSlice.right-leg {clip-path:polygon(100% 58%,70% 55%,65% 53%,59% 68%,55% 91%,50% 100%,100% 100%)}
+.bossSlice.broken {opacity:0;transition:opacity .2s}
+.bossTargets {position:absolute;inset:0;z-index:4}
+.bossCard {position:absolute;width:32%;padding:.25rem .45rem;border:1px solid #a283bc;border-radius:6px;background:#131023ef;color:#f4ecff;line-height:1.25;text-align:left;overflow-wrap:anywhere}
+.bossCard.head {left:26%;top:12%;width:48%;text-align:center}
+.bossCard.torso {left:0;top:28%}
+.bossCard.left-arm {left:0;top:48%}
+.bossCard.right-arm {right:0;top:48%}
+.bossCard.left-leg {left:0;top:75%}
+.bossCard.right-leg {right:0;top:75%}
+.bossCard.aimed {border-color:#fbd480;box-shadow:0 0 12px #ffd47888}
+.bossCard.broken {border-color:#525167;color:#c1b9ca;background:#171525dc}
+.bossPartName {font-size:clamp(11px,1.1vw,14px);display:flex;justify-content:space-between;gap:.3rem;color:#e7c5ff;font-weight:700}
+.bossWord {font-size:clamp(12px,1.2vw,16px);font-weight:700}
+.bossRoman {font-size:clamp(9px,.85vw,12px);color:#9ee7f6;word-break:break-all}
+@media(max-width:650px){
+ #stage.partsBattle {min-height:520px}
+ #stage #boss {inset:4% 8% 1% 1%}
+ .bossFigure {height:68%;top:22%;bottom:auto}
+ .bossCard {width:35%;padding:.2rem .3rem}
+}
+
+@media(min-width:651px){
+ .bossCard.head {left:auto;right:3%;top:14%;width:31%;text-align:left}
+ .bossCard.right-arm,.bossCard.right-leg {right:3%;width:28%}
+}
+.bossHitPoint {position:absolute;width:9%;height:9%;pointer-events:none;transform:translate(-50%,-50%)}
+.bossHitPoint.head {left:50%;top:14%}
+.bossHitPoint.torso {left:50%;top:32%}
+.bossHitPoint.left-arm {left:23%;top:39%}
+.bossHitPoint.right-arm {left:77%;top:39%}
+.bossHitPoint.left-leg {left:33%;top:72%}
+.bossHitPoint.right-leg {left:67%;top:72%}
+
+.enemy .promptGenre{color:#c5b4ee;font-size:clamp(8px,.8vw,11px);line-height:1.2;margin-bottom:2px}
+.enemy .promptGenre:empty{display:none}

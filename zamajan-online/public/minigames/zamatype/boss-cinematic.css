@@ -1,0 +1,161 @@
+/* World geometry moves independently of the text and the effects overlay. */
+#stage.partsBattle {
+  min-height: 470px;
+  height: clamp(470px, 61svh, 680px);
+  aspect-ratio: auto;
+  background: #060b19;
+  border-color: #516686;
+}
+#stage.partsBattle::after {
+  background: linear-gradient(0deg,#02040ac9,transparent 24%,transparent 84%,#02040ab5);
+}
+#stage.partsBattle #boss {
+  inset: 0;
+  z-index: auto;
+  animation: none;
+}
+.bossScenery {
+  position: absolute;
+  inset: -5%;
+  background: linear-gradient(180deg,#13142930,#13142908 55%,#05071045),
+    url('boss-sanctuary.webp') center 58% / cover;
+  animation: sanctuary-pan 23s ease-in-out infinite alternate;
+}
+.bossPerspective {
+  position: absolute;
+  inset: 10% 24% 8%;
+  z-index: 2;
+  perspective: 860px;
+  perspective-origin: 50% 80%;
+  pointer-events: none;
+}
+.bossRig {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform-origin: 50% 83%;
+}
+#stage.partsBattle .bossFigure {
+  top: 0;
+  bottom: auto;
+  width: min(100%, 75cqh);
+  height: auto;
+  max-height: 100%;
+  transform-origin: 50% 84%;
+  animation: abyss-idle 6.8s ease-in-out infinite;
+  filter: drop-shadow(0 12px 13px #060710c9);
+}
+#stage.partsBattle .bossPerspective {container-type: size}
+#stage.partsBattle #boss .bossFigure img {animation: none}
+#stage.partsBattle #boss h2 {
+  padding-top: 8px;
+  letter-spacing: .12em;
+  text-shadow: 0 2px 12px #090512, 0 0 24px #a66fd688;
+}
+#stage.partsBattle .bossCounter {
+  color: #d2c4e4;
+  text-shadow: 0 2px 5px #000;
+}
+.bossScenery::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 74%, #a481df40, transparent 38%);
+}
+#stage.partsBattle .bossTargets {inset: 0 2%;pointer-events: none}
+#stage.partsBattle .bossCard {
+  box-sizing: border-box;
+  width: 22%;
+  padding: .38rem .54rem;
+  border-radius: 2px;
+  border-color: #6f7a9f;
+  border-inline-start: 2px solid #ac92d3;
+  background: linear-gradient(115deg,#111427f5,#080d18ed);
+  box-shadow: 0 4px 18px #03050b80;
+}
+#stage.partsBattle .bossCard.head {top: 19%;right: 0;left: auto;width: 24%;text-align: left}
+#stage.partsBattle .bossCard.torso {top: 19%;left: 0}
+#stage.partsBattle .bossCard.left-arm, #stage.partsBattle .bossCard.right-arm {top: 42%}
+#stage.partsBattle .bossCard.left-leg, #stage.partsBattle .bossCard.right-leg {top: 65%}
+#stage.partsBattle .bossCard.right-arm, #stage.partsBattle .bossCard.right-leg {right: 0}
+#stage.partsBattle .bossCard.aimed {
+  border-color: #f5cc80;
+  box-shadow: 0 0 18px #f5cc8044;
+}
+#stage.partsBattle .bossCard.broken {
+  border-color: #586077;
+  background: #0b0d18e8;
+  opacity: .8;
+}
+#stage.partsBattle .bossPartName {font-variant-numeric: tabular-nums}
+#stage.partsBattle .bossPartName strong {color: #dce7f6;white-space: nowrap}
+#stage.partsBattle .bossWord {margin-top: .15em}
+#stage.partsBattle .bossRoman {color: #afe1f4}
+#stage.partsBattle .heroZone {
+  left: 32%; top: auto; bottom: 1.5%;
+  width: 36%; height: 18%;
+}
+#stage.partsBattle .heroZone > img,
+#stage.partsBattle .partyMember {
+  width: 24% !important; max-width: 24% !important;
+  height: 88%; top: 0;
+}
+#stage.partsBattle .heroZone:has(.count1) > img {left: 38%}
+#stage.partsBattle .heroZone .heroTag {width: 24%;top: 88%;text-align: center}
+#stage.partsBattle .heroZone:has(.count1) .heroTag {left: 38%}
+#stage.partsBattle .partyMember.player2 {left: 25%}
+#stage.partsBattle .partyMember.player3 {left: 50%;top: 0}
+#stage.partsBattle .partyMember.player4 {left: 75%;top: 0}
+
+#stage.partsBattle .zama-summoning .bossScenery {
+  animation: sanctuary-dolly 4s cubic-bezier(.18,.58,.27,1) both;
+}
+#stage.partsBattle .zama-summoning .bossRig {
+  animation: abyss-arrive 4s cubic-bezier(.2,.56,.28,1) both;
+}
+#stage.partsBattle .zama-summoning .bossTargets {
+  animation: abyss-targets 4s ease-out both;
+}
+@keyframes sanctuary-pan {
+  from {transform: translateX(-1%) scale(1.025)}
+  to {transform: translateX(1%) scale(1.065)}
+}
+@keyframes sanctuary-dolly {
+  0% {transform: scale(1.14);opacity: .3}
+  100% {transform: translateX(-1%) scale(1.025);opacity: 1}
+}
+@keyframes abyss-arrive {
+  0% {transform: translateY(-12%) translateZ(-950px) rotateX(-15deg);opacity: 0}
+  25% {opacity: .8}
+  67% {transform: translateY(1.5%) translateZ(26px) rotateX(7deg);opacity: 1}
+  79% {transform: translateY(-1%) translateZ(8px) rotateX(-1.5deg)}
+  100% {transform: translateZ(0);opacity: 1}
+}
+@keyframes abyss-idle {
+  0%, 100% {transform: translateX(-50%) rotateY(-5deg) rotateX(-1deg)}
+  52% {transform: translateX(-50%) translateY(-1.2%) rotateY(5deg) rotateX(1deg)}
+}
+@keyframes abyss-targets {
+  0%, 60% {opacity: 0;transform: translateY(5px)}
+  100% {opacity: 1;transform: none}
+}
+@media (max-width:650px) {
+  #stage.partsBattle {min-height: 490px;height: 490px}
+  .bossPerspective {inset: 16% 16% 13%}
+  #stage.partsBattle .bossFigure {top: 50%;margin-top: max(-50cqh, -43cqw)}
+  #stage.partsBattle .bossTargets {inset-inline: 1.5%}
+  #stage.partsBattle .bossCard {width: 30%;padding: .28rem .35rem}
+  #stage.partsBattle .bossCard.head {width: 34%}
+  #stage.partsBattle .bossPartName {flex-wrap: wrap;gap: 0 .25rem}
+  #stage.partsBattle .heroZone {left: 21%;width: 58%;height: 16%}
+}
+@media (max-width:420px) {
+  #stage.partsBattle .chapter {display: none}
+}
+@media (prefers-reduced-motion: reduce) {
+  #stage.partsBattle :is(.bossScenery,.bossRig,.bossFigure,.bossTargets),
+  #stage.partsBattle .zama-summoning :is(.bossScenery,.bossRig,.bossTargets) {
+    animation: none;
+  }
+  #stage.partsBattle .bossFigure {transform: translateX(-50%)}
+}

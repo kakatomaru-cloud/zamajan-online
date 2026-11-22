@@ -36,7 +36,7 @@ input,select {width:100%;padding:10px;background:#080f23;color:#fff;border:1px s
 .back {margin-top:16px}
 #party {padding-left:24px;line-height:1.7}
 .note {color:#bfcbe0;line-height:1.6}
-</style>
+.bgmControl{position:fixed;bottom:16px;left:16px;display:flex;align-items:center;gap:.4rem;padding:.4rem .6rem;background:#0b1422;color:#dbe9fa;border:1px solid #38546e}.bgmControl input{width:88px;accent-color:#85bded}</style>
 </head>
 <body>
 <main>
@@ -67,7 +67,8 @@ input,select {width:100%;padding:10px;background:#080f23;color:#fff;border:1px s
 
 </main>
 <audio id="music" src="opening.mp3" preload="none" autoplay loop></audio>
-<button id="sound" aria-pressed="false">BGMを再生</button>
+<label class="bgmControl">BGM音量 <input id="bgmVolume" type="range" min="0" max="100" value="15"><output id="bgmPercent" for="bgmVolume">15%</output></label><button id="sound" aria-pressed="false">BGMを再生</button>
+<script src="bgm-volume.js"></script>
 <script>
 const byId = id => document.getElementById(id);
 const screens = [...document.querySelectorAll('main > section')];
@@ -79,7 +80,7 @@ function show(id) {
 
 const music = byId('music');
 const sound = byId('sound');
-music.volume = .65;
+ZamaBgm.subscribe(volume=>{music.volume=volume;});
 let musicEnabled = true;
 function playOpening() {
   if (musicEnabled && music.paused) music.play().catch(() => {});
