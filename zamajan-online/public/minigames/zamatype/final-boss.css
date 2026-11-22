@@ -184,28 +184,25 @@
 }
 .guardWarning.ready {border-color:#87e0ba;background:#133529f5}
 
-.battleLayout > div:first-child {position:relative}
+.battleLayout > div:first-child {position:relative;isolation:isolate}
+/* Keep the stage effects and the adjacent spell cards in the same stacking context. */
+#stage.abyssBattle {isolation:auto}
+#stage.abyssBattle .exposurePrompt {width:min(58%,680px)}
 .finalSpellPanel {
   position:absolute;
-  top:24%;
+  top:20%;
   left:2%;
   z-index:6;
   display:grid;
   grid-template-columns:minmax(0,1fr);
-  width:36%;
+  width:29%;
   gap:.45rem;
 }
-#stage.abyssBattle:has(+ .finalSpellPanel:not(.hidden,.exhausted)) .exposurePrompt {
-  left:auto;
-  right:2%;
-  transform:none;
-  width:58%;
-}
 .finalSpellPanel.hidden,.finalSpellPanel.exhausted {display:none}
-.finalSpellPrompt {padding:.5rem .65rem;border:1px solid #a18ac5;background:#171329f7;color:#f4edff;overflow-wrap:anywhere}
-.finalSpellPrompt strong {display:block;color:#f3cc84;font-size:clamp(19px,2vw,26px);line-height:1.15;margin-bottom:.17rem}
-.finalSpellPrompt .bossWord {font-size:clamp(16px,1.6vw,22px);line-height:1.28}
-.finalSpellPrompt .bossRoman {font-size:clamp(11px,1.1vw,14px);line-height:1.2;color:#afe1f4}
+.finalSpellPrompt {padding:.4rem .55rem;border:1px solid #a18ac5;background:#171329f7;color:#f4edff;overflow-wrap:anywhere}
+.finalSpellPrompt strong {display:block;color:#f3cc84;font-size:clamp(17px,1.65vw,22px);line-height:1.15;margin-bottom:.17rem}
+.finalSpellPrompt .bossWord {font-size:clamp(15px,1.35vw,19px);line-height:1.28}
+.finalSpellPrompt .bossRoman {font-size:clamp(11px,1vw,13px);line-height:1.2;color:#afe1f4}
 .finalSpellPrompt.aimed {border-color:#ffdf95;background:#302549}
 .finalSpellFlash {position:absolute;inset:0;pointer-events:none;animation:final-spell-flash 1.7s ease-out both;overflow:hidden}
 .finalSpellFlash.ultima {background:radial-gradient(ellipse,#ffffff 0%,#bc8fff 28%,transparent 70%)}
@@ -214,12 +211,7 @@
 @keyframes final-spell-flash {0%,100% {opacity:0} 35% {opacity:.9}}
 @media(max-width:850px){
   .finalSpellPanel {position:static;width:auto;margin-top:.45rem}
-  #stage.abyssBattle:has(+ .finalSpellPanel:not(.hidden,.exhausted)) .exposurePrompt {
-    left:50%;
-    right:auto;
-    transform:translateX(-50%);
-    width:min(86%,500px);
-  }
+  #stage.abyssBattle .exposurePrompt {width:min(86%,500px)}
 }
 @media(prefers-reduced-motion:reduce){.finalSpellFlash {display:none}}
 
