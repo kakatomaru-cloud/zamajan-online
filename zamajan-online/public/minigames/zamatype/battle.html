@@ -82,7 +82,7 @@ function stopNormalBattleMusic(){
  normalBattleMusic.pause();
  normalBattleMusic.currentTime=0;
 }
-const encounterMusic = {midboss:'midboss-theme.mp3', priest:'priest-theme.mp3', final:'mana8-boss.mp3'};
+const encounterMusic = {midboss:'midboss-theme.mp3', priest:'priest-theme.mp3', final:'mana8-boss.mp3', gameOver:'game-over.mp3'};
 const encounterBuffers = new Map();
 let bossMusicSource;
 let bossMusicWanted;
@@ -652,6 +652,7 @@ function showResult(){
  const victory=state.result==='victory';
  $('over').classList.remove('hidden');
  $('overTitle').textContent=victory?'QUEST COMPLETE':'GAME OVER';
+ if(!victory)startBossMusic('gameOver');
  $('overDesc').textContent=describeResult(victory?`魔王撃破！ スコア ${p().score.toLocaleString()}点`:state.result==='hp'?'共通HPが0になりました。':'制限時間終了。討伐失敗。');
 }
 function finish(){
