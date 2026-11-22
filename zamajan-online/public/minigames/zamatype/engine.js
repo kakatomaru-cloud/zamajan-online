@@ -438,11 +438,21 @@ const BOSS_HEALS=[
 ];
 const BOSS_SUMMONS=[
  {name:'紅翼鳥アグニル',word:'にもつをうけとりました',art:'fire',value:3},
- {name:'氷角獣ネヴァル',word:'こんしゅうのよていをおくります',art:'ice',value:3},
- {name:'雷雲竜ヴォルティス',word:'みつもりしょをてんぷいたします',art:'thunder',value:3}
+ {name:'氷角獣ネヴァル',word:'こんしゅうのよていをおくります',art:'ice',value:3,freeze:3},
+ {name:'雷雲竜ヴォルティス',word:'みつもりしょをてんぷいたします',art:'thunder',value:3,slow:5},
+ {name:'獄炎鬼グラザン',move:'煉獄の噴火',art:'fire',value:4},
+ {name:'氷晶后イゼリア',move:'白銀の吹雪',art:'ice',value:1,freeze:5},
+ {name:'雷杖翁ラザール',move:'天轟の落雷',art:'thunder',value:2,slow:8},
+ {name:'地殻巨人ドルガム',move:'地脈崩し',art:'fire',value:3,shield:1},
+ {name:'深海蛇ネリオン',move:'深潮の大渦',art:'ice',value:3,slow:3},
+ {name:'黒騎将ヴァルグ',move:'黒鋼の一閃',art:'thunder',value:1,focusedDamage:7},
+ {name:'星竜アストレイン',move:'星核の閃光',art:'thunder',value:5},
+ {name:'暁焔鳥ソレリア',move:'再生の暁火',art:'fire',value:1,heal:30},
+ {name:'風爪鳥ヴェルカ',move:'裂空の大旋風',art:'thunder',value:2,freeze:2},
+ {name:'聖塞機ルクシオン',move:'天蓋の光壁',art:'ice',value:2,shield:2}
 ];
 const bossRewardWords=[
- ...BOSS_HEALS.map(heal=>heal.word),...BOSS_SUMMONS.map(summon=>summon.word),
+ ...BOSS_HEALS.map(heal=>heal.word),...BOSS_SUMMONS.flatMap(summon=>summon.word?[summon.word]:[]),
  'このないようでてつづきをすすめます','かくにんできしだいおへんじします',
  'おまたせしてもうしわけありません','おわすれものがないかごかくにんください',
  'おあいできるのをたのしみにしています','またのごりようをおまちしております',
@@ -459,6 +469,20 @@ function resetBossRewards(s){
  for(const p of s.players){p.bossClean=0;p.bossHeal=null;p.bossSummon=null;}
 }
 function availableBossRewards(p){return [p.bossHeal,p.bossSummon].filter(Boolean);}
+const summonDraws=new WeakMap();
+function drawSummon(s,p){
+ let draw=summonDraws.get(p);
+ if(!draw?.remaining.length){
+  draw={last:draw?.last,remaining:[...BOSS_SUMMONS]};
+ }
+ const choices=draw.remaining.filter(summon=>summon!==draw.last);
+ const pool=choices.length?choices:draw.remaining;
+ const summon=pool[Math.floor(rand(s)*pool.length)];
+ draw.remaining.splice(draw.remaining.indexOf(summon),1);
+ draw.last=summon;
+ summonDraws.set(p,draw);
+ return rollBossReward(s,p,summon);
+}
 function countBossSuccess(s,p){
  if(!s.boss?.hp&&!s.midboss?.hp)return;
  const count=p.bossClean=(p.bossClean??0)+1;
@@ -467,7 +491,7 @@ function countBossSuccess(s,p){
   const heal=BOSS_HEALS[tier===0?2:tier/3-1];
   if(!p.bossHeal||heal.value>=p.bossHeal.value)p.bossHeal=rollBossReward(s,p,heal);
  }
- if(count%5===0&&!p.bossSummon)p.bossSummon=rollBossReward(s,p,BOSS_SUMMONS[Math.floor(rand(s)*BOSS_SUMMONS.length)]);
+ if(count%5===0&&!p.bossSummon)p.bossSummon=drawSummon(s,p);
 }
 function castBossReward(s,p,reward){
  if(reward===p.bossHeal){
@@ -478,12 +502,20 @@ function castBossReward(s,p,reward){
   return;
  }
  p.bossSummon=null;
- if(s.boss?.parts)damageFinalParts(s.boss,reward.value);
- else if(s.boss?.form==='priest')hitPriest(s,p,16);
- else if(s.midboss)hitMidboss(s,p,16);
- if(reward.art==='ice')s.freezeUntil=Math.max(s.freezeUntil,s.elapsed+3);
- if(reward.art==='thunder')s.slowUntil=Math.max(s.slowUntil,s.elapsed+5);
- emit(s,`${reward.name} 召喚！`,'summon',p.id,null,{art:reward.art});
+ if(s.boss?.parts){
+  const part=exposedPart(s.boss);
+  if(reward.focusedDamage&&part)hitBossPart(s,p,part,reward.focusedDamage);
+  else damageFinalParts(s.boss,reward.focusedDamage?3:reward.value);
+ }else if(s.boss?.form==='priest')hitPriest(s,p,10+2*reward.value+(reward.focusedDamage??0));
+ else if(s.midboss)hitMidboss(s,p,10+2*reward.value+(reward.focusedDamage??0));
+ if(reward.freeze)s.freezeUntil=Math.max(s.freezeUntil,s.elapsed+reward.freeze);
+ if(reward.slow)s.slowUntil=Math.max(s.slowUntil,s.elapsed+reward.slow);
+ if(reward.shield)s.shield=Math.min(3,s.shield+reward.shield);
+ const healed=Math.min(s.maxHp-s.hp,reward.heal??0);
+ s.hp+=healed;
+ const move=reward.move?` ${reward.move}！`:'';
+ const recovery=healed?` 共通HP +${healed}`:'';
+ emit(s,`${reward.name} 召喚！${move}${recovery}`,'summon',p.id,null,{art:reward.art});
 }
 function castFinalSpell(s,p,spell){
  const boss=s.boss;
