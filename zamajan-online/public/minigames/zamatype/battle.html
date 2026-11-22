@@ -29,7 +29,7 @@
 @media(prefers-reduced-motion:reduce){#stage .enemy.zama-arrive,#stage .bossArena.zama-summoning,#stage .bossArena.zama-summoning img,#stage .zama-shard{animation-duration:.15s!important}}
 #stage .heroZone{left:70%;width:29%;height:78%;top:15%;display:block}#stage .heroZone > img{position:absolute;left:0;top:0;width:48%!important;max-width:48%!important;height:48%;margin:0!important;object-fit:contain;object-position:center bottom}#stage .heroZone .heroTag{left:0;right:auto;top:48%;bottom:auto;width:48%;font-size:clamp(8px,.9vw,12px)}#stage .partyFormation{position:absolute;inset:0;width:100%;height:100%;display:block;right:auto;bottom:auto}#stage .partyFormation.count1{display:none}#stage .partyMember{position:absolute;width:48%;height:48%;display:flex;flex-direction:column;justify-content:flex-end;background:none;border:0;padding:0;overflow:visible}#stage .partyMember.player1{display:none}#stage .partyMember.player2{left:51%;top:0}#stage .partyMember.player3{left:0;top:51%}#stage .partyMember.player4{left:51%;top:51%}#stage .partyAvatar{width:100%;height:90%;display:block;overflow:visible}#stage .partyMember .jobPortrait{width:100%!important;height:100%!important;object-fit:contain;object-position:center bottom;filter:drop-shadow(2px 5px 4px #000a)}#stage .partyLabel{max-width:100%;font-size:clamp(7px,.8vw,11px);text-shadow:0 2px 4px #000}#stage .magicOverlay.allMagic{background:radial-gradient(ellipse at 30% 50%,#fff9b9b0,#6acbff88 35%,transparent 80%)}@media(max-width:470px){#stage .heroZone{left:73%;width:26%;top:19%;height:72%}}</style><style>#stage .bossArena{inset:2% 25% 3% 0}#stage .bossArena img{width:94%;max-height:76%;min-height:0;flex-shrink:1;object-fit:contain}#stage .bossArena .prompt{max-width:96%;overflow-wrap:anywhere;font-size:clamp(12px,1.6vw,19px);padding:5px 10px}#stage .bossArena .roma{overflow-wrap:anywhere;font-size:clamp(10px,1.25vw,15px)}#stage .enemy .prompt{overflow-wrap:anywhere}#stage .enemy .roma{overflow-wrap:anywhere}.zama-spell-transparent{position:absolute;pointer-events:none;overflow:visible;z-index:80;transform:translate(-50%,-50%);background:none!important}.zama-spell-transparent svg{width:100%;height:100%;overflow:visible}.zama-spell-transparent i{position:absolute;left:50%;top:50%;width:8px;height:8px;border-radius:50%;background:var(--c);box-shadow:0 0 12px var(--c);animation:zamaParticle 950ms ease-out both}@keyframes zamaParticle{0%{transform:translate(0,0) scale(.4);opacity:0}20%{opacity:1}100%{transform:translate(var(--x),var(--y)) scale(.1);opacity:0}}</style><style id="ffMagicPatch">#stage .bossArena{inset:0 18% 1% 0;justify-content:flex-end;padding-top:1%}#stage .bossArena img{width:108%;max-height:84%;filter:drop-shadow(0 0 18px #a13cff) drop-shadow(0 0 34px #3b1a6fcc);transform-origin:50% 82%;animation:bossFloat 1.65s ease-in-out infinite,bossPulse 3.2s ease-in-out infinite}#stage .bossArena h2{font-size:clamp(20px,2.4vw,34px);margin-bottom:5px}#stage .bossArena .bar{width:86%;margin-bottom:6px}#stage .bossArena .prompt{max-width:98%;padding:8px 14px;font-size:clamp(13px,1.8vw,22px);backdrop-filter:blur(2px)}#stage .bossArena .roma{font-size:clamp(10px,1.2vw,16px)}@keyframes bossPulse{0%,100%{filter:drop-shadow(0 0 18px #a13cff) drop-shadow(0 0 34px #3b1a6fcc) brightness(1);transform:scale(1)}50%{filter:drop-shadow(0 0 22px #d598ff) drop-shadow(0 0 42px #5129b8cc) brightness(1.1);transform:scale(1.03)}}.zama-spell-transparent{position:absolute;pointer-events:none;overflow:visible;z-index:80;transform:translate(-50%,-50%);background:none!important;mix-blend-mode:screen;filter:drop-shadow(0 0 12px #fff8) saturate(1.15)}.zama-spell-transparent .halo,.zama-spell-transparent .ring,.zama-spell-transparent .core,.zama-spell-transparent .pillar,.zama-spell-transparent .bolt,.zama-spell-transparent .shard,.zama-spell-transparent .ray,.zama-spell-transparent .glyph,.zama-spell-transparent .spark{position:absolute;pointer-events:none}.zama-spell-transparent .glyph{inset:0;width:100%;height:100%;overflow:visible;animation:ffGlyph calc(var(--spellDur)*1.02) ease-out both}.zama-spell-transparent .halo{inset:12%;border-radius:50%;background:radial-gradient(circle,var(--c2) 0%,color-mix(in srgb,var(--c1) 75%,transparent) 34%,transparent 72%);opacity:.42;animation:ffHalo var(--spellDur) ease-out both}.zama-spell-transparent .ring{inset:17%;border-radius:50%;border:2px solid color-mix(in srgb,var(--c2) 70%,var(--c1));box-shadow:0 0 22px color-mix(in srgb,var(--c1) 72%,transparent), inset 0 0 18px color-mix(in srgb,var(--c2) 25%,transparent);animation:ffRing var(--spellDur) ease-out both}.zama-spell-transparent .core{left:50%;top:50%;width:26%;height:26%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,var(--c2) 0%,var(--c1) 46%,transparent 80%);opacity:.9;animation:ffCore var(--spellDur) ease-out both}.zama-spell-transparent .spark{left:50%;top:50%;width:var(--s,6px);height:var(--s,6px);border-radius:50%;background:var(--c2);box-shadow:0 0 12px var(--c1),0 0 24px var(--c2);animation:ffSpark calc(var(--spellDur)*1.05) ease-out both}.zama-spell-transparent .pillar{bottom:18%;transform:translateX(-50%);border-radius:999px 999px 22px 22px;background:linear-gradient(180deg,var(--c2),var(--c1) 35%,transparent);filter:blur(1px);animation:ffPillar calc(var(--spellDur)*.95) ease-out both}.zama-spell-transparent .bolt{top:5%;width:11%;height:86%;transform:translateX(-50%) skewX(-12deg);clip-path:polygon(46% 0,0 46%,36% 46%,0 100%,100% 56%,62% 56%,100% 0);background:linear-gradient(180deg,var(--c2),var(--c1),var(--c3));filter:drop-shadow(0 0 12px var(--c2));animation:ffBolt calc(var(--spellDur)*.9) linear both}.zama-spell-transparent .shard{width:12%;height:24%;clip-path:polygon(50% 0,0 65%,50% 100%,100% 63%);background:linear-gradient(180deg,var(--c2),var(--c1),transparent 92%);box-shadow:0 0 14px var(--c2);animation:ffShard var(--spellDur) ease-out both}.zama-spell-transparent .ray{top:8%;width:4%;height:78%;border-radius:999px;background:linear-gradient(180deg,var(--c2),transparent);filter:blur(.5px);animation:ffRay calc(var(--spellDur)*.98) ease-out both}@keyframes ffHalo{0%{opacity:0;transform:scale(.4)}30%{opacity:.55}100%{opacity:0;transform:scale(1.25)}}@keyframes ffRing{0%{opacity:0;transform:scale(.35) rotate(0deg)}25%{opacity:.95}100%{opacity:0;transform:scale(1.22) rotate(100deg)}}@keyframes ffCore{0%{opacity:0;transform:translate(-50%,-50%) scale(.2)}22%{opacity:1;transform:translate(-50%,-50%) scale(1.25)}100%{opacity:0;transform:translate(-50%,-50%) scale(.85)}}@keyframes ffGlyph{0%{opacity:0;transform:scale(.55)}26%{opacity:1}100%{opacity:0;transform:scale(1.16)}}@keyframes ffSpark{0%{transform:translate(0,0) scale(.2);opacity:0}18%{opacity:1}100%{transform:translate(var(--x),var(--y)) scale(.12);opacity:0}}@keyframes ffPillar{0%{opacity:0;transform:translateX(-50%) scaleY(.1)}22%{opacity:.95}100%{opacity:0;transform:translateX(-50%) scaleY(1.16)}}@keyframes ffBolt{0%{opacity:0;transform:translateX(-50%) translateY(-12%) scaleY(.2)}12%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(8%) scaleY(1.16)}}@keyframes ffShard{0%{opacity:0;transform:scale(.2) rotate(0deg)}22%{opacity:1}100%{opacity:0;transform:translateY(26px) scale(1.08) rotate(18deg)}}@keyframes ffRay{0%{opacity:0;transform:translateX(-50%) scaleY(.25)}24%{opacity:1}100%{opacity:0;transform:translateX(-50%) scaleY(1.08)}}#stage .zama-boss-shatter{position:absolute;inset:0;z-index:90;pointer-events:none;overflow:hidden;background:radial-gradient(circle at 50% 45%,#fff6 0,#ffcf8a22 12%,transparent 46%)}#stage .zama-victory-burst{position:absolute;inset:0;z-index:89;pointer-events:none;background:radial-gradient(circle at 50% 45%,#fff8 0,#ffd8a844 10%,#ff8c2a22 24%,transparent 45%);animation:ffBurst 2.6s ease-out forwards}#stage .zama-shard{position:absolute;background-repeat:no-repeat;box-shadow:0 0 10px #fff6,0 0 26px #ffb36a33;animation:zamaShatter 3.1s cubic-bezier(.15,.72,.15,1) both}@keyframes ffBurst{0%{opacity:0;transform:scale(.55)}18%{opacity:1}100%{opacity:0;transform:scale(1.22)}}@keyframes zamaShatter{0%{opacity:1;transform:translate(0,0) rotate(0) scale(1);filter:brightness(1)}14%{filter:brightness(2.2)}55%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--rot)) scale(.35);filter:blur(2.5px) brightness(.45)}}</style><link rel="stylesheet" href="battle-theme.css"><link rel="stylesheet" href="boss-cinematic.css"><link rel="stylesheet" href="midboss.css"><link rel="stylesheet" href="final-boss.css"><link rel="preload" as="image" href="abyss-priest.webp"><link rel="preload" as="image" href="abyss-bones.webp"><link rel="preload" as="image" href="boss-sanctuary.webp"><link rel="preload" as="image" href="abyss-lord.webp"><link rel="stylesheet" href="spells.css"><script src="spells.js"></script></head><body><audio id="normalBattleMusic" src="battle-theme.mp3" preload="auto" loop></audio><div class="frame" id="app"><header class="header gold">
 <a class="battleBrand" href="index.html" aria-label="ZAMATYPE タイトルへ"><img src="emblem.webp" alt=""><span class="logo">ZAMATYPE</span></a>
-<div class="headerActions"><label class="bgmControl">BGM音量 <input id="bgmVolume" type="range" min="0" max="100" value="15"><output id="bgmPercent" for="bgmVolume">15%</output></label><div class="pill" id="statusPill">シングルプレイ</div><a class="returnTitle" href="index.html">タイトルへ</a></div>
+<div class="headerActions"><label class="bgmControl">BGM音量 <input id="bgmVolume" type="range" min="0" max="100" value="10"><output id="bgmPercent" for="bgmVolume">10%</output></label><div class="pill" id="statusPill">シングルプレイ</div><a class="returnTitle" href="index.html">タイトルへ</a></div>
 </header><section id="intro" class="intro gold"><div class="introCard gold"><div class="introTitle">冒険の準備</div><p>敵のお題を入力して攻撃。10体で中ボス、20体で魔王が現れます。</p><div><label for="battleName">プレイヤー名</label> <input id="battleName" maxlength="20" autocomplete="nickname" placeholder="ザマン"></div><div id="onlineLobby" hidden>
  <p>同じ敵を攻撃し、個人スコアを競います。</p>
  <div id="recruitmentPanel">
@@ -47,7 +47,7 @@ let zamaVictoryStarted=false;
 function zamaBanner(label){const stage=$('stage');if(!stage)return;const el=document.createElement('div');el.className='zama-banner';const t=document.createElement('strong');t.textContent=label;el.appendChild(t);stage.appendChild(el);setTimeout(()=>el.remove(),1600);}
 // Use the battle's already unlocked audio context for the later boss transition.
 const normalBattleMusic=$('normalBattleMusic');
-let bgmVolume=.15;
+let bgmVolume=.10;
 let bossMusicGain;
 ZamaBgm.subscribe(volume=>{
  bgmVolume=volume;
@@ -195,13 +195,18 @@ function refreshAbyss(arena,boss){
     ${boss.parts.map(part=>`<div class="bossSlice ${part.id}"></div><div class="bossHitPoint ${part.id}" data-impact="${part.id}"></div>`).join('')}
     <img class="skeletonWhole" src="abyss-bones.webp" alt="">
    </div></div></div>
-   <div class="exposurePrompt"></div>`;
+   <div class="guardWarning" role="status" hidden></div><div class="exposurePrompt"></div>`;
   startBossMusic('final');
   zamaBanner('終焉の魔王、降臨');
   zamaRumble(3.3);
  }
  const weak=boss.parts.find(part=>part.id===boss.weakPart);
  const pending=boss.parts.find(part=>part.id===boss.pendingPart);
+ const warning=arena.querySelector('.guardWarning');
+ warning.hidden=!pending||boss.hp===0;
+ const warningText=boss.guarded?'防御準備完了！':'ぼうぎょと入力！  /  BOUGYO';
+ if(warning.textContent!==warningText)warning.textContent=warningText;
+ warning.classList.toggle('ready',Boolean(boss.guarded));
  const sig=[boss.introRemaining>0,boss.weakPart,boss.pendingPart,...boss.parts.map(part=>part.hp+':'+part.word)].join('|');
  if(sig!==bossSig){
   bossSig=sig;
@@ -252,9 +257,18 @@ function refreshMidboss(arena,boss){
   bossSig=sig;
   arena.querySelector('.midbossHealth span').textContent=`HP ${boss.hp} / ${boss.maxHp}`;
   arena.querySelector('.midbossHealth i').style.width=(100*boss.hp/boss.maxHp)+'%';
-  arena.querySelector('.midbossPrompts').innerHTML=boss.words.map(word=>
-   `<div class="midbossPrompt"><div class="bossWord">${esc(word)}</div><div class="bossRoman">${esc(E.display(word))}</div></div>`
-  ).join('');
+  const prompts=arena.querySelector('.midbossPrompts');
+  if(defeated)prompts.replaceChildren();
+  boss.words.forEach((word,index)=>{
+   const existing=prompts.children[index];
+   if(existing?.dataset.word===word)return;
+   const card=document.createElement('div');
+   card.className='midbossPrompt';
+   card.dataset.word=word;
+   card.innerHTML=`<div class="bossWord">${esc(word)}</div><div class="bossRoman">${esc(E.display(word))}</div>`;
+   if(existing)existing.replaceWith(card);
+   else prompts.appendChild(card);
+  });
   delete arena.dataset.typed;
  }
  if(arena.dataset.typed!==typed){
@@ -409,6 +423,7 @@ function processEvents() {
    zamaRumble(2.3);
    continue;
   }
+  if(e.kind==='guardSuccess'){zamaBanner('防御成功！');continue;}
   if(e.kind==='bossWindup'){
    animateBossPart(e.targetUid,true);
    continue;

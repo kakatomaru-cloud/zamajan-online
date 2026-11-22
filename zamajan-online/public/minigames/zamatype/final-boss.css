@@ -156,3 +156,21 @@
   #stage.priestBattle .priestTransform .bossPerspective,
   #stage.abyssBattle .bonesDecay .bossSlice {animation:midboss-fade .2s linear both}
 }
+
+.guardWarning {
+  position:absolute;
+  z-index:6;
+  top:19%;
+  left:50%;
+  transform:translateX(-50%);
+  padding:.4rem .8rem;
+  width:max-content;
+  max-width:92%;
+  border:2px solid #ff947a;
+  background:#441523f5;
+  color:#fff3db;
+  font-size:clamp(14px,2vw,22px);
+  font-weight:800;
+  text-align:center;
+}
+.guardWarning.ready {border-color:#87e0ba;background:#133529f5}

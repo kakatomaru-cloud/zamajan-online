@@ -194,12 +194,11 @@ const WEAPONS={
  yoichi:{name:'与一の弓',word:'よいちのゆみ',damage:34,color:'#a0ffe7'}
 };
 
-function midbossWords(s,previous=[]){
+function midbossWords(s){
  const themes=[...MIDBOSS_WORDS];
  return Array.from({length:3},()=>{
   const theme=themes.splice(Math.floor(rand(s)*themes.length),1)[0];
-  const pool=theme.filter(word=>!previous.includes(word));
-  return pool[Math.floor(rand(s)*pool.length)];
+  return theme[Math.floor(rand(s)*theme.length)];
  });
 }
 function beginMidboss(s){
@@ -210,18 +209,20 @@ function beginMidboss(s){
  s.midboss={...spec,maxHp,hp:maxHp,words:midbossWords(s),introRemaining:3,remaining:9,exitRemaining:0};
  emit(s,`中ボス ${spec.name} が現れた！`,'midboss');
 }
-function hitMidboss(s,p,amount,typed=false){
+function hitMidboss(s,p,amount,answeredWord){
  const boss=s.midboss;
  if(!boss?.hp)return;
  const lost=Math.min(amount,boss.hp);
  boss.hp-=lost;
- if(typed)emit(s,`${p.name}が ${boss.name} に ${lost} ダメージ！`,'hit',p.id,'midboss');
+ if(answeredWord)emit(s,`${p.name}が ${boss.name} に ${lost} ダメージ！`,'hit',p.id,'midboss');
  if(boss.hp>0){
-  if(typed){
-   const previous=boss.words;
-   boss.words=midbossWords(s,previous);
+  if(answeredWord){
+   const choices=boss.words.slice();
+   const pool=MIDBOSS_WORDS.flat().filter(word=>!choices.includes(word));
+   choices[choices.indexOf(answeredWord)]=pool[Math.floor(rand(s)*pool.length)];
+   boss.words=choices;
    for(const player of s.players){
-    if(player.typed&&previous.some(word=>isPrefix(word,player.typed)))player.typed='';
+    if(player.typed&&isPrefix(answeredWord,player.typed)&&!choices.some(word=>isPrefix(word,player.typed)))player.typed='';
    }
   }
   return;
@@ -240,7 +241,7 @@ function hitMidboss(s,p,amount,typed=false){
 function typeMidboss(s,p,word){
  earnMagic(s,p,[...word].length);
  reward(s,p,220);
- hitMidboss(s,p,12,true);
+ hitMidboss(s,p,12,word);
 }
 function startEncounter(s){
  if(s.kills>=20){beginPriest(s);return;}
@@ -309,6 +310,7 @@ function clearQuestionInput(s,words){
   if(player.typed&&words.some(word=>isPrefix(word,player.typed)))player.typed='';
  }
 }
+const DEFEND_WORD='ぼうぎょ';
 function beginBoss(s){
  s.foes=[];
  s.players.forEach(p=>p.typed='');
@@ -317,22 +319,35 @@ function beginBoss(s){
   return {id:spec.id,name:spec.name,maxHp,hp:maxHp,word:spec.words[Math.floor(rand(s)*spec.words.length)]};
  });
  const maxHp=parts.reduce((sum,part)=>sum+part.hp,0);
- s.boss={name:'終焉の魔王 アビスロード',maxHp,hp:maxHp,parts,introRemaining:3.5,remaining:.15,attackCycle:9,phase:1,weakPart:null,pendingPart:null,lastPart:null,windup:0};
+ s.boss={name:'終焉の魔王 アビスロード',maxHp,hp:maxHp,parts,introRemaining:3.5,remaining:.15,attackCycle:9,phase:1,weakPart:null,pendingPart:null,lastPart:null,windup:0,guarded:false};
  emit(s,'WARNING！ 魔王アビスロード降臨！','boss');
 }
 function exposedPart(boss){
  return boss?.parts?.find(part=>part.id===boss.weakPart&&part.hp>0);
+}
+function defend(s,p){
+ s.boss.guarded=true;
+ emit(s,`${p.name}が防御を構えた！`,'guardReady',p.id);
 }
 function tickAbyssLord(s,dt){
  const boss=s.boss;
  if(boss.pendingPart){
   boss.windup-=dt;
   if(boss.windup>0)return;
-  boss.weakPart=boss.pendingPart;
+  const part=boss.parts.find(part=>part.id===boss.pendingPart&&part.hp>0);
+  const previous=exposedPart(boss);
+  boss.weakPart=part?.id??previous?.id??null;
   boss.pendingPart=null;
   boss.remaining=boss.attackCycle;
-  emit(s,`魔王の攻撃！ ${exposedPart(boss).name}に隙ができた！`,'bossAttack',null,boss.weakPart);
-  damage(s,7+boss.phase);
+  const target=exposedPart(boss);
+  for(const player of s.players){
+   if(player.typed&&[DEFEND_WORD,previous?.word].some(word=>word&&isPrefix(word,player.typed))
+    &&!(target&&isPrefix(target.word,player.typed))) player.typed='';
+  }
+  emit(s,target?`魔王の攻撃！ ${target.name}に隙ができた！`:'魔王の攻撃！','bossAttack',null,part?.id);
+  if(boss.guarded)emit(s,'防御成功！ 共通HPを守った！','guardSuccess');
+  else damage(s,7+boss.phase);
+  boss.guarded=false;
   return;
  }
  boss.remaining-=dt;
@@ -340,13 +355,11 @@ function tickAbyssLord(s,dt){
  const order=['left-arm','right-arm','left-leg','right-leg','torso','head'];
  const start=order.indexOf(boss.lastPart)+1;
  const next=order.slice(start).concat(order.slice(0,start)).find(id=>boss.parts.some(part=>part.id===id&&part.hp>0));
- const previous=exposedPart(boss);
- if(previous)clearQuestionInput(s,[previous.word]);
- boss.weakPart=null;
  boss.pendingPart=next;
  boss.lastPart=next;
- boss.windup=.9;
- emit(s,'魔王が攻撃を構えた！','bossWindup',null,next);
+ boss.guarded=false;
+ boss.windup=5;
+ emit(s,'魔王が攻撃を構えた！ ぼうぎょと入力！','bossWindup',null,next);
 }
 function end(s,why){s.status='ended';s.result=why;emit(s,why==='victory'?'魔王を撃破！ 冒険成功！':why==='hp'?'全滅…… GAME OVER':'時間切れ…… 冒険失敗',why==='victory'?'win':'lose');}
 function damage(s,n){if(s.shield>0){s.shield--;emit(s,'プロテスが攻撃を防いだ！','shield');return;}s.hp=Math.max(0,s.hp-n);emit(s,`敵の攻撃！ 共通HP -${n}`,'hurt');if(s.hp===0)end(s,'hp');}
@@ -501,10 +514,11 @@ function handle(s,playerId,key){if(inputLocked(s))return;const p=s.players.find(
  if(k==='BACKSPACE'){p.typed=p.typed.slice(0,-1);return;}if(k==='ESCAPE'){p.typed='';return;}if(!/^[A-Z-]$/.test(k))return;
  let candidate=p.typed+k;
  const exposed=exposedPart(s.boss);
- const targets=[...s.foes.flatMap(f=>[{kind:'enemy',word:f.word,id:f.uid},{kind:'enemy',word:f.english,id:f.uid}]),...(exposed?[{kind:'boss',word:exposed.word,id:exposed.id}]:[]),...(s.boss?.choices??[]).map(choice=>({kind:'priest',word:choice.word,choice})),...(s.midboss?.words??[]).map(word=>({kind:'midboss',word})),...(p.weapon?[{kind:'weapon',word:WEAPONS[p.weapon].word,key:p.weapon},{kind:'weapon',word:p.weapon.toUpperCase(),key:p.weapon}]:[]),...p.charges.flatMap(key=>[{kind:'spell',word:SPELLS[key].word,key},{kind:'spell',word:key.toUpperCase(),key}])];
+ const targets=[...s.foes.flatMap(f=>[{kind:'enemy',word:f.word,id:f.uid},{kind:'enemy',word:f.english,id:f.uid}]),...(exposed?[{kind:'boss',word:exposed.word,id:exposed.id}]:[]),...(s.boss?.pendingPart&&!s.boss.guarded?[{kind:'defend',word:DEFEND_WORD}]:[]),...(s.boss?.choices??[]).map(choice=>({kind:'priest',word:choice.word,choice})),...(s.midboss?.words??[]).map(word=>({kind:'midboss',word})),...(p.weapon?[{kind:'weapon',word:WEAPONS[p.weapon].word,key:p.weapon},{kind:'weapon',word:p.weapon.toUpperCase(),key:p.weapon}]:[]),...p.charges.flatMap(key=>[{kind:'spell',word:SPELLS[key].word,key},{kind:'spell',word:key.toUpperCase(),key}])];
  let choices=targets.filter(t=>isPrefix(t.word,candidate));if(!choices.length){p.miss++;p.combo=0;emit(s,`${p.name} ミスタイプ`,'miss',p.id);p.typed='';candidate=k;choices=targets.filter(t=>isPrefix(t.word,candidate));if(!choices.length)return;}
- p.typed=candidate;const matches=choices.filter(t=>complete(t.word,candidate));const ambiguous=choices.some(t=>!complete(t.word,candidate));if(!matches.length||(ambiguous&&!matches.some(t=>(t.kind==='spell'||t.kind==='weapon')&&t.key.toUpperCase()===candidate)))return;
- const chosen=matches.sort((a,b)=>({enemy:0,boss:1,priest:1,midboss:1,spell:2,weapon:2}[a.kind]-{enemy:0,boss:1,priest:1,midboss:1,spell:2,weapon:2}[b.kind]))[0];p.typed='';
+ p.typed=candidate;const matches=choices.filter(t=>complete(t.word,candidate));const ambiguous=choices.some(t=>!complete(t.word,candidate));if(!matches.length||(ambiguous&&!matches.some(t=>t.kind==='boss'||t.kind==='defend'||((t.kind==='spell'||t.kind==='weapon')&&t.key.toUpperCase()===candidate))))return;
+ const chosen=matches.sort((a,b)=>({defend:0,enemy:0,boss:1,priest:1,midboss:1,spell:2,weapon:2}[a.kind]-{defend:0,enemy:0,boss:1,priest:1,midboss:1,spell:2,weapon:2}[b.kind]))[0];p.typed='';
+ if(chosen.kind==='defend'){defend(s,p);return;}
  if(chosen.kind==='weapon'){useWeapon(s,p);return;}
  if(chosen.kind==='priest'){typePriest(s,p,chosen.choice);return;}
  if(chosen.kind==='midboss'){typeMidboss(s,p,chosen.word);return;}
@@ -519,6 +533,7 @@ function handle(s,playerId,key){if(inputLocked(s))return;const p=s.players.find(
 }
 function handleText(s,playerId,text){const t=toHira(String(text).trim()).toLowerCase().replace(/\s+/g,'');if(!t||inputLocked(s))return false;const p=s.players.find(x=>x.id===playerId);if(!p)return false;
  const matches=word=>word===t||accepts(word).some(roman=>roman.toLowerCase()===t);
+ if(s.boss?.pendingPart&&!s.boss.guarded&&matches(DEFEND_WORD)){p.typed='';defend(s,p);return true;}
  if(p.weapon&&(p.weapon===t||matches(WEAPONS[p.weapon].word))){
   p.typed='';
   return useWeapon(s,p);

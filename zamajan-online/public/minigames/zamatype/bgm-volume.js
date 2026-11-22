@@ -4,7 +4,7 @@
   if(!control||!output)return;
   const key='zamatype.bgmVolume';
   const callbacks=new Set();
-  let percent=15;
+  let percent=10;
   try {
     const saved=localStorage.getItem(key);
     if(saved!==null&&/^(?:[0-9]{1,2}|100)$/.test(saved)) percent=Number(saved);
