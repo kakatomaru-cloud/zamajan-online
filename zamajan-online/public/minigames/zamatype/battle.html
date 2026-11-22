@@ -597,5 +597,14 @@ function finish(){
 }
 function keys(v){if(!live()||performance.now()<battleReadyAt)return;audioReady();const raw=String(v||'');if(!raw)return;if(onlineMode){onlineSocket?.emit('input',raw);return;}const clean=raw.trim();if(/[\u3040-\u30ff\u4e00-\u9fff]/.test(clean)){E.handleText(state,myId,clean);processEvents();display();finish();return;}if(clean.length>1){if(E.handleText(state,myId,clean)){processEvents();display();finish();return;}}for(const c of raw){if(/[a-zA-Z-]/.test(c))E.handle(state,myId,c);}processEvents();display();finish();}
 let composing=false;const input=$('typeInput');input.addEventListener('compositionstart',()=>{composing=true});input.addEventListener('compositionend',()=>{composing=false;const v=input.value;input.value='';keys(v);});input.addEventListener('input',()=>{if(composing)return;const v=input.value;input.value='';keys(v)});input.addEventListener('keydown',e=>{if(onlineMode&&(e.key==='Escape'||(e.key==='Backspace'&&!input.value))){onlineSocket?.emit('input',e.key.toUpperCase());e.preventDefault();return;}if(e.key==='Escape'||e.key==='Backspace'){if(e.key==='Escape'){E.handle(state,myId,'ESCAPE');e.preventDefault();}else if(!input.value){E.handle(state,myId,'BACKSPACE');e.preventDefault();}display();}});document.addEventListener('keydown',e=>{if(!live()||e.target.closest?.('.bgmControl'))return;if(document.activeElement!==input&&!e.ctrlKey&&!e.metaKey&&!e.altKey){input.focus({preventScroll:true});}});$('start').addEventListener('click',play);$('restart').addEventListener('click',()=>{if(onlineMode)location.reload();else{lastGameStatus='';play();}});$('clear').addEventListener('click',()=>{if(live()){if(onlineMode)onlineSocket?.emit('input','ESCAPE');else{E.handle(state,myId,'ESCAPE');display();}input.focus();}});
-function frame(t){let dt=Math.min((t-lastDraw)/1000,.1);lastDraw=t;if(!onlineMode&&live()&&t>=battleReadyAt){E.tick(state,dt);processEvents();display();finish();}requestAnimationFrame(frame)}requestAnimationFrame(frame);
+if(!onlineMode)setInterval(()=>{
+ const now=performance.now();
+ const dt=Math.min((now-lastDraw)/1000,.25);
+ lastDraw=now;
+ if(!live()||now<battleReadyAt)return;
+ E.tick(state,dt);
+ processEvents();
+ display();
+ finish();
+},33);
 })();</script></body></html>
