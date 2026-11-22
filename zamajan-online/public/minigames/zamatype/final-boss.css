@@ -183,3 +183,18 @@
   text-align:center;
 }
 .guardWarning.ready {border-color:#87e0ba;background:#133529f5}
+
+.finalSpellPanel {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.45rem;margin-top:.45rem}
+.finalSpellPanel.hidden,.finalSpellPanel.exhausted {display:none}
+.finalSpellPrompt {padding:.45rem .55rem;border:1px solid #78669c;background:#171329;color:#f4edff;overflow-wrap:anywhere}
+.finalSpellPrompt strong {color:#f3cc84}
+.finalSpellPrompt .bossWord {font-size:.9rem;line-height:1.35}
+.finalSpellPrompt .bossRoman {font-size:.68rem;color:#afe1f4}
+.finalSpellPrompt.aimed {border-color:#ffdf95;background:#302549}
+.finalSpellFlash {position:absolute;inset:0;pointer-events:none;animation:final-spell-flash .9s ease-out both}
+.finalSpellFlash.ultima {background:radial-gradient(ellipse,#ffffff 0%,#bc8fff 28%,transparent 70%)}
+.finalSpellFlash.holy {background:linear-gradient(90deg,transparent 23%,#fff2bb 48%,white 50%,#fff2bb 52%,transparent 77%)}
+.finalSpellFlash.meteor {background:radial-gradient(ellipse at 50% 70%,#fff0a7 0%,#fb673c 23%,transparent 69%)}
+@keyframes final-spell-flash {0%,100% {opacity:0} 25% {opacity:.85}}
+@media(max-width:650px){.finalSpellPanel {grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.finalSpellFlash {display:none}}
