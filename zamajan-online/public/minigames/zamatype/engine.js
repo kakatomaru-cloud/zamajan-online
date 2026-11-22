@@ -327,6 +327,25 @@ function startEncounter(s){
  if(s.kills>=10&&!s.midbossCleared)beginMidboss(s);
 }
 const PRIEST_STRIKES=['さきほどのけんについてごれんらくします','おみせのえいぎょうじかんをおしえてください','よやくしているなまえをおつたえします','おねがいしたないようをもういちどかくにんします','かいぎのしりょうをじぜんにきょうゆうします','つぎのおやすみにともだちとでかけます','このけんはあらためてごそうだんします'];
+const rotatingBossWords=ROTATING_TOPICS.flatMap(([,entries])=>entries.map(([word])=>word));
+const priestAttackWords=[...new Set([...PRIEST_STRIKES,...rotatingBossWords.filter((_,i)=>i%2===0)])];
+const finalAttackWords=[...new Set([...BOSS_PARTS.flatMap(part=>part.words),...rotatingBossWords.filter((_,i)=>i%2===1)])];
+const bossWordDecks=new WeakMap();
+function drawBossWord(s,pool,blocked=[]){
+ if(!bossWordDecks.has(s))bossWordDecks.set(s,new Map());
+ const decks=bossWordDecks.get(s);
+ const used=decks.get(pool)??new Set();
+ const eligible=pool.filter(word=>!blocked.includes(word));
+ let fresh=eligible.filter(word=>!used.has(word));
+ if(!fresh.length){
+  used.clear();
+  fresh=eligible;
+ }
+ const word=chooseWord(s,fresh);
+ used.add(word);
+ decks.set(pool,used);
+ return word;
+}
 const PRIEST_TRAPS=[
  {word:'こくえんのせんこく',kind:'harm',spell:'firaga',value:12},
  {word:'らいていのさばき',kind:'harm',spell:'thundaga',value:15},
@@ -335,11 +354,12 @@ const PRIEST_TRAPS=[
  {word:'しんえんのいやし',kind:'heal',spell:'cura',value:14}
 ];
 function priestChoices(s){
- const strikes=PRIEST_STRIKES.map(word=>({word,kind:'strike'}));
+ const strikes=[];
+ for(let i=0;i<5;i++)strikes.push(drawBossWord(s,priestAttackWords,[...strikes,...(s.boss?.choices??[]).map(choice=>choice.word)]));
  const harmful=PRIEST_TRAPS.filter(item=>item.kind==='harm');
  const healing=PRIEST_TRAPS.filter(item=>item.kind==='heal');
  const pool=[
-  ...Array.from({length:5},()=>strikes.splice(strikes.indexOf(chooseWord(s,strikes,item=>item.word)),1)[0]),
+  ...strikes.map(word=>({word,kind:'strike'})),
   ...Array.from({length:2},()=>harmful.splice(Math.floor(rand(s)*harmful.length),1)[0]),
   healing[Math.floor(rand(s)*healing.length)]
  ];
@@ -397,9 +417,16 @@ const FINAL_SPELLS=[
  {key:'holy',name:'ホーリー',words:['あたたかいおちゃをいれる','しおをすこしだけふる','ひるのべんとうをつつむ','きゅうりをうすくきる','みかんのかわをむく','こめをといでみずをかえる','よるのうちにぱんをやく','あさごはんのさらをならべる','ふたをあけてゆげをにがす'],damage:1},
  {key:'meteor',name:'メテオ',words:['しめきりをてちょうにかく','かいぎのじかんをずらす','ふるいめもをよみなおす','しりょうにふせんをはる','あしたのよていをまとめる','とけいをみていえをでる','まどをあけてくうきをかえる','つくえのうえをかたづける','たのまれたほんをさがす'],damage:2}
 ];
-function rollFinalSpell(s,spell,previous){
- const words=spell.words.filter(word=>word!==previous);
- return {...spell,word:chooseWord(s,words)};
+const finalSpellWords=[...new Set([
+ ...FINAL_SPELLS.flatMap(spell=>spell.words),
+ ...['せんたくもの','あたらしいくつ','おきにいりのほん','りょこうのにもつ','しゅうまつのよてい','かぞくのしゃしん','へやのかぎ','めがねのけーす'].flatMap(noun=>
+  ['をさきによういする','をもういちどたしかめる','のことをかぞくにはなす','のことをめもにのこす'].map(ending=>noun+ending)),
+ ...['こうえん','にわ','みなと','きっさてん','ほんや','えき','かわべ','しょうてんがい'].flatMap(place=>
+  ['をあさのうちにおとずれる','のまえでしゃしんをとる','までゆっくりあるく','のちかくでひとやすみする'].map(ending=>place+ending))
+])];
+function rollFinalSpell(s,spell){
+ const active=availableFinalSpells(s.boss).map(option=>option.word);
+ return {...spell,word:drawBossWord(s,finalSpellWords,active)};
 }
 function availableFinalSpells(boss){
  return boss?.hp>0 ? boss.finalSpells??[] : [];
@@ -414,6 +441,20 @@ const BOSS_SUMMONS=[
  {name:'氷角獣ネヴァル',word:'こんしゅうのよていをおくります',art:'ice',value:3},
  {name:'雷雲竜ヴォルティス',word:'みつもりしょをてんぷいたします',art:'thunder',value:3}
 ];
+const bossRewardWords=[
+ ...BOSS_HEALS.map(heal=>heal.word),...BOSS_SUMMONS.map(summon=>summon.word),
+ 'このないようでてつづきをすすめます','かくにんできしだいおへんじします',
+ 'おまたせしてもうしわけありません','おわすれものがないかごかくにんください',
+ 'おあいできるのをたのしみにしています','またのごりようをおまちしております',
+ 'かいぎにさんかできるじかんをつたえる','じゅんびができたらこえをかけてください',
+ 'こんかいはさんかをみおくります','おたがいのよていをすりあわせる',
+ 'ちゅういじこうをさいごまでよむ','こわれたものをしゅうりにだす',
+ 'こんどいっしょにしょくじにいきましょう','あめのばあいはにっていをかえます'
+];
+function rollBossReward(s,p,reward){
+ const blocked=availableBossRewards(p).map(option=>option.word);
+ return {...reward,word:drawBossWord(s,bossRewardWords,blocked)};
+}
 function resetBossRewards(s){
  for(const p of s.players){p.bossClean=0;p.bossHeal=null;p.bossSummon=null;}
 }
@@ -424,9 +465,9 @@ function countBossSuccess(s,p){
  const tier=count%9;
  if(tier%3===0){
   const heal=BOSS_HEALS[tier===0?2:tier/3-1];
-  if(!p.bossHeal||heal.value>=p.bossHeal.value)p.bossHeal=heal;
+  if(!p.bossHeal||heal.value>=p.bossHeal.value)p.bossHeal=rollBossReward(s,p,heal);
  }
- if(count%5===0&&!p.bossSummon)p.bossSummon=BOSS_SUMMONS[Math.floor(rand(s)*BOSS_SUMMONS.length)];
+ if(count%5===0&&!p.bossSummon)p.bossSummon=rollBossReward(s,p,BOSS_SUMMONS[Math.floor(rand(s)*BOSS_SUMMONS.length)]);
 }
 function castBossReward(s,p,reward){
  if(reward===p.bossHeal){
@@ -447,7 +488,7 @@ function castBossReward(s,p,reward){
 function castFinalSpell(s,p,spell){
  const boss=s.boss;
  const index=boss.finalSpells.indexOf(spell);
- boss.finalSpells[index]=rollFinalSpell(s,spell,spell.word);
+ boss.finalSpells[index]=rollFinalSpell(s,spell);
  const damage=damageFinalParts(boss,spell.damage);
  clearQuestionInput(s,[spell.word]);
  if(damage>0)p.score+=150;
@@ -472,18 +513,14 @@ function beginBoss(s){
  s.players.forEach(p=>p.typed='');
  const parts=BOSS_PARTS.map(spec=>{
   const maxHp=spec.hp+2*(s.players.length-1);
-  return {id:spec.id,name:spec.name,maxHp,hp:maxHp,word:'',unusedWords:[...spec.words]};
+  return {id:spec.id,name:spec.name,maxHp,hp:maxHp,word:''};
  });
  const maxHp=parts.reduce((sum,part)=>sum+part.hp,0);
  s.boss={name:'終焉の魔王 アビスロード',maxHp,hp:maxHp,parts,introRemaining:3.5,remaining:.15,attackCycle:9,phase:1,weakPart:null,pendingPart:null,lastPart:null,windup:0,guarded:false,finalSpells:FINAL_SPELLS.map(spell=>rollFinalSpell(s,spell))};
  emit(s,'WARNING！ 魔王アビスロード降臨！','boss');
 }
 function rotateBossWord(s,part){
- if(!part.unusedWords.length){
-  part.unusedWords=BOSS_PARTS.find(spec=>spec.id===part.id).words.filter(word=>word!==part.word);
- }
- const index=part.unusedWords.indexOf(chooseWord(s,part.unusedWords));
- [part.word]=part.unusedWords.splice(index,1);
+ part.word=drawBossWord(s,finalAttackWords,[part.word]);
 }
 function exposedPart(boss){
  return boss?.parts?.find(part=>part.id===boss.weakPart&&part.hp>0);
