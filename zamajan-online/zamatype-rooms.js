@@ -38,6 +38,7 @@ module.exports = function attachZamatype(io) {
     socket.emit('recruitment', recruitment());
     function leave() {
       if (!room) return;
+      room.reviewWords.delete(socket.id);
       socket.leave(room.id);
       room.players = room.players.filter(player => player.id !== socket.id);
       if (!room.players.length) rooms.delete(room.id);
@@ -58,7 +59,7 @@ module.exports = function attachZamatype(io) {
       if (data.create === true) {
         if (rooms.size >= 512) return reply('ルームの上限に達しました。');
         const id = randomUUID();
-        room = {id, host: socket.id, players: [], game: null};
+        room = {id, host: socket.id, players: [], reviewWords: new Map(), game: null};
         rooms.set(id, room);
       } else {
         const target = rooms.get(data.roomId);
@@ -68,6 +69,7 @@ module.exports = function attachZamatype(io) {
         room = target;
       }
       room.players.push({id: socket.id, name});
+      room.reviewWords.set(socket.id, engine.normalizeReviewWords(data.reviewWords));
       socket.join(room.id);
       reply(null);
       publish(room);
@@ -78,7 +80,7 @@ module.exports = function attachZamatype(io) {
       if (!room || room.host !== socket.id || room.game || room.players.length < 2) {
         return reply('2〜4人集まると、ルーム作成者が開始できます。');
       }
-      room.game = engine.init(engine.make(room.players));
+      room.game = engine.init(engine.make(room.players, {reviewWords: [...room.reviewWords.values()]}));
       room.readyAt = Date.now() + 1450;
       room.lastTick = room.readyAt;
       reply(null);

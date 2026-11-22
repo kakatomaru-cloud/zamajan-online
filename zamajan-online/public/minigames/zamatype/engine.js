@@ -101,7 +101,7 @@ function isPrefix(word,str){return (/^[A-Z -]+$/.test(word)?word.replace(/\s/g,'
 function complete(word,str){return (/^[A-Z -]+$/.test(word)?word.replace(/\s/g,'')===str:accepts(word).includes(str));}
 function display(word){return /^[A-Z -]+$/.test(word)?word:(accepts(word)[0]||word);}
 const BATTLE_DURATION=300;
-function make(seedPlayers,opts={}){const p=seedPlayers.map((x,i)=>({id:x.id,name:String(x.name||`P${i+1}`).slice(0,20),score:0,combo:0,kills:0,miss:0,typed:'',charges:[],weapon:null,magicMeter:0,lastInput:0}));return {status:'playing',duration:BATTLE_DURATION,remaining:BATTLE_DURATION,hp:100,maxHp:100,players:p,foes:[],midboss:null,midbossCleared:false,boss:null,bossIndex:0,kills:0,nextEnemy:1,magicSeq:0,shield:0,freezeUntil:0,slowUntil:0,elapsed:0,events:[],eventSeq:0,result:null,randomSeed:opts.seed||Math.floor(Math.random()*100000000),lastTick:null,questionSeq:0};}
+function make(seedPlayers,opts={}){const p=seedPlayers.map((x,i)=>({id:x.id,name:String(x.name||`P${i+1}`).slice(0,20),score:0,combo:0,kills:0,miss:0,typed:'',missWords:Object.create(null),charges:[],weapon:null,magicMeter:0,lastInput:0}));return {status:'playing',duration:BATTLE_DURATION,remaining:BATTLE_DURATION,hp:100,maxHp:100,players:p,foes:[],midboss:null,midbossCleared:false,boss:null,bossIndex:0,kills:0,nextEnemy:1,magicSeq:0,shield:0,freezeUntil:0,slowUntil:0,elapsed:0,events:[],eventSeq:0,result:null,randomSeed:opts.seed||Math.floor(Math.random()*100000000),lastTick:null,questionSeq:0,reviewWords:[...new Set((opts.reviewWords??[]).flatMap(normalizeReviewWords))].slice(0,20),reviewDraw:0};}
 function rand(s){s.randomSeed=(s.randomSeed*1664525+1013904223)>>>0;return s.randomSeed/4294967296;}
 function pickEnemy(s){const idx=Math.floor(rand(s)*ENEMIES.length);return ENEMIES[idx];}
 
@@ -140,15 +140,44 @@ const TOPICS=[
   ['けんだまでれんぞくちゃれんじ','KENDAMA STREAK CHALLENGE'],['れとろげーむであそぶ','PLAY A RETRO GAME'],
   ['ねこのどうががわだいになる','CAT VIDEO GOES VIRAL']]]
 ];
-const TOPIC_QUESTIONS=TOPICS.flatMap(([genre,entries])=>entries.map(([word,english])=>[word,english.toUpperCase(),genre]));
+const EVERYDAY_TOPICS=[
+ ['身近なもの', [['やかん','KETTLE'],['ひきだし','DRAWER'],['てぶくろ','GLOVES'],['つめきり','NAIL CLIPPERS'],['めざましどけい','ALARM CLOCK'],['かばんのなかをたしかめる','CHECK INSIDE THE BAG']]],
+ ['散歩と旅', [['ろじ','ALLEY'],['みさき','CAPE'],['ふみきり','CROSSING'],['ゆうほどう','PROMENADE'],['とおくのとうだいをさがす','LOOK FOR THE LIGHTHOUSE'],['かわぞいのこみちをあるく','WALK ALONG THE RIVER']]],
+ ['食卓', [['すもも','PLUM'],['つくだに','PRESERVED SEAWEED'],['むぎちゃ','BARLEY TEA'],['しおむすび','SALTED RICE BALL'],['やさいをうすくきりわける','SLICE THE VEGETABLES THINLY'],['こおりをいれておちゃをそそぐ','POUR TEA OVER ICE']]],
+ ['仕事と暮らし', [['はんこ','STAMP'],['しおり','BOOKMARK'],['みつもり','ESTIMATE'],['てじゅんしょ','PROCEDURE GUIDE'],['しめきりをよていひょうにかく','MARK THE DEADLINE ON THE CALENDAR'],['らいしゅうのかいぎしつをとる','BOOK THE MEETING ROOM']]]
+];
+const TOPIC_QUESTIONS=[...TOPICS,...EVERYDAY_TOPICS].flatMap(([genre,entries])=>entries.map(([word,english])=>[word,english.toUpperCase(),genre]));
 const OTHER_QUESTIONS=Object.values(QUESTIONS).flat();
 function forms(q){return [...accepts(q[0]),q[1].replace(/\s/g,'').toUpperCase()];}
 const MAGIC_FORMS=Object.entries(SPELLS).flatMap(([key,spell])=>[key.toUpperCase(),...accepts(spell.word)]);
 const PROMPT_FORMS=new Map([...TOPIC_QUESTIONS,...OTHER_QUESTIONS].map(q=>[q,forms(q)]));
+function normalizeReviewWords(words){
+ return Array.isArray(words) ? words.slice(0,5).filter(word=>typeof word==='string'&&/^[ぁ-ゖー]{1,64}$/.test(word)) : [];
+}
+function chooseWord(s,items,wordOf=item=>item){
+ const review=++s.reviewDraw%3===0 ? items.filter(item=>s.reviewWords.includes(wordOf(item))) : [];
+ const pool=review.length?review:items;
+ return pool[Math.floor(rand(s)*pool.length)];
+}
+function missRanking(game,playerId){
+ const totals=new Map();
+ for(const player of game.players){
+  if(playerId!==undefined&&player.id!==playerId)continue;
+  for(const [word,count] of Object.entries(player.missWords??{}))totals.set(word,(totals.get(word)??0)+count);
+ }
+ return [...totals].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'ja')).slice(0,5);
+}
+const matchQuestions=new WeakMap();
+function selectMatchQuestions(s){
+ // Refresh the active deck for each match, keeping eligible review words available.
+ return TOPIC_QUESTIONS.filter(q=>rand(s)<.8||s.reviewWords.includes(q[0]));
+}
 function chooseQuestion(s,f){
  const blocked=[...MAGIC_FORMS,...s.foes.filter(enemy=>enemy.uid!==f.uid).flatMap(enemy=>forms([enemy.word,enemy.english]))];
  const valid=q=>q[0]!==f.word&&q[1]!==f.english&&accepts(q[0]).length>0&&PROMPT_FORMS.get(q).every(x=>blocked.every(y=>!x.startsWith(y)&&!y.startsWith(x)));
- const pool=TOPIC_QUESTIONS.filter(valid);
+ if(!matchQuestions.has(s))matchQuestions.set(s,selectMatchQuestions(s));
+ const selected=matchQuestions.get(s).filter(valid);
+ const pool=selected.length?selected:TOPIC_QUESTIONS.filter(valid);
  const recent=s.recentQuestions??=[];
  const fresh=pool.filter(q=>!recent.includes(q[0]));
  const candidates=fresh.length?fresh:pool.length?pool:OTHER_QUESTIONS.filter(valid);
@@ -159,7 +188,8 @@ function chooseQuestion(s,f){
  const available=sameLength.length?sameLength:candidates;
  const different=available.filter(q=>q[2]!==s.lastQuestionGenre);
  const choices=different.length?different:available;
- const question=choices[Math.floor(rand(s)*choices.length)];
+ const review=candidates.filter(q=>s.reviewWords.includes(q[0]));
+ const question=++s.reviewDraw%3===0&&review.length?review[Math.floor(rand(s)*review.length)]:choices[Math.floor(rand(s)*choices.length)];
  recent.push(question[0]);
  if(recent.length>12)recent.shift();
  s.lastQuestionGenre=question[2];
@@ -171,7 +201,7 @@ function spawn(s){if(s.status!=='playing'||s.boss||s.midboss||s.kills>=20||s.foe
  const maxHp=Math.round((base.tier===1?9:base.tier===2?14:20)*(0.78+0.22*s.players.length));
  const f={...base,uid:s.nextEnemy++,remaining:base.life*factor,maxLife:base.life*factor,hp:maxHp,maxHp,questionIndex:idx,word:question[0],english:question[1],genre:question[2]??null};s.foes.push(f);}
 function emit(s,text,kind='info',player=null,targetUid=null,spell=null){s.events.push({id:++s.eventSeq,text,kind,player,targetUid,spell});if(s.events.length>12)s.events.shift();}
-function init(s){for(let i=0;i<5;i++)spawn(s);emit(s,'冒険が始まった！','start');return s;}
+function init(s){matchQuestions.set(s,selectMatchQuestions(s));for(let i=0;i<5;i++)spawn(s);emit(s,'冒険が始まった！','start');return s;}
 const BOSS_PARTS=[
  {id:'head',name:'頭',hp:9,words:BOSS_WORDS},
  {id:'torso',name:'胴体',hp:6,words:[
@@ -229,7 +259,7 @@ function midbossWords(s){
  const themes=[...MIDBOSS_WORDS];
  return Array.from({length:3},()=>{
   const theme=themes.splice(Math.floor(rand(s)*themes.length),1)[0];
-  return theme[Math.floor(rand(s)*theme.length)];
+  return chooseWord(s,theme);
  });
 }
 function beginMidboss(s){
@@ -250,7 +280,7 @@ function hitMidboss(s,p,amount,answeredWord){
   if(answeredWord){
    const choices=boss.words.slice();
    const pool=MIDBOSS_WORDS.flat().filter(word=>!choices.includes(word));
-   choices[choices.indexOf(answeredWord)]=pool[Math.floor(rand(s)*pool.length)];
+   choices[choices.indexOf(answeredWord)]=chooseWord(s,pool);
    boss.words=choices;
    for(const player of s.players){
     if(player.typed&&isPrefix(answeredWord,player.typed)&&!choices.some(word=>isPrefix(word,player.typed)))player.typed='';
@@ -291,7 +321,7 @@ function priestChoices(s){
  const harmful=PRIEST_TRAPS.filter(item=>item.kind==='harm');
  const healing=PRIEST_TRAPS.filter(item=>item.kind==='heal');
  const pool=[
-  ...Array.from({length:5},()=>strikes.splice(Math.floor(rand(s)*strikes.length),1)[0]),
+  ...Array.from({length:5},()=>strikes.splice(strikes.indexOf(chooseWord(s,strikes,item=>item.word)),1)[0]),
   ...Array.from({length:2},()=>harmful.splice(Math.floor(rand(s)*harmful.length),1)[0]),
   healing[Math.floor(rand(s)*healing.length)]
  ];
@@ -343,13 +373,13 @@ function clearQuestionInput(s,words){
 }
 const DEFEND_WORD='ぼうぎょ';
 const FINAL_SPELLS=[
- {key:'ultima',name:'アルテマ',words:['ほしのまりょくをときはなつ','げんかいをこえるちから','しゅうえんのひかりをはなつ'],damage:3},
- {key:'holy',name:'ホーリー',words:['せいなるひかりをともす','いのりでやみをはらう','しろいひかりがふりそそぐ'],damage:1},
- {key:'meteor',name:'メテオ',words:['そらからいんせきをおとす','もえるほしをよびおこす','よぞらをさくほしのあめ'],damage:2}
+ {key:'ultima',name:'アルテマ',words:['きっぷをなくさずにしまう','まどぎわのせきをえらぶ','あさのいちばをのぞく','かいだんをゆっくりおりる','よるのえきでひとをまつ','ちずをひろげてみちをさがす','はしをわたってみなとへいく','えきまえでじてんしゃをかりる','ふるいしゃしんをみなおす'],damage:3},
+ {key:'holy',name:'ホーリー',words:['あたたかいおちゃをいれる','しおをすこしだけふる','ひるのべんとうをつつむ','きゅうりをうすくきる','みかんのかわをむく','こめをといでみずをかえる','よるのうちにぱんをやく','あさごはんのさらをならべる','ふたをあけてゆげをにがす'],damage:1},
+ {key:'meteor',name:'メテオ',words:['しめきりをてちょうにかく','かいぎのじかんをずらす','ふるいめもをよみなおす','しりょうにふせんをはる','あしたのよていをまとめる','とけいをみていえをでる','まどをあけてくうきをかえる','つくえのうえをかたづける','たのまれたほんをさがす'],damage:2}
 ];
 function rollFinalSpell(s,spell,previous){
  const words=spell.words.filter(word=>word!==previous);
- return {...spell,word:words[Math.floor(rand(s)*words.length)]};
+ return {...spell,word:chooseWord(s,words)};
 }
 function availableFinalSpells(boss){
  return boss?.hp>0 ? boss.finalSpells??[] : [];
@@ -369,7 +399,7 @@ function castFinalSpell(s,p,spell){
  updateBossPhase(boss);
  clearQuestionInput(s,[spell.word]);
  if(damage>0)p.score+=150;
- emit(s,`${p.name}が ${spell.name} を発動！ 魔王に ${damage} ダメージ！`,'finalSpell',p.id,'abyss',{key:spell.key});
+ emit(s,`${p.name}が ${spell.name} を発動！ 魔王に ${damage} ダメージ！`,'finalSpell',p.id,'abyss',{key:spell.key,damage});
 }
 function beginBoss(s){
  s.foes=[];
@@ -386,7 +416,7 @@ function rotateBossWord(s,part){
  if(!part.unusedWords.length){
   part.unusedWords=BOSS_PARTS.find(spec=>spec.id===part.id).words.filter(word=>word!==part.word);
  }
- const index=Math.floor(rand(s)*part.unusedWords.length);
+ const index=part.unusedWords.indexOf(chooseWord(s,part.unusedWords));
  [part.word]=part.unusedWords.splice(index,1);
 }
 function exposedPart(boss){
@@ -578,12 +608,25 @@ function useWeapon(s,p){
  return true;
 }
 function inputLocked(s){return s.status!=='playing'||s.boss?.introRemaining>0||s.midboss?.introRemaining>0||s.midboss?.hp===0||s.boss?.transformRemaining>0;}
+function inputTargets(s,p){
+ const exposed=exposedPart(s.boss);
+ return [...s.foes.flatMap(f=>[{kind:'enemy',word:f.word,id:f.uid},{kind:'enemy',word:f.english,reviewWord:f.word,id:f.uid}]),...(exposed?[{kind:'boss',word:exposed.word,id:exposed.id}]:[]),...availableFinalSpells(s.boss).map(spell=>({kind:'finalSpell',word:spell.word,spell})),...(s.boss?.pendingPart&&!s.boss.guarded?[{kind:'defend',word:DEFEND_WORD}]:[]),...(s.boss?.choices??[]).map(choice=>({kind:'priest',word:choice.word,choice})),...(s.midboss?.words??[]).map(word=>({kind:'midboss',word})),...(p.weapon?[{kind:'weapon',word:WEAPONS[p.weapon].word,key:p.weapon},{kind:'weapon',word:p.weapon.toUpperCase(),reviewWord:WEAPONS[p.weapon].word,key:p.weapon}]:[]),...p.charges.flatMap(key=>[{kind:'spell',word:SPELLS[key].word,key},{kind:'spell',word:key.toUpperCase(),reviewWord:SPELLS[key].word,key}])];
+}
+function recordMiss(s,p,targets,prefix,japanese=false){
+ p.miss++;
+ p.combo=0;
+ const remaining=new Set(targets.filter(t=>!prefix||(japanese?t.word.startsWith(prefix):isPrefix(t.word,prefix))).map(t=>t.reviewWord??t.word));
+ if(remaining.size===1){
+  const [word]=remaining;
+  p.missWords[word]=(p.missWords[word]??0)+1;
+ }
+ emit(s,`${p.name} ミスタイプ`,'miss',p.id);
+}
 function handle(s,playerId,key){if(inputLocked(s))return;const p=s.players.find(x=>x.id===playerId);if(!p)return;const k=String(key).toUpperCase();
  if(k==='BACKSPACE'){p.typed=p.typed.slice(0,-1);return;}if(k==='ESCAPE'){p.typed='';return;}if(!/^[A-Z-]$/.test(k))return;
  let candidate=p.typed+k;
- const exposed=exposedPart(s.boss);
- const targets=[...s.foes.flatMap(f=>[{kind:'enemy',word:f.word,id:f.uid},{kind:'enemy',word:f.english,id:f.uid}]),...(exposed?[{kind:'boss',word:exposed.word,id:exposed.id}]:[]),...availableFinalSpells(s.boss).map(spell=>({kind:'finalSpell',word:spell.word,spell})),...(s.boss?.pendingPart&&!s.boss.guarded?[{kind:'defend',word:DEFEND_WORD}]:[]),...(s.boss?.choices??[]).map(choice=>({kind:'priest',word:choice.word,choice})),...(s.midboss?.words??[]).map(word=>({kind:'midboss',word})),...(p.weapon?[{kind:'weapon',word:WEAPONS[p.weapon].word,key:p.weapon},{kind:'weapon',word:p.weapon.toUpperCase(),key:p.weapon}]:[]),...p.charges.flatMap(key=>[{kind:'spell',word:SPELLS[key].word,key},{kind:'spell',word:key.toUpperCase(),key}])];
- let choices=targets.filter(t=>isPrefix(t.word,candidate));if(!choices.length){p.miss++;p.combo=0;emit(s,`${p.name} ミスタイプ`,'miss',p.id);p.typed='';candidate=k;choices=targets.filter(t=>isPrefix(t.word,candidate));if(!choices.length)return;}
+ const targets=inputTargets(s,p);
+ let choices=targets.filter(t=>isPrefix(t.word,candidate));if(!choices.length){recordMiss(s,p,targets,p.typed);p.typed='';candidate=k;choices=targets.filter(t=>isPrefix(t.word,candidate));if(!choices.length)return;}
  p.typed=candidate;const matches=choices.filter(t=>complete(t.word,candidate));const ambiguous=choices.some(t=>!complete(t.word,candidate));if(!matches.length||(ambiguous&&!matches.some(t=>t.kind==='boss'||t.kind==='defend'||t.kind==='finalSpell'||((t.kind==='spell'||t.kind==='weapon')&&t.key.toUpperCase()===candidate))))return;
  const chosen=matches.sort((a,b)=>({defend:0,enemy:0,boss:1,priest:1,midboss:1,finalSpell:1,spell:2,weapon:2}[a.kind]-{defend:0,enemy:0,boss:1,priest:1,midboss:1,finalSpell:1,spell:2,weapon:2}[b.kind]))[0];p.typed='';
  if(chosen.kind==='finalSpell'){castFinalSpell(s,p,chosen.spell);return;}
@@ -613,7 +656,17 @@ function handleText(s,playerId,text){const t=toHira(String(text).trim()).toLower
  if(midWord){p.typed='';typeMidboss(s,p,midWord);return true;}
  const priestChoice=s.boss?.choices?.find(choice=>matches(choice.word));
  if(priestChoice){p.typed='';typePriest(s,p,priestChoice);return true;}
- const spell=p.charges.find(k=>SPELLS[k].word===t||k===t);if(spell){p.typed='';return cast(s,p,spell);}const part=exposedPart(s.boss);if(part&&matches(part.word)){p.typed='';typeBossPart(s,p,part);return true;}const targets=[...s.foes.flatMap(f=>[f.word,f.english]),...p.charges.flatMap(k=>[SPELLS[k].word,k.toUpperCase()])];const match=targets.find(w=>w.toLowerCase().replace(/\s+/g,'')===t);if(!match)return false;p.typed='';const sequence=display(match).replace(/\s+/g,'');for(const ch of sequence){if(s.status!=='playing')break;handle(s,playerId,ch);}return true;}
+ const spell=p.charges.find(k=>SPELLS[k].word===t||k===t);if(spell){p.typed='';return cast(s,p,spell);}const part=exposedPart(s.boss);if(part&&matches(part.word)){p.typed='';typeBossPart(s,p,part);return true;}const targets=[...s.foes.flatMap(f=>[f.word,f.english]),...p.charges.flatMap(k=>[SPELLS[k].word,k.toUpperCase()])];const match=targets.find(w=>w.toLowerCase().replace(/\s+/g,'')===t);if(!match){
+ if(/[ぁ-ゖー一-龯]/.test(t)){
+  const visible=inputTargets(s,p);
+  let length=t.length;
+  while(length>0&&!visible.some(target=>target.word.startsWith(t.slice(0,length))))length--;
+  recordMiss(s,p,visible,t.slice(0,length),true);
+  p.typed='';
+  return true;
+ }
+ return false;
+}p.typed='';const sequence=display(match).replace(/\s+/g,'');for(const ch of sequence){if(s.status!=='playing')break;handle(s,playerId,ch);}return true;}
 function previewFinal(s,form){
  s.kills=20;
  s.midbossCleared=true;
@@ -622,5 +675,5 @@ function previewFinal(s,form){
  return s;
 }
 function snapshot(s){return JSON.parse(JSON.stringify(s));}
-return {ENEMIES,QUESTIONS,SPELLS,WEAPONS,ENGLISH,BOSS_WORDS,availableFinalSpells,handleText,variants,accepts,isPrefix,complete,display,make,init,tick,handle,snapshot,emit,previewFinal};
+return {ENEMIES,QUESTIONS,SPELLS,WEAPONS,ENGLISH,BOSS_WORDS,normalizeReviewWords,missRanking,availableFinalSpells,handleText,variants,accepts,isPrefix,complete,display,make,init,tick,handle,snapshot,emit,previewFinal};
 });

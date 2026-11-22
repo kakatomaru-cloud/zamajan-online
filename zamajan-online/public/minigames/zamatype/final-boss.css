@@ -247,3 +247,11 @@
   85%{opacity:1;transform:translate(160%,84%) rotate(-32deg)}
   100%{opacity:0;transform:translate(174%,96%) rotate(-32deg)}
 }
+
+#stage .zama-banner .finalSpellDamage {display:block;font-size:1.16em;line-height:1.15;color:#ffdfab;text-align:center}
+#missResult {width:min(92%,35rem);margin:.5rem auto 1rem;text-align:left}
+#missResult h2 {font-size:1.05rem;margin:.4rem 0}
+#missResult ol {margin:0;padding-inline-start:1.7rem}
+#missResult li {padding:.2rem 0;overflow-wrap:anywhere}
+#missResult li strong {margin-inline-start:.5rem;white-space:nowrap}
+#stage #over:has(#missResult ol) {overflow:auto;align-content:safe center}
