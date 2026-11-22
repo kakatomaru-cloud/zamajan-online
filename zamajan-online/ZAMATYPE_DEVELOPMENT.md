@@ -117,3 +117,10 @@
 
 - [魔王戦テスト版](https://rawcdn.githack.com/kakatomaru-cloud/zamajan-online/b3681594b6f4644f5f0b6c1ea0a315f50b8ec72d/zamajan-online/public/minigames/zamatype/battle.html?boss=1)
 - 左の大魔法候補を縮小し、弱点のお題を戦闘欄の下部中央に配置。魔法発動時の演出と魔法名を候補より手前に表示。
+
+## 出題の更新とミスタイプ復習（2026-11-23 JST）
+
+- [魔王戦テスト版](https://rawcdn.githack.com/kakatomaru-cloud/zamajan-online/7d8b26fe17e698e4ecbc12629cca1a9815f2e9db/zamajan-online/public/minigames/zamatype/battle.html?boss=1)
+- 開始時に出題候補を選び直す。日常・旅・食卓・仕事の問題を追加。大魔法のお題は魔法と無関係な短文を各9種類からランダム出題。
+- 終了画面に参加者全員のミスタイプが多かったお題を5件まで表示。入力途中で対象を特定できたミスを集計し、個人別上位をブラウザに保存。次戦で該当候補があれば優先的に出題。
+- 大魔法の発動表示でダメージを独立した行にし、文字を約16%拡大。
