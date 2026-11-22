@@ -129,3 +129,8 @@
 
 - [魔王戦テスト版](https://rawcdn.githack.com/kakatomaru-cloud/zamajan-online/9c6bb9b8ec512f333b0c53c241d99710ecd40561/zamajan-online/public/minigames/zamatype/battle.html?boss=1)
 - PCの入力欄を戦闘画面の右側に移動。入力案内、ミス・コンボ、戦闘ログは画面下部に移動。
+
+## ゲームオーバーBGM（2026-11-23 JST）
+
+- [戦闘テスト版](https://rawcdn.githack.com/kakatomaru-cloud/zamajan-online/d3e74bda56d6fffe07c96c17c6d0663aa63e01f6/zamajan-online/public/minigames/zamatype/battle.html)
+- 全滅と時間切れの結果表示時に提供音源をループ再生。既存のBGM音量設定を使用し、再挑戦時に戦闘曲へ戻る。
