@@ -59,3 +59,13 @@
 - ブラウザテスト版: https://zamatype-opening-sample.affectionategrebe8.chatgpt.site/battle.html?boss=1
 - ボス戦で大聖堂の低い視点に切り替わる。遠方からの登場、待機中の揺れ、攻撃時の踏み込み、被弾時ののけぞり、部位の崩れを実装。既存のボス画像に背景と遠近の動きを重ねる2.5D演出。
 - ブラウザでボスの表示、右脚の破壊、ブリザラ発動を確認。1〜4人のエンジンで登場中のダメージ無効、全体魔法、タイピングによる全6部位破壊と勝利を確認。4人で同時に接続する実プレイは未検証。
+
+## 最新テスト版　中ボス・伝説の武器・魔法音（2026-11-22 JST）
+
+- ゲーム修正コミット `fbecb1f9d0ece5227d6da5bb4edd87fcf9c26f8d`
+- [中ボス直行](https://rawcdn.githack.com/kakatomaru-cloud/zamajan-online/fbecb1f9d0ece5227d6da5bb4edd87fcf9c26f8d/zamajan-online/public/minigames/zamatype/battle.html?midboss=1) · [通常スタート](https://rawcdn.githack.com/kakatomaru-cloud/zamajan-online/fbecb1f9d0ece5227d6da5bb4edd87fcf9c26f8d/zamajan-online/public/minigames/zamatype/battle.html) · [ラスボス直行](https://rawcdn.githack.com/kakatomaru-cloud/zamajan-online/fbecb1f9d0ece5227d6da5bb4edd87fcf9c26f8d/zamajan-online/public/minigames/zamatype/battle.html?boss=1)
+- 10体撃破で黒炎竜・ベヒーモス・アーリマンの1体が出現。大聖堂の低い視点を使い、単一のHPゲージと長めの3問を表示。正解ごとに12ダメージを与え、直前とは異なる3問に総入れ替え。HP0で消滅し、通常戦に復帰する。
+- 中ボス戦では提供された「中ボス.mp3」がループし、撃破演出後は通常BGMを中断位置から再開する。雑魚の撃破数が20体になるとラスボスが登場する。
+- 撃破報酬は参加者ごとにラグナロク・エクスカリバー・政宗・与一の弓から1つ。表示名の入力で一度だけ発動し、通常敵1体に34ダメージを与える。ラスボスは部位のHPを1まで削り、トドメはタイピングで行う。
+- 炎・落雷・氷の亀裂・回復の効果音を同梱。クレジットとライセンスは `public/minigames/zamatype/sfx/credits.html` に記載。
+- ブラウザで中ボスの3問の入れ替え、魔法入力、中ボスBGMへの切り替えと通常BGMの再開、ラグナロクの発動と消費を確認。共通エンジンでは1〜4人で10体撃破からラスボス勝利まで検証。4人同時接続は未検証。
