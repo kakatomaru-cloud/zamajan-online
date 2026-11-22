@@ -58,7 +58,7 @@ function stopNormalBattleMusic(){
  normalBattleMusic.pause();
  normalBattleMusic.currentTime=0;
 }
-const encounterMusic = {midboss:'midboss-theme.mp3', final:'mana8-boss.mp3'};
+const encounterMusic = {midboss:'midboss-theme.mp3', priest:'priest-theme.mp3', final:'mana8-boss.mp3'};
 const encounterBuffers = new Map();
 let bossMusicSource;
 let bossMusicWanted;
@@ -78,14 +78,14 @@ function prepareBossMusic(){
   encounterBuffers.set(encounter,request);
  }
 }
-async function startBossMusic(encounter='final'){
+async function startBossMusic(encounter){
  if(bossMusicWanted?.encounter===encounter)return;
- stopBossMusic();
  const wanted={encounter};
  bossMusicWanted=wanted;
  prepareBossMusic();
  const buffer=await encounterBuffers.get(encounter);
  if(!buffer||bossMusicWanted!==wanted)return;
+ stopBossMusicSource();
  if(encounter==='midboss')normalBattleMusic.pause();
  else stopNormalBattleMusic();
  const audio=slashAudio;
@@ -101,6 +101,9 @@ async function startBossMusic(encounter='final'){
 }
 function stopBossMusic(){
  bossMusicWanted=null;
+ stopBossMusicSource();
+}
+function stopBossMusicSource(){
  if(!bossMusicSource)return;
  bossMusicSource.stop();
  bossMusicSource.disconnect();
@@ -156,7 +159,7 @@ function refreshPriest(arena,boss){
     <img src="abyss-priest.webp" alt="銀の長髪の神官アビス">
     <div class="bossHitPoint priestImpact" data-impact="priest"></div>
    </div></div></div><div class="priestPrompts"></div>`;
-  startBossMusic();
+  startBossMusic('priest');
   zamaBanner('深淵の神官 アビス');
  }
  const sig=boss.hp+':'+boss.choices.map(choice=>choice.word).join('|');
@@ -193,7 +196,7 @@ function refreshAbyss(arena,boss){
     <img class="skeletonWhole" src="abyss-bones.webp" alt="">
    </div></div></div>
    <div class="exposurePrompt"></div>`;
-  startBossMusic();
+  startBossMusic('final');
   zamaBanner('終焉の魔王、降臨');
   zamaRumble(3.3);
  }
