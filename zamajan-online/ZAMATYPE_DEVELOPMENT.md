@@ -1,0 +1,20 @@
+# ザマタイプ 開発管理
+
+## 最新版 v1.6.1 (2026-11-22 JST)
+- 基準: 添付 ZIP `zamajan-online-main (2).zip` 内の v1.6 と GitHub blob `c844225ee0bf935c21ac558225b47802152df099` の一致を確認。
+- 最新ゲームファイル: `zamajan-online/public/zamatype-v16-integrated-test.html`
+- ゲーム修正コミット: `d6b7077cfb7c3cb04dd232812d7d16e1667beeaa`
+- 修正後 blob: `f18a6a6040a9124f36d82fb9c23e6a6224cedb76`
+- テストURL: https://rawcdn.githack.com/kakatomaru-cloud/zamajan-online/d6b7077cfb7c3cb04dd232812d7d16e1667beeaa/zamajan-online/public/zamatype-v16-integrated-test.html
+
+## 今回の差分
+- ボス HP 24/36/48/60（1〜4人）、通常攻撃3、攻撃魔法3/6/9。据え置きの魔法仕様。登場4秒間は入力・戦闘時計停止。
+- 重低音と緩やかな登場、撃破時の点滅・振動・下方向への破片崩壊、崩壊後に「ボス撃破！！」、その後結果表示。
+- 既存画像、配置、職業、魔法段階、3分制限、その他のゲーム仕様は変更しない。
+
+## 検証
+- JavaScript 構文チェック合格。1〜4人のエンジンで登場時のダメージ無効、最上位魔法9ダメージで即死しないこと、通常攻撃3ダメージを確認。
+- ブラウザでの視覚・音声・実プレイは未検証。
+
+## 開発ルール
+最新 main と本ファイルを確認し、過去への巻き戻し・推測復元は禁止。変更は指定箇所のみ。大容量 HTML の取得が空なら blob SHA から取得する。変更前後の差分を確認し、管理ファイルとコミット固定テストURLを更新する。最新確認不能なら上書きしない。
