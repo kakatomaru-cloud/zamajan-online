@@ -1,0 +1,158 @@
+/* Keep the prompts clear of the character silhouettes. */
+#stage.midbossBattle .bossPerspective {inset: 14% 3% 12% 41%}
+#stage.midbossBattle .midbossPrompts {
+  inset: 19% auto auto 2.5%;
+  width: 40%;
+  grid-template-columns: minmax(0,1fr);
+  gap: .55rem;
+}
+#stage.midbossBattle .midbossPrompt {
+  padding: .68rem .8rem;
+  text-align: left;
+  border-top-width: 1px;
+  border-left: 3px solid #bda0d4;
+}
+.midbossPrompt .bossWord {
+  margin-bottom: .22rem;
+  font-size: clamp(17px,1.7vw,24px);
+  line-height: 1.4;
+}
+.midbossPrompt .bossRoman {
+  font-size: clamp(12px,1.05vw,16px);
+  line-height: 1.22;
+  overflow-wrap: anywhere;
+}
+#stage.midbossBattle .heroZone {left: 53%;width: 34%;bottom: 2%;height: 13%}
+
+#stage.priestBattle .bossPerspective {inset: 11% 29% 12%}
+#stage:is(.priestBattle,.abyssBattle) .heroZone:has(.count1) .heroTag {
+  left: 20%;width: 60%;white-space: nowrap;
+}
+#stage.priestBattle .bossFigure {
+  height: 100%;width: 100%;
+}
+#stage.priestBattle #boss .bossFigure img {
+  opacity: 1;object-fit: contain;
+}
+.priestImpact {left:50%;top:46%;width:28%;height:36%}
+.priestPrompts {
+  position: absolute;
+  z-index: 5;
+  inset: 14% 2% 8%;
+  display: grid;
+  grid-auto-flow: column;
+  grid-template: repeat(4, 1fr) / repeat(2, minmax(0,29%));
+  align-items: center;
+  justify-content: space-between;
+  gap: .32rem;
+}
+.priestPrompt {
+  padding: .37rem .55rem;
+  border: 1px solid #79879f;
+  border-left: 3px solid #acdffe;
+  background: linear-gradient(105deg,#0c1b29f5,#0c1020f2);
+  line-height: 1.26;
+  overflow-wrap: anywhere;
+}
+.priestPrompt.harm {border-left-color: #ff9b86;background: linear-gradient(105deg,#352027f5,#18111df2)}
+.priestPrompt.heal {border-left-color: #d8a7f4;background: linear-gradient(105deg,#2e2042f5,#18111df2)}
+.priestEffect {
+  color: #cbe9fa;
+  font-weight: 700;
+  font-size: .75rem;
+  margin-bottom: .19rem;
+}
+.priestPrompt.harm .priestEffect {color: #ffb3a7}
+.priestPrompt.heal .priestEffect {color: #e9c0ff}
+.priestPrompt .bossWord {font-size: clamp(13px,1.42vw,19px)}
+.priestPrompt .bossRoman {font-size: clamp(9px,1vw,14px);margin-top: .16rem}
+.priestPrompt.aimed, .exposurePrompt.aimed {
+  border-color: #ffcd83;
+  box-shadow: 0 0 13px #ffcd8348;
+}
+#stage.priestBattle .zama-summoning .bossRig,
+#stage.priestBattle .zama-summoning .bossScenery {animation-duration: 2.6s}
+#stage.priestBattle .zama-summoning .priestPrompts {animation: abyss-targets 2.6s ease-out both}
+#stage.priestBattle .priestTransform .bossPerspective {animation: priest-unseal 2.25s ease-in both}
+@keyframes priest-unseal {
+  0% {transform: none;filter: none}
+  42% {transform: scale(.96) translateY(3%);filter: brightness(.62)}
+  72% {transform: scale(1.08) translateY(-4%);filter: brightness(2.6) saturate(.7);opacity:1}
+  100% {transform: scale(1.18) translateY(-7%);filter: blur(9px) brightness(2);opacity:0}
+}
+
+#stage.abyssBattle .bossPerspective {inset: 8% 15% 15%}
+#stage.abyssBattle .heroZone {bottom: 22%;height: 11%}
+#stage.abyssBattle .skeletonWhole {visibility:hidden}
+#stage.abyssBattle #boss.finalBones .skeletonWhole {visibility:visible;opacity:1}
+#stage.abyssBattle .finalBones .bossSlice {visibility:hidden}
+#stage.abyssBattle .bossSlice.broken {
+  background-image: url('abyss-bones.webp');
+  opacity: 1;
+}
+.bossSlice.left-arm {transform-origin: 27% 26%;--fall-x:-21%;--fall-angle:-27deg}
+.bossSlice.right-arm {transform-origin: 73% 26%;--fall-x:21%;--fall-angle:27deg}
+.bossSlice.left-leg {transform-origin: 39% 56%;--fall-x:-13%;--fall-angle:15deg}
+.bossSlice.right-leg {transform-origin: 61% 56%;--fall-x:13%;--fall-angle:-15deg}
+.bossSlice.head {transform-origin:50% 20%;--fall-x:-6%;--fall-angle:-17deg}
+.bossSlice.torso {--fall-x:2%;--fall-angle:9deg}
+#stage.abyssBattle #boss.bonesDecay .skeletonWhole {visibility:hidden}
+#stage.abyssBattle .bonesDecay .bossSlice {
+  visibility:visible;
+  animation: bone-crumble 2.15s ease-in both;
+}
+@keyframes bone-crumble {
+  0% {transform:none;opacity:1}
+  18% {transform:translateY(-2%) rotate(2deg);filter:brightness(1.65)}
+  57% {transform:translate(var(--fall-x),34%) rotate(var(--fall-angle));opacity:.84}
+  100% {transform:translate(var(--fall-x),72%) rotate(var(--fall-angle)) scale(.7);filter:blur(6px) saturate(0);opacity:0}
+}
+.exposurePrompt {
+  position: absolute;
+  z-index: 5;
+  bottom: 2.5%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(86%, 500px);
+  padding: .54rem .7rem;
+  text-align: center;
+  border: 1px solid #766b8e;
+  background: #101122f0;
+  color: #e9e0f7;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+.exposurePrompt.hasOpening {border-color: #d1a268;background: #221926f5}
+.exposurePrompt .bossWord {font-size: clamp(18px,2.15vw,28px)}
+.exposurePrompt .bossRoman {font-size: clamp(11px,1.16vw,15px)}
+.exposurePrompt .priestEffect {color: #ffc483}
+#stage .bossHitPoint.incoming, #stage .bossHitPoint.exposed {
+  border: 1px solid #fff1a9e0;
+  border-radius: 50%;
+  box-shadow: 0 0 14px #ff932fb8,inset 0 0 12px #ff964a82;
+}
+#stage .bossHitPoint.incoming {border-style: dashed;animation: target-beat .68s ease-in-out infinite alternate}
+#stage .bossHitPoint.exposed {border-color: #ffc978cb}
+@keyframes target-beat {to {opacity:.45;scale:1.28}}
+
+@media(max-width:760px){
+  #stage.midbossBattle,#stage.priestBattle {min-height:660px;height:auto}
+  #stage.midbossBattle .bossPerspective {inset:8% 2% 43%}
+  #stage.midbossBattle .midbossPrompts {inset:auto 2% 2%;width:auto}
+  #stage.midbossBattle .heroZone {left:21%;width:58%;bottom:41%;height:9%}
+  #stage.midbossBattle .bossFigure {margin-top:0;top:0}
+  #stage.priestBattle .bossPerspective {inset:9% 8% 46%}
+  #stage.priestBattle .bossFigure {top:0}
+  #stage.priestBattle .heroZone {left:21%;width:58%;bottom:44%;height:9%}
+  .priestPrompts {inset:auto 2% 2%;grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch}
+  .priestPrompt {padding:.3rem .35rem}
+  .priestEffect {font-size:.67rem}
+}
+@media(max-width:650px){
+  #stage.abyssBattle .bossFigure {top:22%;margin-top:0}
+}
+@media(prefers-reduced-motion:reduce){
+  #stage.priestBattle .zama-summoning .priestPrompts,.bossHitPoint.incoming {animation:none}
+  #stage.priestBattle .priestTransform .bossPerspective,
+  #stage.abyssBattle .bonesDecay .bossSlice {animation:midboss-fade .2s linear both}
+}

@@ -180,18 +180,12 @@ const MIDBOSSES=[
  {id:'ahriman',name:'魔眼 アーリマン',damage:11}
 ];
 const MIDBOSS_WORDS=[
- 'もえさかるつばさをきりさく',
- 'ふるえるだいちをかけぬける',
- 'まがまがしいまがんをとじる',
- 'とどろくほうこうをうけながす',
- 'かたいてつのうろこをくだく',
- 'くらやみのたににひかりをともす',
- 'あらしをよぶいちげきをかわす',
- 'たちのぼるけむりをつきぬける',
- 'うなるかぎづめをかわしてきる',
- 'ひびわれたせきぞうをたてにする',
- 'おもいよろいのすきまをつく',
- 'あおいつきがてらすみちをいく'
+ ['よあけのしじまにとおくのかねがひびく','ほしのかけらをひろってちずをかきなおす','きりのふかいさんどうをあさまであるく'],
+ ['えきまえのきっさてんであたたかいおちゃをたのむ','どようびはやおやでしゅんのやさいをえらぶ','やきたてのぱんをかぞくのぶんまでかう'],
+ ['しゅうまつのしあいではおちついてまえをみる','さいごのいっきゅうにみんなのこえがかさなる','おおきなはくしゅをせにゆっくりとてをふる'],
+ ['よるのすいぞくかんでくらげがあおくひかる','あめあがりのこうえんにちいさなにじがかかる','つめたいかぜがかわぞいのきぎをゆらす'],
+ ['かきあげたげんこうをさいごまでもういちどよむ','ともだちからとどいたてがみをそっとひらく','ふるいしゃしんのうらにたびのひづけをかく'],
+ ['せいほうけいのかみにおりめをつけてふねをつくる','ぼうえんきょうをのぞいてつきのかげをさがす','まどのそとにうかぶくものかたちをくらべる']
 ];
 const WEAPONS={
  ragnarok:{name:'ラグナロク',word:'らぐなろく',damage:34,color:'#a8beff'},
@@ -201,8 +195,12 @@ const WEAPONS={
 };
 
 function midbossWords(s,previous=[]){
- const pool=MIDBOSS_WORDS.filter(word=>!previous.includes(word));
- return Array.from({length:3},()=>pool.splice(Math.floor(rand(s)*pool.length),1)[0]);
+ const themes=[...MIDBOSS_WORDS];
+ return Array.from({length:3},()=>{
+  const theme=themes.splice(Math.floor(rand(s)*themes.length),1)[0];
+  const pool=theme.filter(word=>!previous.includes(word));
+  return pool[Math.floor(rand(s)*pool.length)];
+ });
 }
 function beginMidboss(s){
  const spec=MIDBOSSES[Math.floor(rand(s)*MIDBOSSES.length)];
@@ -245,8 +243,71 @@ function typeMidboss(s,p,word){
  hitMidboss(s,p,12,true);
 }
 function startEncounter(s){
- if(s.kills>=20){beginBoss(s);return;}
+ if(s.kills>=20){beginPriest(s);return;}
  if(s.kills>=10&&!s.midbossCleared)beginMidboss(s);
+}
+const PRIEST_STRIKES=['けっかいのつぎめをねらう','しろいしいんをうちくだく','ぎんのつえをはじきとばす','かげにひそむしるしをけす','ひかりのすきまへふみこむ','せいじゃくのまくをきりひらく','はんてんしたもんしょうをこわす'];
+const PRIEST_TRAPS=[
+ {word:'こくえんのせんこく',kind:'harm',spell:'firaga',value:12},
+ {word:'らいていのさばき',kind:'harm',spell:'thundaga',value:15},
+ {word:'ひょうけつのらくいん',kind:'harm',spell:'blizzara',value:12},
+ {word:'せいれいのいぶき',kind:'heal',spell:'curaga',value:14},
+ {word:'しんえんのいやし',kind:'heal',spell:'cura',value:14}
+];
+function priestChoices(s){
+ const strikes=PRIEST_STRIKES.map(word=>({word,kind:'strike'}));
+ const harmful=PRIEST_TRAPS.filter(item=>item.kind==='harm');
+ const healing=PRIEST_TRAPS.filter(item=>item.kind==='heal');
+ const pool=[
+  ...Array.from({length:5},()=>strikes.splice(Math.floor(rand(s)*strikes.length),1)[0]),
+  ...Array.from({length:2},()=>harmful.splice(Math.floor(rand(s)*harmful.length),1)[0]),
+  healing[Math.floor(rand(s)*healing.length)]
+ ];
+ return Array.from({length:pool.length},()=>pool.splice(Math.floor(rand(s)*pool.length),1)[0]);
+}
+function beginPriest(s){
+ s.foes=[];
+ s.players.forEach(player=>player.typed='');
+ const maxHp=56+14*(s.players.length-1);
+ s.boss={form:'priest',name:'深淵の神官 アビス',hp:maxHp,maxHp,choices:priestChoices(s),introRemaining:2.6,remaining:12,transformRemaining:0};
+ emit(s,'深淵の神官 アビスが現れた！','priest');
+}
+function hitPriest(s,p,amount,typed=false){
+ const priest=s.boss;
+ if(!priest.hp)return;
+ const lost=Math.min(amount,priest.hp);
+ priest.hp-=lost;
+ if(typed)emit(s,`${p.name}が ${priest.name} に ${lost} ダメージ！`,'hit',p.id,'priest');
+ if(!priest.hp){
+  priest.transformRemaining=2.3;
+  s.players.forEach(player=>player.typed='');
+  emit(s,'神官が崩れ、奥から魔王が現れる！','priestDown');
+ }
+}
+function typePriest(s,p,choice){
+ if(choice.kind==='strike'){
+  earnMagic(s,p,[...choice.word].length);
+  reward(s,p,260);
+  hitPriest(s,p,14,true);
+ }else{
+  const heal=choice.kind==='heal';
+  emit(s,`神官の ${choice.word}！`,'enemySpell',p.id,null,{key:choice.spell,targets:[heal?'priest':'party']});
+  if(heal){
+   const healed=Math.min(choice.value,s.boss.maxHp-s.boss.hp);
+   s.boss.hp+=healed;
+   emit(s,`神官のHPが ${healed} 回復した！`,'priestHeal');
+  }else damage(s,choice.value);
+ }
+ if(s.boss.hp&&s.status==='playing'){
+  const old=s.boss.choices;
+  s.boss.choices=priestChoices(s);
+  clearQuestionInput(s,old.map(choice=>choice.word));
+ }
+}
+function clearQuestionInput(s,words){
+ for(const player of s.players){
+  if(player.typed&&words.some(word=>isPrefix(word,player.typed)))player.typed='';
+ }
 }
 function beginBoss(s){
  s.foes=[];
@@ -256,8 +317,36 @@ function beginBoss(s){
   return {id:spec.id,name:spec.name,maxHp,hp:maxHp,word:spec.words[Math.floor(rand(s)*spec.words.length)]};
  });
  const maxHp=parts.reduce((sum,part)=>sum+part.hp,0);
- s.boss={name:'終焉の魔王 アビスロード',maxHp,hp:maxHp,parts,introRemaining:4,remaining:11,attackCycle:11,phase:1};
+ s.boss={name:'終焉の魔王 アビスロード',maxHp,hp:maxHp,parts,introRemaining:3.5,remaining:.15,attackCycle:9,phase:1,weakPart:null,pendingPart:null,lastPart:null,windup:0};
  emit(s,'WARNING！ 魔王アビスロード降臨！','boss');
+}
+function exposedPart(boss){
+ return boss?.parts?.find(part=>part.id===boss.weakPart&&part.hp>0);
+}
+function tickAbyssLord(s,dt){
+ const boss=s.boss;
+ if(boss.pendingPart){
+  boss.windup-=dt;
+  if(boss.windup>0)return;
+  boss.weakPart=boss.pendingPart;
+  boss.pendingPart=null;
+  boss.remaining=boss.attackCycle;
+  emit(s,`魔王の攻撃！ ${exposedPart(boss).name}に隙ができた！`,'bossAttack',null,boss.weakPart);
+  damage(s,7+boss.phase);
+  return;
+ }
+ boss.remaining-=dt;
+ if(boss.remaining>0)return;
+ const order=['left-arm','right-arm','left-leg','right-leg','torso','head'];
+ const start=order.indexOf(boss.lastPart)+1;
+ const next=order.slice(start).concat(order.slice(0,start)).find(id=>boss.parts.some(part=>part.id===id&&part.hp>0));
+ const previous=exposedPart(boss);
+ if(previous)clearQuestionInput(s,[previous.word]);
+ boss.weakPart=null;
+ boss.pendingPart=next;
+ boss.lastPart=next;
+ boss.windup=.9;
+ emit(s,'魔王が攻撃を構えた！','bossWindup',null,next);
 }
 function end(s,why){s.status='ended';s.result=why;emit(s,why==='victory'?'魔王を撃破！ 冒険成功！':why==='hp'?'全滅…… GAME OVER':'時間切れ…… 冒険失敗',why==='victory'?'win':'lose');}
 function damage(s,n){if(s.shield>0){s.shield--;emit(s,'プロテスが攻撃を防いだ！','shield');return;}s.hp=Math.max(0,s.hp-n);emit(s,`敵の攻撃！ 共通HP -${n}`,'hurt');if(s.hp===0)end(s,'hp');}
@@ -266,6 +355,11 @@ function tick(s,dt){
  const boss=s.boss||s.midboss;
  if(boss?.introRemaining>0){
   boss.introRemaining=Math.max(0,boss.introRemaining-dt);
+  return;
+ }
+ if(s.boss?.form==='priest'&&s.boss.hp===0){
+  s.boss.transformRemaining-=dt;
+  if(s.boss.transformRemaining<=0)beginBoss(s);
   return;
  }
  if(s.midboss?.hp===0){
@@ -290,12 +384,13 @@ function tick(s,dt){
    damage(s,foe.damage);
    if(s.status!=='playing')return;
   }
-  if(boss){
+  if(s.boss?.parts)tickAbyssLord(s,dt*slow);
+  else if(boss){
    boss.remaining-=dt*slow;
    if(boss.remaining<=0){
     emit(s,`${boss.name} の攻撃！`,'bossAttack');
-    damage(s,s.midboss?boss.damage:Math.min(20,10+boss.phase*4));
-    boss.remaining=s.midboss?9:boss.attackCycle;
+    damage(s,s.midboss?boss.damage:8);
+    boss.remaining=s.midboss?9:12;
    }
   }
  }
@@ -306,7 +401,7 @@ function tick(s,dt){
 function reward(s,p,base){p.combo++;let mult=1+Math.min(2,Math.floor((p.combo-1)/5)*0.25);p.score+=Math.round(base*mult);}
 function updateBossPhase(boss){
  boss.phase=boss.hp<=boss.maxHp/3?3:boss.hp<=boss.maxHp*.7?2:1;
- boss.attackCycle=11-(boss.phase-1)*2;
+ boss.attackCycle=9-(boss.phase-1);
  boss.remaining=Math.min(boss.remaining,boss.attackCycle);
 }
 function hitBossPart(s,p,part,amount,typed=false){
@@ -316,9 +411,15 @@ function hitBossPart(s,p,part,amount,typed=false){
  part.hp=Math.max(0,part.hp-amount);
  boss.hp-=previous-part.hp;
  if(typed)emit(s,`${p.name}が ${part.name} に一撃！`,'hit',p.id,part.id);
- if(!part.hp)emit(s,`${part.name}を破壊！`,'partBreak',p.id,part.id);
+ if(!part.hp){
+  clearQuestionInput(s,[part.word]);
+  boss.weakPart=null;
+  boss.remaining=Math.min(boss.remaining,1.4);
+  emit(s,`${part.name}が骨に変わった！`,'partBreak',p.id,part.id);
+ }
  else if(typed){
   const words=BOSS_PARTS.find(spec=>spec.id===part.id).words.filter(word=>word!==part.word);
+  clearQuestionInput(s,[part.word]);
   part.word=words[Math.floor(rand(s)*words.length)];
  }
  updateBossPhase(boss);
@@ -340,25 +441,21 @@ function defeatEnemy(s,p,foe,magic=false){
  if(!s.boss&&!s.midboss)spawn(s);
 }
 function earnMagic(s,p,len){p.magicMeter=Math.min(4,(p.magicMeter||0)+(len>=12?4:len>=8?2:len>=5?1:.35));if(p.charges.length>=4||p.magicMeter<4)return;p.magicMeter-=4;const groups=[['fire','fira','firaga'],['thunder','thundara','thundaga'],['blizzard','blizzara','blizzaga']];const stage=len>=12?2:len>=8?1:0;const key=groups[Math.floor(rand(s)*groups.length)][stage];p.charges.push(key);emit(s,`${p.name}が長文ボーナスで ${SPELLS[key].name} を獲得！`,'loot',p.id);}
-function cast(s,p,key){const spec=SPELLS[key];const idx=p.charges.indexOf(key);if(idx<0)return false;p.charges.splice(idx,1);const targets=[];
+function cast(s,p,key){const spec=SPELLS[key];const idx=p.charges.indexOf(key);if(idx<0||(spec.type==='damage'&&s.boss?.parts&&!exposedPart(s.boss)))return false;p.charges.splice(idx,1);const targets=[];
  if(spec.type==='heal'){targets.push('party');s.hp=Math.min(100,s.hp+spec.value);}
  if(spec.type==='shield')s.shield=Math.min(3,s.shield+spec.value);
  if(spec.type==='freeze')s.freezeUntil=Math.max(s.freezeUntil,s.elapsed+spec.value);
  if(spec.type==='slow')s.slowUntil=Math.max(s.slowUntil,s.elapsed+spec.value);
  if(spec.type==='damage'){
   if(spec.freeze)s.freezeUntil=Math.max(s.freezeUntil,s.elapsed+spec.freeze);
-  if(s.boss){
-   const active=s.boss.parts.filter(part=>part.hp>0);
-   const selected=spec.value===1?active.slice(0,1):active;
-   for(const part of selected){
-    targets.push(part.id);
-    const damage=Math.min(spec.value===3?2:1,part.hp-1);
-    if(damage>0){
-     part.hp-=damage;
-     s.boss.hp-=damage;
-    }
-   }
-   updateBossPhase(s.boss);
+  if(s.boss?.form==='priest'){
+   targets.push('priest');
+   hitPriest(s,p,[0,9,13,18][spec.value]);
+  }else if(s.boss){
+   const part=exposedPart(s.boss);
+   if(!part)return false;
+   targets.push(part.id);
+   hitBossPart(s,p,part,Math.max(0,Math.min(spec.value===3?2:1,part.hp-1)));
   }
   else if(s.midboss){
    targets.push('midboss');
@@ -379,9 +476,12 @@ function useWeapon(s,p){
  if(s.midboss){
   target='midboss';
   hitMidboss(s,p,weapon.damage);
+ }else if(s.boss?.form==='priest'){
+  target='priest';
+  hitPriest(s,p,weapon.damage);
  }else if(s.boss){
-  const part=s.boss.parts.find(part=>part.hp>1);
-  if(!part)return false;
+  const part=exposedPart(s.boss);
+  if(!part||part.hp<=1)return false;
   target=part.id;
   hitBossPart(s,p,part,Math.min(7,part.hp-1));
  }else{
@@ -396,15 +496,17 @@ function useWeapon(s,p){
  emit(s,`${p.name}が ${weapon.name} を放った！`,'weapon',p.id,target,{key,targets:[target]});
  return true;
 }
-function inputLocked(s){return s.status!=='playing'||s.boss?.introRemaining>0||s.midboss?.introRemaining>0||s.midboss?.hp===0;}
+function inputLocked(s){return s.status!=='playing'||s.boss?.introRemaining>0||s.midboss?.introRemaining>0||s.midboss?.hp===0||s.boss?.transformRemaining>0;}
 function handle(s,playerId,key){if(inputLocked(s))return;const p=s.players.find(x=>x.id===playerId);if(!p)return;const k=String(key).toUpperCase();
  if(k==='BACKSPACE'){p.typed=p.typed.slice(0,-1);return;}if(k==='ESCAPE'){p.typed='';return;}if(!/^[A-Z-]$/.test(k))return;
  let candidate=p.typed+k;
- const targets=[...s.foes.flatMap(f=>[{kind:'enemy',word:f.word,id:f.uid},{kind:'enemy',word:f.english,id:f.uid}]),...(s.boss?s.boss.parts.filter(part=>part.hp>0).map(part=>({kind:'boss',word:part.word,id:part.id})):[]),...(s.midboss?.words??[]).map(word=>({kind:'midboss',word})),...(p.weapon?[{kind:'weapon',word:WEAPONS[p.weapon].word,key:p.weapon},{kind:'weapon',word:p.weapon.toUpperCase(),key:p.weapon}]:[]),...p.charges.flatMap(key=>[{kind:'spell',word:SPELLS[key].word,key},{kind:'spell',word:key.toUpperCase(),key}])];
+ const exposed=exposedPart(s.boss);
+ const targets=[...s.foes.flatMap(f=>[{kind:'enemy',word:f.word,id:f.uid},{kind:'enemy',word:f.english,id:f.uid}]),...(exposed?[{kind:'boss',word:exposed.word,id:exposed.id}]:[]),...(s.boss?.choices??[]).map(choice=>({kind:'priest',word:choice.word,choice})),...(s.midboss?.words??[]).map(word=>({kind:'midboss',word})),...(p.weapon?[{kind:'weapon',word:WEAPONS[p.weapon].word,key:p.weapon},{kind:'weapon',word:p.weapon.toUpperCase(),key:p.weapon}]:[]),...p.charges.flatMap(key=>[{kind:'spell',word:SPELLS[key].word,key},{kind:'spell',word:key.toUpperCase(),key}])];
  let choices=targets.filter(t=>isPrefix(t.word,candidate));if(!choices.length){p.miss++;p.combo=0;emit(s,`${p.name} ミスタイプ`,'miss',p.id);p.typed='';candidate=k;choices=targets.filter(t=>isPrefix(t.word,candidate));if(!choices.length)return;}
  p.typed=candidate;const matches=choices.filter(t=>complete(t.word,candidate));const ambiguous=choices.some(t=>!complete(t.word,candidate));if(!matches.length||(ambiguous&&!matches.some(t=>(t.kind==='spell'||t.kind==='weapon')&&t.key.toUpperCase()===candidate)))return;
- const chosen=matches.sort((a,b)=>({enemy:0,boss:1,midboss:1,spell:2,weapon:2}[a.kind]-{enemy:0,boss:1,midboss:1,spell:2,weapon:2}[b.kind]))[0];p.typed='';
+ const chosen=matches.sort((a,b)=>({enemy:0,boss:1,priest:1,midboss:1,spell:2,weapon:2}[a.kind]-{enemy:0,boss:1,priest:1,midboss:1,spell:2,weapon:2}[b.kind]))[0];p.typed='';
  if(chosen.kind==='weapon'){useWeapon(s,p);return;}
+ if(chosen.kind==='priest'){typePriest(s,p,chosen.choice);return;}
  if(chosen.kind==='midboss'){typeMidboss(s,p,chosen.word);return;}
  if(chosen.kind==='spell'){cast(s,p,chosen.key);return;}
  if(chosen.kind==='boss'){typeBossPart(s,p,s.boss.parts.find(part=>part.id===chosen.id));return;}
@@ -423,7 +525,16 @@ function handleText(s,playerId,text){const t=toHira(String(text).trim()).toLower
  }
  const midWord=s.midboss?.words.find(matches);
  if(midWord){p.typed='';typeMidboss(s,p,midWord);return true;}
- const spell=p.charges.find(k=>SPELLS[k].word===t||k===t);if(spell){p.typed='';return cast(s,p,spell);}const part=s.boss?.parts.find(part=>part.hp>0&&(part.word===t||accepts(part.word).some(word=>word.toLowerCase()===t)));if(part){p.typed='';typeBossPart(s,p,part);return true;}const targets=[...s.foes.flatMap(f=>[f.word,f.english]),...p.charges.flatMap(k=>[SPELLS[k].word,k.toUpperCase()])];const match=targets.find(w=>w.toLowerCase().replace(/\s+/g,'')===t);if(!match)return false;p.typed='';const sequence=display(match).replace(/\s+/g,'');for(const ch of sequence){if(s.status!=='playing')break;handle(s,playerId,ch);}return true;}
+ const priestChoice=s.boss?.choices?.find(choice=>matches(choice.word));
+ if(priestChoice){p.typed='';typePriest(s,p,priestChoice);return true;}
+ const spell=p.charges.find(k=>SPELLS[k].word===t||k===t);if(spell){p.typed='';return cast(s,p,spell);}const part=exposedPart(s.boss);if(part&&matches(part.word)){p.typed='';typeBossPart(s,p,part);return true;}const targets=[...s.foes.flatMap(f=>[f.word,f.english]),...p.charges.flatMap(k=>[SPELLS[k].word,k.toUpperCase()])];const match=targets.find(w=>w.toLowerCase().replace(/\s+/g,'')===t);if(!match)return false;p.typed='';const sequence=display(match).replace(/\s+/g,'');for(const ch of sequence){if(s.status!=='playing')break;handle(s,playerId,ch);}return true;}
+function previewFinal(s,form){
+ s.kills=20;
+ s.midbossCleared=true;
+ if(form==='priest')beginPriest(s);
+ else beginBoss(s);
+ return s;
+}
 function snapshot(s){return JSON.parse(JSON.stringify(s));}
-return {ENEMIES,QUESTIONS,SPELLS,WEAPONS,ENGLISH,BOSS_WORDS,handleText,variants,accepts,isPrefix,complete,display,make,init,tick,handle,snapshot,emit};
+return {ENEMIES,QUESTIONS,SPELLS,WEAPONS,ENGLISH,BOSS_WORDS,handleText,variants,accepts,isPrefix,complete,display,make,init,tick,handle,snapshot,emit,previewFinal};
 });
