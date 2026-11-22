@@ -207,11 +207,11 @@
 .finalSpellPrompt .bossWord {font-size:clamp(16px,1.6vw,22px);line-height:1.28}
 .finalSpellPrompt .bossRoman {font-size:clamp(11px,1.1vw,14px);line-height:1.2;color:#afe1f4}
 .finalSpellPrompt.aimed {border-color:#ffdf95;background:#302549}
-.finalSpellFlash {position:absolute;inset:0;pointer-events:none;animation:final-spell-flash .9s ease-out both}
+.finalSpellFlash {position:absolute;inset:0;pointer-events:none;animation:final-spell-flash 1.7s ease-out both;overflow:hidden}
 .finalSpellFlash.ultima {background:radial-gradient(ellipse,#ffffff 0%,#bc8fff 28%,transparent 70%)}
 .finalSpellFlash.holy {background:linear-gradient(90deg,transparent 23%,#fff2bb 48%,white 50%,#fff2bb 52%,transparent 77%)}
 .finalSpellFlash.meteor {background:radial-gradient(ellipse at 50% 70%,#fff0a7 0%,#fb673c 23%,transparent 69%)}
-@keyframes final-spell-flash {0%,100% {opacity:0} 25% {opacity:.85}}
+@keyframes final-spell-flash {0%,100% {opacity:0} 35% {opacity:.9}}
 @media(max-width:850px){
   .finalSpellPanel {position:static;width:auto;margin-top:.45rem}
   #stage.abyssBattle:has(+ .finalSpellPanel:not(.hidden,.exhausted)) .exposurePrompt {
@@ -222,3 +222,36 @@
   }
 }
 @media(prefers-reduced-motion:reduce){.finalSpellFlash {display:none}}
+
+.finalSpellFlash i {position:absolute;display:block;opacity:0}
+.finalSpellFlash.ultima i {
+  left:59%;top:49%;width:64vmin;aspect-ratio:1;border-radius:50%;
+  border:2px solid #e6e0ff;box-shadow:0 0 25px #7758ff,inset 0 0 17px #8371ff;
+  animation:spell-ring 1.35s calc(var(--i)*.07s) cubic-bezier(.2,.77,.46,1) both;
+}
+.finalSpellFlash.holy i {
+  left:calc(18% + var(--i)*11%);top:0;width:4%;height:90%;
+  background:linear-gradient(90deg,transparent,#fff1a5,white,#fff1a5,transparent);
+  box-shadow:0 0 30px #ffce78;transform-origin:top;animation:spell-pillar 1.2s calc(var(--i)*.08s) ease-out both;
+}
+.finalSpellFlash.meteor i {
+  left:calc(8% + var(--i)*13%);top:0;width:clamp(10px,3vw,34px);height:55%;
+  border-radius:55%;background:linear-gradient(transparent,#f6581f 62%,#fff5ae 96%);
+  filter:drop-shadow(0 0 15px #ff5d24);animation:spell-meteor .84s calc(var(--i)*.095s) ease-in both;
+}
+@keyframes spell-ring {
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.08)}
+  22%{opacity:.85}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(2.3)}
+}
+@keyframes spell-pillar {
+  0%{opacity:0;transform:scaleY(.04)}
+  28%{opacity:.9;transform:scaleY(1)}
+  100%{opacity:0;transform:scaleX(.18) scaleY(1)}
+}
+@keyframes spell-meteor {
+  0%{opacity:0;transform:translate(-130%,-150%) rotate(-32deg)}
+  25%{opacity:1}
+  85%{opacity:1;transform:translate(160%,84%) rotate(-32deg)}
+  100%{opacity:0;transform:translate(174%,96%) rotate(-32deg)}
+}

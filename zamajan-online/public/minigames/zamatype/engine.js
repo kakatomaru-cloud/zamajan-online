@@ -343,16 +343,21 @@ function clearQuestionInput(s,words){
 }
 const DEFEND_WORD='ぼうぎょ';
 const FINAL_SPELLS=[
- {key:'ultima',name:'アルテマ',word:'すべてのまりょくをひとつにあつめてあるてまをはなつ',damage:3},
- {key:'holy',name:'ホーリー',word:'せいなるひかりでやみをてらしてほーりーをとなえる',damage:1},
- {key:'meteor',name:'メテオ',word:'てんにまたたくほしをよびさましてめておをおとす',damage:2}
+ {key:'ultima',name:'アルテマ',words:['ほしのまりょくをときはなつ','げんかいをこえるちから','しゅうえんのひかりをはなつ'],damage:3},
+ {key:'holy',name:'ホーリー',words:['せいなるひかりをともす','いのりでやみをはらう','しろいひかりがふりそそぐ'],damage:1},
+ {key:'meteor',name:'メテオ',words:['そらからいんせきをおとす','もえるほしをよびおこす','よぞらをさくほしのあめ'],damage:2}
 ];
+function rollFinalSpell(s,spell,previous){
+ const words=spell.words.filter(word=>word!==previous);
+ return {...spell,word:words[Math.floor(rand(s)*words.length)]};
+}
 function availableFinalSpells(boss){
- return boss?.parts&&boss.hp>0 ? FINAL_SPELLS.filter(spell=>!boss.finalSpellsUsed?.includes(spell.key)) : [];
+ return boss?.hp>0 ? boss.finalSpells??[] : [];
 }
 function castFinalSpell(s,p,spell){
  const boss=s.boss;
- (boss.finalSpellsUsed??=[]).push(spell.key);
+ const index=boss.finalSpells.indexOf(spell);
+ boss.finalSpells[index]=rollFinalSpell(s,spell,spell.word);
  let damage=0;
  for(const part of boss.parts){
   if(part.hp<=1)continue;
@@ -363,7 +368,7 @@ function castFinalSpell(s,p,spell){
  boss.hp-=damage;
  updateBossPhase(boss);
  clearQuestionInput(s,[spell.word]);
- p.score+=150;
+ if(damage>0)p.score+=150;
  emit(s,`${p.name}が ${spell.name} を発動！ 魔王に ${damage} ダメージ！`,'finalSpell',p.id,'abyss',{key:spell.key});
 }
 function beginBoss(s){
@@ -374,7 +379,7 @@ function beginBoss(s){
   return {id:spec.id,name:spec.name,maxHp,hp:maxHp,word:'',unusedWords:[...spec.words]};
  });
  const maxHp=parts.reduce((sum,part)=>sum+part.hp,0);
- s.boss={name:'終焉の魔王 アビスロード',maxHp,hp:maxHp,parts,introRemaining:3.5,remaining:.15,attackCycle:9,phase:1,weakPart:null,pendingPart:null,lastPart:null,windup:0,guarded:false};
+ s.boss={name:'終焉の魔王 アビスロード',maxHp,hp:maxHp,parts,introRemaining:3.5,remaining:.15,attackCycle:9,phase:1,weakPart:null,pendingPart:null,lastPart:null,windup:0,guarded:false,finalSpells:FINAL_SPELLS.map(spell=>rollFinalSpell(s,spell))};
  emit(s,'WARNING！ 魔王アビスロード降臨！','boss');
 }
 function rotateBossWord(s,part){

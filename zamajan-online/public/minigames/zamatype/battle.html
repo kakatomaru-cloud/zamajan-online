@@ -189,7 +189,7 @@ function refreshFinalSpells(boss){
  const panel=$('finalSpellPanel');
  panel.classList.toggle('hidden',!boss?.parts||boss.introRemaining>0||!live());
  const spells=E.availableFinalSpells(boss);
- const key=spells.map(spell=>spell.key).join('|');
+ const key=spells.map(spell=>spell.word).join('|');
  if(panel.dataset.spells!==key){
   panel.dataset.spells=key;
   panel.innerHTML=spells.map(spell=>`<div class="finalSpellPrompt"><strong>${esc(spell.name)}</strong><div class="bossWord">${esc(spell.word)}</div><div class="bossRoman">${esc(E.display(spell.word))}</div></div>`).join('');
@@ -411,6 +411,28 @@ function animateBossPart(id,windup){
   {transform:'none',filter:'none'}
  ],{duration:windup?900:570,easing:'ease-in-out',fill:windup?'forwards':'none'});
 }
+const finalSpellNotes={
+ ultima:[[0,110,320,.7,'sine'],[.22,180,65,.85,'triangle'],[.53,88,28,1.05,'sine'],[.53,410,94,.48,'triangle']],
+ holy:[[0,330,660,.68,'sine'],[.16,495,990,.76,'sine'],[.36,660,1320,.66,'sine'],[.48,150,48,.8,'triangle']],
+ meteor:[[0,720,140,.55,'triangle'],[.2,530,95,.55,'triangle'],[.48,112,32,.75,'triangle'],[.66,75,24,.82,'sine']]
+};
+function finalSpellSound(key){
+ if(slashAudio?.state!=='running')return;
+ for(const [delay,start,end,length,type] of finalSpellNotes[key]){
+  const at=slashAudio.currentTime+delay;
+  const tone=slashAudio.createOscillator();
+  const gain=slashAudio.createGain();
+  tone.type=type;
+  tone.frequency.setValueAtTime(start,at);
+  tone.frequency.exponentialRampToValueAtTime(end,at+length);
+  gain.gain.setValueAtTime(.001,at);
+  gain.gain.exponentialRampToValueAtTime(.12,at+.035);
+  gain.gain.exponentialRampToValueAtTime(.001,at+length);
+  tone.connect(gain).connect(slashAudio.destination);
+  tone.start(at);
+  tone.stop(at+length);
+ }
+}
 function processEvents() {
  for (const e of state.events) {
   if (e.id <= lastEvent) continue;
@@ -440,10 +462,16 @@ function processEvents() {
   if(e.kind==='finalSpell'){
    const effect=document.createElement('div');
    effect.className='finalSpellFlash '+e.spell.key;
+   $('effects').querySelector('.finalSpellFlash')?.remove();
+   for(let i=0;i<7;i++){
+    const ray=document.createElement('i');
+    ray.style.setProperty('--i',i);
+    effect.append(ray);
+   }
    $('effects').append(effect);
+   finalSpellSound(e.spell.key);
    zamaBanner(e.text);
-   zamaRumble(.65);
-   setTimeout(()=>effect.remove(),1000);
+   setTimeout(()=>effect.remove(),1750);
    continue;
   }
   if(e.kind==='guardSuccess'){zamaBanner('防御成功！');continue;}
