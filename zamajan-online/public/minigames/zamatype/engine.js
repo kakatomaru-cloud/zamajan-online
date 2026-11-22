@@ -146,7 +146,15 @@ const EVERYDAY_TOPICS=[
  ['食卓', [['すもも','PLUM'],['つくだに','PRESERVED SEAWEED'],['むぎちゃ','BARLEY TEA'],['しおむすび','SALTED RICE BALL'],['やさいをうすくきりわける','SLICE THE VEGETABLES THINLY'],['こおりをいれておちゃをそそぐ','POUR TEA OVER ICE']]],
  ['仕事と暮らし', [['はんこ','STAMP'],['しおり','BOOKMARK'],['みつもり','ESTIMATE'],['てじゅんしょ','PROCEDURE GUIDE'],['しめきりをよていひょうにかく','MARK THE DEADLINE ON THE CALENDAR'],['らいしゅうのかいぎしつをとる','BOOK THE MEETING ROOM']]]
 ];
-const TOPIC_QUESTIONS=[...TOPICS,...EVERYDAY_TOPICS].flatMap(([genre,entries])=>entries.map(([word,english])=>[word,english.toUpperCase(),genre]));
+const ROTATING_TOPICS=[
+ ['仕事の連絡', [['かいぎのしりょう','the meeting materials'],['こうしんしたてじゅんしょ','the updated instructions'],['あたらしいみつもりしょ','the new estimate'],['こんしゅうのぎじろく','the weekly minutes'],['よやくのないよう','the booking details'],['しはらいのめいさい','the payment details'],['きのうのれぽーと','the previous report'],['らいげつのにってい','next months schedule']],
+  [['をかくにんする','check'],['をちーむにおくる','send the team'],['をいんさつする','print'],['をもういちどよむ','reread']]],
+ ['買い物と食事', [['りんご','apples'],['とまと','tomatoes'],['たまご','eggs'],['しょくぱん','bread'],['よーぐると','yogurt'],['にんじん','carrots'],['みかん','mandarins'],['おれんじじゅーす','orange juice']],
+  [['をまとめてかう','stock up on'],['をひとつかう','buy one pack of'],['をれいぞうこにしまう','refrigerate'],['をきょうのあさごはんにする','have for breakfast some']]],
+ ['外出', [['びじゅつかん','the art museum'],['としょかん','the library'],['おんせん','the hot springs'],['すいぞくかん','the aquarium'],['びょういん','the hospital'],['しやくしょ','city hall'],['ゆうびんきょく','the post office'],['たいいくかん','the gym']],
+  [['までのちずをひらく','open the map to'],['のえいぎょうじかんをしらべる','look up the opening hours of'],['のちかくでまちあわせる','meet near'],['までばすでいく','take the bus to']]]
+].map(([genre,objects,actions])=>[genre,objects.flatMap(([noun,translation])=>actions.map(([ending,verb])=>[noun+ending,verb+' '+translation]))]);
+const TOPIC_QUESTIONS=[...TOPICS,...EVERYDAY_TOPICS,...ROTATING_TOPICS].flatMap(([genre,entries])=>entries.map(([word,english])=>[word,english.toUpperCase(),genre]));
 const OTHER_QUESTIONS=Object.values(QUESTIONS).flat();
 function forms(q){return [...accepts(q[0]),q[1].replace(/\s/g,'').toUpperCase()];}
 const MAGIC_FORMS=Object.entries(SPELLS).flatMap(([key,spell])=>[key.toUpperCase(),...accepts(spell.word)]);
@@ -168,19 +176,17 @@ function missRanking(game,playerId){
  return [...totals].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'ja')).slice(0,5);
 }
 const matchQuestions=new WeakMap();
-function selectMatchQuestions(s){
- // Refresh the active deck for each match, keeping eligible review words available.
- return TOPIC_QUESTIONS.filter(q=>rand(s)<.8||s.reviewWords.includes(q[0]));
-}
 function chooseQuestion(s,f){
  const blocked=[...MAGIC_FORMS,...s.foes.filter(enemy=>enemy.uid!==f.uid).flatMap(enemy=>forms([enemy.word,enemy.english]))];
- const valid=q=>q[0]!==f.word&&q[1]!==f.english&&accepts(q[0]).length>0&&PROMPT_FORMS.get(q).every(x=>blocked.every(y=>!x.startsWith(y)&&!y.startsWith(x)));
- if(!matchQuestions.has(s))matchQuestions.set(s,selectMatchQuestions(s));
- const selected=matchQuestions.get(s).filter(valid);
- const pool=selected.length?selected:TOPIC_QUESTIONS.filter(valid);
- const recent=s.recentQuestions??=[];
- const fresh=pool.filter(q=>!recent.includes(q[0]));
- const candidates=fresh.length?fresh:pool.length?pool:OTHER_QUESTIONS.filter(valid);
+ const valid=q=>q[0]!==f.word&&q[1]!==f.english&&PROMPT_FORMS.get(q).length>1&&PROMPT_FORMS.get(q).every(x=>blocked.every(y=>!x.startsWith(y)&&!y.startsWith(x)));
+ if(!matchQuestions.has(s))matchQuestions.set(s,new Set());
+ const used=matchQuestions.get(s);
+ const pool=[...TOPIC_QUESTIONS,...OTHER_QUESTIONS].filter(valid);
+ let candidates=pool.filter(q=>!used.has(q[0]));
+ if(!candidates.length){
+  used.clear();
+  candidates=pool;
+ }
  const bands=[0,1,0,2,1,2];
  const band=word=>word.length<=4?0:word.length<=8?1:2;
  const desired=bands[s.questionSeq++%bands.length];
@@ -190,8 +196,7 @@ function chooseQuestion(s,f){
  const choices=different.length?different:available;
  const review=candidates.filter(q=>s.reviewWords.includes(q[0]));
  const question=++s.reviewDraw%3===0&&review.length?review[Math.floor(rand(s)*review.length)]:choices[Math.floor(rand(s)*choices.length)];
- recent.push(question[0]);
- if(recent.length>12)recent.shift();
+ used.add(question[0]);
  s.lastQuestionGenre=question[2];
  return question;
 }
@@ -201,7 +206,7 @@ function spawn(s){if(s.status!=='playing'||s.boss||s.midboss||s.kills>=20||s.foe
  const maxHp=Math.round((base.tier===1?9:base.tier===2?14:20)*(0.78+0.22*s.players.length));
  const f={...base,uid:s.nextEnemy++,remaining:base.life*factor,maxLife:base.life*factor,hp:maxHp,maxHp,questionIndex:idx,word:question[0],english:question[1],genre:question[2]??null};s.foes.push(f);}
 function emit(s,text,kind='info',player=null,targetUid=null,spell=null){s.events.push({id:++s.eventSeq,text,kind,player,targetUid,spell});if(s.events.length>12)s.events.shift();}
-function init(s){matchQuestions.set(s,selectMatchQuestions(s));for(let i=0;i<5;i++)spawn(s);emit(s,'冒険が始まった！','start');return s;}
+function init(s){matchQuestions.set(s,new Set());for(let i=0;i<5;i++)spawn(s);emit(s,'冒険が始まった！','start');return s;}
 const BOSS_PARTS=[
  {id:'head',name:'頭',hp:9,words:BOSS_WORDS},
  {id:'torso',name:'胴体',hp:6,words:[
@@ -240,14 +245,18 @@ const MIDBOSSES=[
  {id:'behemoth',name:'魔獣 ベヒーモス',damage:14},
  {id:'ahriman',name:'魔眼 アーリマン',damage:11}
 ];
+// Public-domain lyrics by Tatsuyuki Takano, transcribed in modern kana.
 const MIDBOSS_WORDS=[
- ['よあけのしじまにとおくのかねがひびく','ほしのかけらをひろってちずをかきなおす','きりのふかいさんどうをあさまであるく'],
- ['えきまえのきっさてんであたたかいおちゃをたのむ','どようびはやおやでしゅんのやさいをえらぶ','やきたてのぱんをかぞくのぶんまでかう'],
- ['しゅうまつのしあいではおちついてまえをみる','さいごのいっきゅうにみんなのこえがかさなる','おおきなはくしゅをせにゆっくりとてをふる'],
- ['よるのすいぞくかんでくらげがあおくひかる','あめあがりのこうえんにちいさなにじがかかる','つめたいかぜがかわぞいのきぎをゆらす'],
- ['かきあげたげんこうをさいごまでもういちどよむ','ともだちからとどいたてがみをそっとひらく','ふるいしゃしんのうらにたびのひづけをかく'],
- ['せいほうけいのかみにおりめをつけてふねをつくる','ぼうえんきょうをのぞいてつきのかげをさがす','まどのそとにうかぶくものかたちをくらべる']
+ // 故郷
+ ['うさぎおいしかのやま','こぶなつりしかのかわ','ゆめはいまもめぐりて','わすれがたきふるさと','こころざしをはたして'],
+ // 春が来た
+ ['はるがきたはるがきたどこにきた','やまにきたさとにきたのにもきた','はながさくはながさくどこにさく','とりがなくとりがなくどこでなく'],
+ // 紅葉
+ ['あきのゆうひにてるやまもみじ','こいもうすいもかずあるなかに','まつをいろどるかえでやつたは','たにのながれにちりうくもみじ'],
+ // 朧月夜
+ ['なのはなばたけにいりひうすれ','みわたすやまのはかすみふかし','はるかぜそよふくそらをみれば','ゆうづきかかりてにおいあわし']
 ];
+const usedMidbossWords=new WeakMap();
 const WEAPONS={
  ragnarok:{name:'ラグナロク',word:'らぐなろく',damage:34,color:'#a8beff'},
  excalibur:{name:'エクスカリバー',word:'えくすかりばー',damage:34,color:'#ffda90'},
@@ -269,6 +278,7 @@ function beginMidboss(s){
  s.foes=[];
  s.players.forEach(p=>p.typed='');
  s.midboss={...spec,maxHp,hp:maxHp,words:midbossWords(s),introRemaining:3,remaining:9,exitRemaining:0};
+ usedMidbossWords.set(s.midboss,new Set(s.midboss.words));
  emit(s,`中ボス ${spec.name} が現れた！`,'midboss');
 }
 function hitMidboss(s,p,amount,answeredWord){
@@ -281,7 +291,13 @@ function hitMidboss(s,p,amount,answeredWord){
   if(answeredWord){
    const choices=boss.words.slice();
    const pool=MIDBOSS_WORDS.flat().filter(word=>!choices.includes(word));
-   choices[choices.indexOf(answeredWord)]=chooseWord(s,pool);
+   const used=usedMidbossWords.get(boss)??new Set(choices);
+   const fresh=pool.filter(word=>!used.has(word));
+   if(!fresh.length)used.clear();
+   const next=chooseWord(s,fresh.length?fresh:pool);
+   choices[choices.indexOf(answeredWord)]=next;
+   for(const word of choices)used.add(word);
+   usedMidbossWords.set(boss,used);
    boss.words=choices;
    for(const player of s.players){
     if(player.typed&&isPrefix(answeredWord,player.typed)&&!choices.some(word=>isPrefix(word,player.typed)))player.typed='';
