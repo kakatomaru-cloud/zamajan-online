@@ -91,3 +91,10 @@
 - 中ボスは正解した枠だけ更新。魔王の攻撃予告中も直前の弱点を狙える。予告から5秒以内に「ぼうぎょ」または「BOUGYO」で、次の一撃から共通HPを守る。初回のBGM音量は10%。保存済みの音量は維持。
 - 共通エンジンの1〜4人設定で出題更新、ローマ字と日本語の防御、未防御時の被弾、全6部位の破壊と勝利を検証。
 - ソロ戦闘の進行を描画フレームから切り離し、登場後にタイマーと弱点判定が進むように修正。
+
+## ボスの大型化と魔王の長文出題（2026-11-22 JST）
+
+- [中ボス](https://rawcdn.githack.com/kakatomaru-cloud/zamajan-online/a8bd23877bc4d62c7443d8351e7ca2370f9f0534/zamajan-online/public/minigames/zamatype/battle.html?midboss=1) · [魔王](https://rawcdn.githack.com/kakatomaru-cloud/zamajan-online/a8bd23877bc4d62c7443d8351e7ca2370f9f0534/zamajan-online/public/minigames/zamatype/battle.html?boss=1)
+- 中ボスと魔王を戦闘欄のほぼ全高に拡大。文字とHP表示は手前に置き、神官のレイアウトは既存のまま。
+- 魔王の6部位に各4文を用意。弱点が開いた時と入力が成功して部位が残った時に、直前の文を避けながらランダムに出題する。
+- 1〜4人設定で全6部位の攻略と防御、54種類の乱数シードで長文の入力と出題更新を検証。
