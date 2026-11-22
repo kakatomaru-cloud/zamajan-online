@@ -69,3 +69,12 @@
 - 撃破報酬は参加者ごとにラグナロク・エクスカリバー・政宗・与一の弓から1つ。表示名の入力で一度だけ発動し、通常敵1体に34ダメージを与える。ラスボスは部位のHPを1まで削り、トドメはタイピングで行う。
 - 炎・落雷・氷の亀裂・回復の効果音を同梱。クレジットとライセンスは `public/minigames/zamatype/sfx/credits.html` に記載。
 - ブラウザで中ボスの3問の入れ替え、魔法入力、中ボスBGMへの切り替えと通常BGMの再開、ラグナロクの発動と消費を確認。共通エンジンでは1〜4人で10体撃破からラスボス勝利まで検証。4人同時接続は未検証。
+
+## 最新テスト版　神官から魔王への変身と部位の骨化（2026-11-22 JST）
+
+- ゲーム修正コミット `85ddee8754b58cf26a717968d3b26fe2216b7dda`
+- [通常スタート](https://rawcdn.githack.com/kakatomaru-cloud/zamajan-online/85ddee8754b58cf26a717968d3b26fe2216b7dda/zamajan-online/public/minigames/zamatype/battle.html) · [中ボス直行](https://rawcdn.githack.com/kakatomaru-cloud/zamajan-online/85ddee8754b58cf26a717968d3b26fe2216b7dda/zamajan-online/public/minigames/zamatype/battle.html?midboss=1) · [神官から開始](https://rawcdn.githack.com/kakatomaru-cloud/zamajan-online/85ddee8754b58cf26a717968d3b26fe2216b7dda/zamajan-online/public/minigames/zamatype/battle.html?priest=1) · [変身後の魔王から開始](https://rawcdn.githack.com/kakatomaru-cloud/zamajan-online/85ddee8754b58cf26a717968d3b26fe2216b7dda/zamajan-online/public/minigames/zamatype/battle.html?boss=1)
+- 中ボスのお題を大きい縦3段に変更。日常、自然、スポーツなど6テーマの文を混ぜ、入力成功時に直前とは違う3問へ入れ替える。
+- 雑魚20体撃破で長髪の神官が登場。8つのお題のうち5つは神官への攻撃、2つは味方全体が被弾する敵魔法、1つは神官を回復する敵魔法。神官のHPがゼロになると魔王へ変身する。
+- 魔王が攻撃で動かした部位だけが弱点となり、画面下部に専用のお題1つを表示する。攻撃魔法と伝説の武器も弱点が出ている間に使用でき、部位のトドメはタイピングで行う。破壊された部位は骨に変わり、6部位の破壊後は全身の骨が崩れて消える。
+- ブラウザで中ボスの縦3段、神官の攻撃・回復・被弾、変身と右腕の骨化を確認。共通エンジンでは1〜4人の設定で中ボスから全6部位の破壊と勝利まで確認。実際の4人同時接続は未検証。
