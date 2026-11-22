@@ -20,7 +20,7 @@ module.exports = function attachZamatype(io) {
   }
   function publish(room) {
     namespace.to(room.id).emit('room', {
-      host: room.host, players: room.players, game: room.game
+      host: room.host, players: room.players, game: room.game, round: room.round
     });
   }
   const timer = setInterval(() => {
@@ -59,7 +59,7 @@ module.exports = function attachZamatype(io) {
       if (data.create === true) {
         if (rooms.size >= 512) return reply('ルームの上限に達しました。');
         const id = randomUUID();
-        room = {id, host: socket.id, players: [], reviewWords: new Map(), game: null};
+        room = {id, host: socket.id, players: [], reviewWords: new Map(), game: null, round: 0};
         rooms.set(id, room);
       } else {
         const target = rooms.get(data.roomId);
@@ -75,18 +75,27 @@ module.exports = function attachZamatype(io) {
       publish(room);
       broadcastRecruitment();
     });
-    socket.on('start', (reply) => {
+    function startRound(reply, rematch) {
       if (typeof reply !== 'function') return;
-      if (!room || room.host !== socket.id || room.game || room.players.length < 2) {
+      if (!room || room.host !== socket.id || room.players.length < 2 || (rematch ? room.game?.status !== 'ended' : room.game)) {
         return reply('2〜4人集まると、ルーム作成者が開始できます。');
       }
+      if (rematch) {
+        for (const player of room.players) {
+          const ranking = engine.missRanking(room.game, player.id);
+          if (ranking.length) room.reviewWords.set(player.id, ranking.map(([word]) => word));
+        }
+      }
+      room.round += 1;
       room.game = engine.init(engine.make(room.players, {reviewWords: [...room.reviewWords.values()]}));
       room.readyAt = Date.now() + 1450;
       room.lastTick = room.readyAt;
       reply(null);
       publish(room);
       broadcastRecruitment();
-    });
+    }
+    socket.on('start', reply => startRound(reply, false));
+    socket.on('rematch', reply => startRound(reply, true));
     socket.on('input', (text) => {
       if (room?.game?.status !== 'playing' || Date.now() < room.readyAt) return;
       if (typeof text !== 'string' || !text || text.length > 120) return;
