@@ -1,5 +1,12 @@
-/* Keep the prompts clear of the character silhouettes. */
-#stage.midbossBattle .bossPerspective {inset: 14% 3% 12% 41%}
+/* Place the larger bosses behind the prompt and health layers. */
+#stage.midbossBattle .bossPerspective {inset: 0 1% 0 9%}
+#stage.midbossBattle .bossFigure {
+  top: 0;
+  width: 100%;
+  height: 100%;
+  margin-top: 0;
+}
+#stage.midbossBattle #boss .bossFigure img {object-position: center}
 #stage.midbossBattle .midbossPrompts {
   inset: 19% auto auto 2.5%;
   width: 40%;
@@ -81,7 +88,13 @@
   100% {transform: scale(1.18) translateY(-7%);filter: blur(9px) brightness(2);opacity:0}
 }
 
-#stage.abyssBattle .bossPerspective {inset: 8% 15% 15%}
+#stage.abyssBattle .bossPerspective {inset: 0 1% 0}
+#stage.abyssBattle .bossFigure {
+  top: 50%;
+  width: min(100%, 75cqh);
+  height: auto;
+  margin-top: max(-50cqh, -66.667cqw);
+}
 #stage.abyssBattle .heroZone {bottom: 22%;height: 11%}
 #stage.abyssBattle .skeletonWhole {visibility:hidden}
 #stage.abyssBattle #boss.finalBones .skeletonWhole {visibility:visible;opacity:1}
@@ -137,19 +150,15 @@
 
 @media(max-width:760px){
   #stage.midbossBattle,#stage.priestBattle {min-height:660px;height:auto}
-  #stage.midbossBattle .bossPerspective {inset:8% 2% 43%}
+  #stage.midbossBattle .bossPerspective {inset:0}
   #stage.midbossBattle .midbossPrompts {inset:auto 2% 2%;width:auto}
   #stage.midbossBattle .heroZone {left:21%;width:58%;bottom:41%;height:9%}
-  #stage.midbossBattle .bossFigure {margin-top:0;top:0}
   #stage.priestBattle .bossPerspective {inset:9% 8% 46%}
   #stage.priestBattle .bossFigure {top:0}
   #stage.priestBattle .heroZone {left:21%;width:58%;bottom:44%;height:9%}
   .priestPrompts {inset:auto 2% 2%;grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch}
   .priestPrompt {padding:.3rem .35rem}
   .priestEffect {font-size:.67rem}
-}
-@media(max-width:650px){
-  #stage.abyssBattle .bossFigure {top:22%;margin-top:0}
 }
 @media(prefers-reduced-motion:reduce){
   #stage.priestBattle .zama-summoning .priestPrompts,.bossHitPoint.incoming {animation:none}

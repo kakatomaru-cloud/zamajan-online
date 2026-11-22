@@ -53,7 +53,12 @@ const SPELLS={
  slow:{name:'スロウ',word:'すろう',type:'slow',value:12,color:'#c2a8ff'},
  protect:{name:'プロテス',word:'ぷろてす',type:'shield',value:1,color:'#9bdcbf'}
 };
-const BOSS_WORDS=['まおうのかんむりをねらう','あんこくのかめんをわる','おおきなつのにひびをいれる','ひたいのほうせきをくだく'];
+const BOSS_WORDS=[
+ 'まおうがうつむいたすきにかんむりのくさりをたちきる',
+ 'おおきなつのがひかったしゅんかんにねもとをねらう',
+ 'あんこくのかめんがずれたすきにひたいをうつ',
+ 'まおうがほえるまえにひたいのほうせきをくだく'
+];
 const ROM={
  'あ':['A'],'い':['I'],'う':['U'],'え':['E'],'お':['O'],
  'か':['KA'],'き':['KI'],'く':['KU'],'け':['KE'],'こ':['KO'],
@@ -168,11 +173,36 @@ function emit(s,text,kind='info',player=null,targetUid=null,spell=null){s.events
 function init(s){for(let i=0;i<5;i++)spawn(s);emit(s,'冒険が始まった！','start');return s;}
 const BOSS_PARTS=[
  {id:'head',name:'頭',hp:9,words:BOSS_WORDS},
- {id:'torso',name:'胴体',hp:6,words:['よろいをわる','むねをうつ','かくをねらう']},
- {id:'left-arm',name:'右腕',hp:3,words:['みぎてをうつ','つめをおる','こぶしをとめる']},
- {id:'right-arm',name:'左腕',hp:3,words:['ひだりてをうつ','たてをはじく','てくびをねらう']},
- {id:'left-leg',name:'右脚',hp:3,words:['みぎひざをうつ','あしくびをうつ','みぎかかとをうつ']},
- {id:'right-leg',name:'左脚',hp:3,words:['ひだりひざをうつ','つまさきをうつ','ひだりかかとをうつ']}
+ {id:'torso',name:'胴体',hp:6,words:[
+  'まおうがみをそらしたすきによろいのつぎめをうつ',
+  'まもののひかりがよわまるまえにむねのかくをねらう',
+  'ひびわれたよろいのすきまにけんのさきをすべりこませる',
+  'まおうのむねにうかぶもんしょうをひといきにくだく'
+ ]},
+ {id:'left-arm',name:'右腕',hp:3,words:[
+  'ふりおろされたこぶしをかわしてみぎのてくびをうつ',
+  'まおうがみぎてをもどすまえにつめのねもとをおる',
+  'こぶしがゆかにとどいたすきにみぎうでのよろいをわる',
+  'みぎうでがとまったしゅんかんにひじのうちがわをねらう'
+ ]},
+ {id:'right-arm',name:'左腕',hp:3,words:[
+  'たてをもちあげたすきにひだりのてくびをねらう',
+  'ひだりうでがよこへながれたしゅんかんにつめをはじく',
+  'まおうがひだりのこぶしをひいたすきにひじをうつ',
+  'なぎはらいをかわしてひだりうでのつぎめをたちきる'
+ ]},
+ {id:'left-leg',name:'右脚',hp:3,words:[
+  'まおうがみぎあしをふみだしたすきにひざをうつ',
+  'ふみこみでゆかがゆれたしゅんかんにみぎかかとをねらう',
+  'みぎあしがおりたところであしくびのよろいをくだく',
+  'ひざをまげたすきにみぎあしのよろいのうらをうつ'
+ ]},
+ {id:'right-leg',name:'左脚',hp:3,words:[
+  'まおうがひだりあしにおもみをかけたすきにひざをうつ',
+  'つまさきがゆかをはなれたしゅんかんにひだりあしをねらう',
+  'ふみつけをかわしてひだりのかかとにけんをいれる',
+  'まおうがまえへかたむいたすきにひだりのあしくびをうつ'
+ ]}
 ];
 const MIDBOSSES=[
  {id:'dragon',name:'黒炎竜 イグニス',damage:12},
@@ -316,11 +346,18 @@ function beginBoss(s){
  s.players.forEach(p=>p.typed='');
  const parts=BOSS_PARTS.map(spec=>{
   const maxHp=spec.hp+2*(s.players.length-1);
-  return {id:spec.id,name:spec.name,maxHp,hp:maxHp,word:spec.words[Math.floor(rand(s)*spec.words.length)]};
+  return {id:spec.id,name:spec.name,maxHp,hp:maxHp,word:'',unusedWords:[...spec.words]};
  });
  const maxHp=parts.reduce((sum,part)=>sum+part.hp,0);
  s.boss={name:'終焉の魔王 アビスロード',maxHp,hp:maxHp,parts,introRemaining:3.5,remaining:.15,attackCycle:9,phase:1,weakPart:null,pendingPart:null,lastPart:null,windup:0,guarded:false};
  emit(s,'WARNING！ 魔王アビスロード降臨！','boss');
+}
+function rotateBossWord(s,part){
+ if(!part.unusedWords.length){
+  part.unusedWords=BOSS_PARTS.find(spec=>spec.id===part.id).words.filter(word=>word!==part.word);
+ }
+ const index=Math.floor(rand(s)*part.unusedWords.length);
+ [part.word]=part.unusedWords.splice(index,1);
 }
 function exposedPart(boss){
  return boss?.parts?.find(part=>part.id===boss.weakPart&&part.hp>0);
@@ -336,12 +373,14 @@ function tickAbyssLord(s,dt){
   if(boss.windup>0)return;
   const part=boss.parts.find(part=>part.id===boss.pendingPart&&part.hp>0);
   const previous=exposedPart(boss);
+  const previousWord=previous?.word;
+  if(part)rotateBossWord(s,part);
   boss.weakPart=part?.id??previous?.id??null;
   boss.pendingPart=null;
   boss.remaining=boss.attackCycle;
   const target=exposedPart(boss);
   for(const player of s.players){
-   if(player.typed&&[DEFEND_WORD,previous?.word].some(word=>word&&isPrefix(word,player.typed))
+   if(player.typed&&[DEFEND_WORD,previousWord].some(word=>word&&isPrefix(word,player.typed))
     &&!(target&&isPrefix(target.word,player.typed))) player.typed='';
   }
   emit(s,target?`魔王の攻撃！ ${target.name}に隙ができた！`:'魔王の攻撃！','bossAttack',null,part?.id);
@@ -431,9 +470,8 @@ function hitBossPart(s,p,part,amount,typed=false){
   emit(s,`${part.name}が骨に変わった！`,'partBreak',p.id,part.id);
  }
  else if(typed){
-  const words=BOSS_PARTS.find(spec=>spec.id===part.id).words.filter(word=>word!==part.word);
   clearQuestionInput(s,[part.word]);
-  part.word=words[Math.floor(rand(s)*words.length)];
+  rotateBossWord(s,part);
  }
  updateBossPhase(boss);
  if(boss.parts.every(target=>target.hp===0)){p.score+=1500;end(s,'victory');}
