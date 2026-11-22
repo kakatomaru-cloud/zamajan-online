@@ -134,3 +134,8 @@
 
 - [戦闘テスト版](https://rawcdn.githack.com/kakatomaru-cloud/zamajan-online/d3e74bda56d6fffe07c96c17c6d0663aa63e01f6/zamajan-online/public/minigames/zamatype/battle.html)
 - 全滅と時間切れの結果表示時に提供音源をループ再生。既存のBGM音量設定を使用し、再挑戦時に戦闘曲へ戻る。
+
+## 入力欄を画面下に戻す（2026-11-23 JST）
+
+- [戦闘テスト版](https://rawcdn.githack.com/kakatomaru-cloud/zamajan-online/8ef7bbd23c6cf63e5bf2534540b0860d5f30d87e/zamajan-online/public/minigames/zamatype/battle.html)
+- 入力欄とESCを戦闘画面下へ戻し、戦闘情報を独立した欄に置いて攻撃のお題との間隔を確保。
