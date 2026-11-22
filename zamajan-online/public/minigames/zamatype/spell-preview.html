@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZAMATYPE｜魔法演出サンプル</title>
+<link rel="stylesheet" href="spells.css">
+<script src="spells.js" defer></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#05090e;color:#e9f3fb;font:16px system-ui,sans-serif}
+main{max-width:1100px;margin:auto;padding:20px}
+header{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+h1{margin:0;font:700 clamp(1.45rem,4vw,2.1rem) Georgia,serif}
+a{color:#a9ddf5}
+.arena{position:relative;isolation:isolate;overflow:hidden;border:1px solid #36556b;height:clamp(250px,53vh,540px);margin:16px 0;background:linear-gradient(#07132022,#050b13a8),url(battle-courtyard.webp) center/cover}
+#actors,#layer{position:absolute;inset:0}
+#actors{display:flex;align-items:end;justify-content:space-evenly;padding:0 2% 11%}
+.target{width:23%;height:57%;object-fit:contain;object-position:center bottom}
+#layer{pointer-events:none;z-index:2}
+#label{position:absolute;z-index:3;top:12px;left:12px;margin:0;padding:6px 10px;background:#060d17df;color:#fff9de}
+.scope{display:flex;gap:8px;margin-bottom:12px}.scope button{width:auto;padding-inline:20px}
+#groups{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+fieldset{min-width:0;border:1px solid #335269;display:grid;gap:7px;padding:8px}
+legend{padding:0 7px;color:#c4e4f1}
+button{width:100%;font:inherit;cursor:pointer;color:#eaf3fa;background:#0c1825;padding:8px 3px;border:1px solid #43657c;min-height:42px}
+button:hover,button:focus-visible,button[aria-pressed=true]{border-color:#a7e8ff;background:#1a3243}
+@media(max-width:660px){#groups{grid-template-columns:repeat(2,minmax(0,1fr))}main{padding:12px}}
+</style>
+</head>
+<body>
+<main>
+<header><h1>ZAMATYPE　魔法演出</h1><nav><a href="battle.html">戦闘テスト</a> · <a href="index.html">タイトル</a></nav></header>
+<div class="arena">
+  <p id="label" role="status">下の魔法を選んで再生</p>
+  <div id="actors"><img class="target" src="sample-wolf.webp" alt="狼"><img class="target" src="enemies/golem.svg" alt="ゴーレム"><img class="target" src="enemies/knight.svg" alt="騎士"></div>
+  <div id="layer" aria-hidden="true"></div>
+</div>
+<div class="scope" role="group" aria-label="魔法の範囲"><button id="single" aria-pressed="true">個別</button><button id="all" aria-pressed="false">全体</button></div>
+<div id="groups"></div>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+  const layer=document.getElementById('layer');
+  const label=document.getElementById('label');
+  const actors=[...document.querySelectorAll('.target')];
+  const groups=document.getElementById('groups');
+  let audio, selected, wide=false;
+  for(const id of ['single','all']){
+    document.getElementById(id).addEventListener('click',()=>{
+      wide=id==='all';
+      document.getElementById('single').setAttribute('aria-pressed',String(!wide));
+      document.getElementById('all').setAttribute('aria-pressed',String(wide));
+      selected?.click();
+    });
+  }
+  for(const family of ZamaSpellFX.families){
+    const group=document.createElement('fieldset');
+    const legend=document.createElement('legend');
+    legend.textContent=family.name;
+    group.append(legend);
+    family.spells.forEach(([key,name])=>{
+      const button=document.createElement('button');
+      button.type='button';
+      button.textContent=name;
+      button.setAttribute('aria-pressed','false');
+      button.addEventListener('click',()=>{
+        const Audio=window.AudioContext||window.webkitAudioContext;
+        try {
+          if(Audio&&!audio) audio=new Audio();
+          if(audio?.state==='suspended') audio.resume().catch(()=>{});
+        } catch {}
+        selected?.setAttribute('aria-pressed','false');
+        selected=button;
+        button.setAttribute('aria-pressed','true');
+        label.textContent=name+(wide?" ／ 全体":" ／ 個別");
+        layer.replaceChildren();
+        ZamaSpellFX.render(layer,key,wide?actors:[actors[1]],audio,{wide});
+      });
+      group.append(button);
+    });
+    groups.append(group);
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZAMATYPE</title>
+<style>
+* {box-sizing:border-box}
+[hidden] {display:none!important}
+body {min-height:100svh;margin:0;color:#eff5ff;font:16px system-ui,sans-serif;background:#000}
+main {min-height:100svh;display:grid;place-items:center;padding:22px 20px 72px}
+#title {width:100%;text-align:center}
+.brand {position:relative;isolation:isolate;display:grid;align-items:end;width:min(100%,850px);min-height:clamp(200px,49vh,480px);margin:0 auto}
+.emblem {position:absolute;z-index:-1;width:100%;height:100%;inset:0;object-fit:contain;object-position:center;mask-image:radial-gradient(ellipse at 50% 48%,black 52%,transparent 80%)}
+h1 {margin:0;font:700 clamp(2.4rem,10vw,7.6rem)/1 Georgia,serif;letter-spacing:.09em;padding-left:.09em;color:#dae8f3;text-shadow:0 0 22px #94dfff55;transform:scaleX(.93)}
+@supports (background-clip:text) {
+  h1 {background:linear-gradient(#fff 20%,#d1e1ef 44%,#8f9daf 50%,#f0f6fc 80%,#91a7b9);background-clip:text;color:transparent}
+}
+.rule {height:1px;width:min(76%,470px);margin:13px auto 0;background:linear-gradient(90deg,transparent,#82dbff,transparent)}
+.subtitle {font:500 .85rem serif;letter-spacing:.45em;padding-left:.45em;color:#b9d5e8;margin:11px 0 27px}
+.buttons {width:min(100%,290px);margin:auto;display:grid;gap:9px}
+button,input,select {font:inherit}
+button {cursor:pointer;color:#e3edf7;background:#080f16;border:1px solid #355466;padding:10px 18px;min-height:45px}
+button:hover,button:focus-visible {background:#142b38;border-color:#95d6f6}
+.primary {background:linear-gradient(105deg,#0e2634,#102332);color:#e8f8ff;border-color:#80cee8;font-weight:700}
+.primary:hover,.primary:focus-visible {background:#204153;color:#fff}
+.battleLink {display:block;text-align:center;padding:12px 18px;text-decoration:none;border:1px solid #80cee8}
+.spellPreviewLink {padding:8px;color:#b9def3;font-size:.9rem;text-underline-offset:4px}
+#start {font:700 1.15rem Georgia,serif;letter-spacing:.33em}
+#sound {position:fixed;right:16px;bottom:16px;background:#080f16;font-size:.875rem}
+.card {width:min(100%,460px);padding:clamp(22px,6vw,38px);background:#080f16;border:1px solid #507b90;box-shadow:0 0 55px #2d92c01a}
+h2 {margin:0 0 20px;font:700 1.6rem serif;color:#e3f3ff}
+label {display:block;margin:0 0 8px}
+input,select {width:100%;padding:10px;background:#080f23;color:#fff;border:1px solid #8b9cb5;border-radius:0;margin-bottom:16px}
+.actions {display:grid;gap:10px}
+.back {margin-top:16px}
+#party {padding-left:24px;line-height:1.7}
+.note {color:#bfcbe0;line-height:1.6}
+</style>
+</head>
+<body>
+<main>
+<section id="title" aria-labelledby="logo">
+<div class="brand"><img class="emblem" src="emblem.webp" alt="" fetchpriority="high"><h1 id="logo">ZAMATYPE</h1></div><div class="rule"></div><p class="subtitle">ザマタイプ</p>
+<div class="buttons"><button id="start" class="primary">START</button><button data-view="practice">弱点克服モード</button><a class="spellPreviewLink" href="spell-preview.html">魔法演出サンプル</a></div>
+</section>
+<section id="setup" class="card" hidden>
+<h2 tabindex="-1">冒険者の登録</h2>
+<form id="registration">
+<label for="name">プレイヤー名</label><input id="name" required maxlength="20" autocomplete="nickname">
+<div class="actions"><button class="primary" name="mode" value="single">シングルプレイ</button><button name="mode" value="team">最大4人対戦</button></div>
+</form>
+<button class="back" data-view="title">タイトルへ戻る</button>
+</section>
+
+
+<section id="practice" class="card" hidden>
+<h2 tabindex="-1">弱点克服モード</h2>
+<p class="note">文末のタイピングを試せます。</p>
+<form id="training">
+<label for="phrase">「よろしくお願いします。」と入力</label><input id="phrase" autocomplete="off">
+<button class="primary">確認する</button>
+</form>
+<p id="trainingResult" role="status"></p>
+<button class="back" data-view="title">タイトルへ戻る</button>
+</section>
+
+</main>
+<audio id="music" src="opening.mp3" preload="none" autoplay loop></audio>
+<button id="sound" aria-pressed="false">BGMを再生</button>
+<script>
+const byId = id => document.getElementById(id);
+const screens = [...document.querySelectorAll('main > section')];
+function show(id) {
+  screens.forEach(screen => { screen.hidden = screen.id !== id; });
+  const active = byId(id);
+  active.querySelector('h2, button')?.focus();
+}
+
+const music = byId('music');
+const sound = byId('sound');
+music.volume = .65;
+let musicEnabled = true;
+function playOpening() {
+  if (musicEnabled && music.paused) music.play().catch(() => {});
+}
+function updateSound() {
+  sound.textContent = music.paused ? 'BGMを再生' : 'BGMを停止';
+  sound.setAttribute('aria-pressed', String(!music.paused));
+}
+music.addEventListener('play', updateSound);
+music.addEventListener('pause', updateSound);
+sound.addEventListener('click', () => {
+  musicEnabled = music.paused;
+  if (musicEnabled) playOpening();
+  else music.pause();
+});
+byId('start').addEventListener('click', () => { playOpening(); show('setup'); byId('name').focus(); });
+document.querySelectorAll('[data-view]').forEach(button => {
+  button.addEventListener('click', () => { playOpening(); show(button.dataset.view); });
+});
+
+let playerName = '';
+const registration = byId('registration');
+const nameInput = byId('name');
+nameInput.addEventListener('input', () => nameInput.setCustomValidity(''));
+registration.addEventListener('submit', event => {
+  event.preventDefault();
+  playerName = nameInput.value.trim();
+  if (!playerName) {
+    nameInput.setCustomValidity('プレイヤー名を入力してください。');
+    nameInput.reportValidity();
+    return;
+  }
+  try { sessionStorage.setItem('zamatype.playerName', playerName); } catch {}
+  location.href = event.submitter?.value === 'team' ? 'battle.html?multi=1' : 'battle.html';
+});
+byId('training').addEventListener('submit', event => {
+  event.preventDefault();
+  byId('trainingResult').textContent = byId('phrase').value === 'よろしくお願いします。' ? '正解！' : '文末まで確認して、もう一度入力してください。';
+});
+</script>
+</body>
+</html>

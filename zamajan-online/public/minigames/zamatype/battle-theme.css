@@ -1,0 +1,71 @@
+:root {
+  color-scheme: dark;
+  --ink: #eaf3fa;
+  --muted: #9cb8cc;
+  --accent: #a5e6ff;
+  --line: #335269;
+  --panel: #0a1420;
+  --castle: url('battle-courtyard.webp');
+}
+html, body {background:#020406;color:var(--ink)}
+.frame {max-width:1480px;padding:clamp(10px,2vw,26px);background:radial-gradient(ellipse at top,#101d2b,#030507 75%)}
+.gold {border:1px solid var(--line);border-radius:3px;background:linear-gradient(145deg,#101c2a,var(--panel));box-shadow:none}
+.header {height:auto;min-height:62px;background:#05090d;border-color:#233848;gap:10px;flex-wrap:wrap}
+.battleBrand {display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:var(--ink)}
+.battleBrand img {width:64px;height:40px;object-fit:cover;mask-image:radial-gradient(ellipse,#000 42%,transparent 80%)}
+.logo {font:700 clamp(1.1rem,2.5vw,1.7rem) Georgia,serif;letter-spacing:.11em;color:#e5edf5;text-shadow:0 0 15px #78cbff5c}
+.headerActions {display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pill {font-size:.8rem;color:var(--muted);border:0;padding:2px}
+.returnTitle {color:var(--accent);padding:8px 10px;font-size:.85rem;border:1px solid var(--line);text-decoration:none}
+.returnTitle:hover,.returnTitle:focus-visible {border-color:var(--accent)}
+.topStats {gap:8px}
+.statLabel,.sidePanel h3,.bottom strong,.chapter,.heroTag {color:#dbedf9}
+.statLabel {font-size:.8rem;letter-spacing:.04em}
+.statValue {color:#e6f2fa;font-variant-numeric:tabular-nums}
+.bar {border-color:#4e6d85;background:#101828}
+.bar>i {background:linear-gradient(90deg,#197da7,#90e5ff)}
+.enemy .enemyHp {border-color:#825656}
+.enemy .name,.enemy .prompt,.bossArena .prompt {background:#080e17f5;border-color:#496b86;color:#d5ebf9}
+.enemy .jp {white-space:normal;color:#f2f8ff}
+.enemy.activeTarget .prompt {border-color:#b2ecff;box-shadow:0 0 8px #6bd0ff70}
+#stage {background:linear-gradient(#07101b20,#06101a45 58%,#05080eb0),var(--castle) center/cover}
+#stage:after {background:radial-gradient(ellipse at center,transparent 40%,#02050775 100%)}
+.chapter {padding:5px 9px;background:#050c15ce;border-left:2px solid #8ddfff}
+.sidePanel h3 {border-color:var(--line)}
+.rowPlayer {background:#132131;border-color:var(--line)}
+.rowPlayer strong,.log {color:#b6ddf2}
+.guide,.bottom .hint,.feedback {color:var(--muted)}
+.typeInput {border:1px solid #527d97;border-radius:3px;box-shadow:none;background:#050c14}
+.typeInput:focus {border-color:#a5e6ff;box-shadow:0 0 10px #47a5d34d}
+.clearBtn,.startBtn,.over button {border:1px solid #6facc8;border-radius:3px;color:#ecf9ff;background:#142b3a}
+.intro {min-height:clamp(360px,72svh,680px);background:linear-gradient(#06101a30,#050911aa),var(--castle) center/cover}
+.introCard {background:#071019ed}
+.introTitle,.over h1 {color:#e7f3fa}
+@media(max-width:760px) {
+  .stage {min-height:320px}
+  .topStats {grid-template-columns:repeat(2,minmax(0,1fr))}
+  .typeInput {font-size:16px;letter-spacing:0}
+  .battleBrand img {width:45px}
+  .header {padding:5px 8px}
+}
+
+#recruitmentList {
+  list-style: none;
+  padding: 0;
+}
+#recruitmentList li {
+  display: flex;
+  gap: .75rem;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  padding: .55rem .7rem;
+  border-bottom: 1px solid #385675;
+}
+#recruitmentList button, #leaveRoom {
+  padding: .38rem .65rem;
+  color: #d9efff;
+  background: #1b3859;
+  border: 1px solid #587da4;
+  border-radius: 5px;
+}

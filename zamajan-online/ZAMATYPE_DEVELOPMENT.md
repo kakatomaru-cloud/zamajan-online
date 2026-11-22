@@ -1,0 +1,43 @@
+# ザマタイプ 開発管理
+
+## 最新版 v1.6.1 (2026-11-22 JST)
+- 基準: 添付 ZIP `zamajan-online-main (2).zip` 内の v1.6 と GitHub blob `c844225ee0bf935c21ac558225b47802152df099` の一致を確認。
+- 最新ゲームファイル: `zamajan-online/public/zamatype-v16-integrated-test.html`
+- ゲーム修正コミット: `d6b7077cfb7c3cb04dd232812d7d16e1667beeaa`
+- 修正後 blob: `f18a6a6040a9124f36d82fb9c23e6a6224cedb76`
+- テストURL: https://rawcdn.githack.com/kakatomaru-cloud/zamajan-online/d6b7077cfb7c3cb04dd232812d7d16e1667beeaa/zamajan-online/public/zamatype-v16-integrated-test.html
+
+## 今回の差分
+- ボス HP 24/36/48/60（1〜4人）、通常攻撃3、攻撃魔法3/6/9。据え置きの魔法仕様。登場4秒間は入力・戦闘時計停止。
+- 重低音と緩やかな登場、撃破時の点滅・振動・下方向への破片崩壊、崩壊後に「ボス撃破！！」、その後結果表示。
+- 既存画像、配置、職業、魔法段階、3分制限、その他のゲーム仕様は変更しない。
+
+## 検証
+- JavaScript 構文チェック合格。1〜4人のエンジンで登場時のダメージ無効、最上位魔法9ダメージで即死しないこと、通常攻撃3ダメージを確認。
+- ブラウザでの視覚・音声・実プレイは未検証。
+
+## 開発ルール
+最新 main と本ファイルを確認し、過去への巻き戻し・推測復元は禁止。変更は指定箇所のみ。大容量 HTML の取得が空なら blob SHA から取得する。変更前後の差分を確認し、管理ファイルとコミット固定テストURLを更新する。最新確認不能なら上書きしない。
+
+## チャットをまたぐ開発引き継ぎ（2026-11-22）
+- `zamajan-online-main (3).zip` のゲーム本体と管理ファイルが GitHub main の blob と完全一致することを確認済み。今後は GitHub main を正本とし、毎回の ZIP 再添付を前提としない。
+- 新規チャットではまず `zamajan-online/ZAMATYPE_DEVELOPMENT.md` を取得し、記載の最新ゲームファイルと main の blob を確認する。大容量ファイルは blob API 等で取得し、空の応答をソースとして扱わない。
+- 修正ごとにゲームとこの管理ファイルを更新し、変更内容・検証結果・コミット固定テストURLを記録する。取得不能の場合は上書き禁止。
+- 次回の未実装要望：火・雷・雪/氷・回復の各3段階で異なる視覚演出と効果音、ボスの大型化、攻撃・被弾モーション強化。既存仕様は維持。
+
+## 公開テスト版の必須ルール
+- 修正後は必ず GitHub に反映し、コミット固定のブラウザで直接プレイできる最新テスト版 URL を提示する。HTML 添付のみを完了扱いしない。公開反映できない場合は未完了と明記し、旧版 URL を修正版として提示しない。
+
+## 最新公開版 v1.7.1 (2026-11-22 JST)
+- 最新ゲームファイル: `zamajan-online/public/zamatype-v16-integrated-test.html`
+- ゲーム修正コミット: `5dfb48cc02d215bcb02df7aef9a53580c6911277`
+- main blob: `0154aa21fe34295b22f25a401add2ecef1bc5e36`（反映後確認済み）
+- テストURL: https://rawcdn.githack.com/kakatomaru-cloud/zamajan-online/5dfb48cc02d215bcb02df7aef9a53580c6911277/zamajan-online/public/zamatype-v16-integrated-test.html
+- v1.7.1 修正版HTMLを公開。火・雷・氷・回復の3段階透過エフェクトと合成音、ボスサイズ・崩壊演出、長文ランダム出題を変更。全3スクリプトの Node 構文検査合格。ブラウザ実プレイ・CDN配信は未検証。
+- この節が以前の最新版記載に優先する。今後の修正はこの main blob を基準にする。
+
+## 最大4人対戦とミニゲーム一覧
+- 入口は `public/online.html` の「ザマタイプ」。「対戦相手を募集する」で募集を公開し、参加者は一覧から選ぶ。2〜4人で募集主が開始する。満員・開始済みの募集は一覧から外れる。
+- 敵・HP・制限時間はサーバー側で共有し、個人スコアで順位を決める。同点1位を表示する。
+- `server.js` と `zamatype-rooms.js` を含めザマじゃんサーバーを起動すると、同じサイトの `/minigames/zamatype/` で遊べる。
+- ブラウザの表示・素材は通常戦BGMとmana8、魔法演出、敵画像の切り出し修正を含む。

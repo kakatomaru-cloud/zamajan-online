@@ -1,0 +1,95 @@
+.spellScene {
+  position:absolute; z-index:9; pointer-events:none; color:var(--spell-color);
+  transform:translate(-50%,-84%);
+  animation:spellLifetime var(--spell-time) linear both;
+}
+.spellScene>* {position:absolute;pointer-events:none}
+.spellTexture {
+  left:-13%; bottom:5%; width:126%; height:116%;
+  object-fit:contain; object-position:center bottom; transform-origin:50% 94%; mix-blend-mode:screen; opacity:0;
+  animation:var(--texture-motion,spellLift) var(--spell-time) var(--impact-delay) cubic-bezier(.15,.67,.28,1) forwards;
+}
+.spellScene--fire {--texture-motion:spellFlame}
+.spellScene--thunder {--texture-motion:spellBolt}
+.spellScene--ice {--texture-motion:spellCrystal}
+.spellScene--heal {--texture-motion:spellLift}
+.spellCue,.spellWake {inset:48% 0 5%;mix-blend-mode:screen}
+.spellCue {
+  background:radial-gradient(ellipse,#fff1c9 0%,currentColor 13%,transparent 61%);
+  animation:spellCue 180ms ease-out both;
+}
+.spellWake {
+  background:radial-gradient(ellipse at 50% 87%,currentColor,transparent 54%);
+  opacity:0;animation:spellWake var(--spell-time) var(--impact-delay) ease-out forwards;
+}
+.spellScene--fire .spellWake {background:radial-gradient(ellipse at 50% 82%,#ffba62,#8a2b122e 46%,transparent 68%)}
+.spellScene--ice .spellWake {background:radial-gradient(ellipse at 50% 84%,#d3f7ff,#438fec44 53%,transparent 71%)}
+.spellScene--wide .spellCue {inset:68% 0 5%;opacity:0;animation:none}
+.spellScene--wide .spellWake {
+  inset:66% 0 3%;transform-origin:0 50%;
+  animation:spellSweep var(--spell-time) cubic-bezier(.12,.67,.32,1) both;
+}
+.spellFleck {
+  left:50%; top:77%; width:2px; height:9px; opacity:0; border-radius:50%;
+  background:#fff5df; box-shadow:0 0 6px currentColor,0 0 12px currentColor;
+  animation:spellFleck 610ms calc(var(--impact-delay) + var(--fleck-delay)) ease-out forwards;
+}
+.spellScene--ice .spellFleck {width:4px;height:6px;border-radius:0;background:#d0f9ff}
+.spellScene--heal .spellFleck {width:3px;height:3px;background:#eeffe2}
+.spellChain {position:absolute;inset:0;width:100%;height:100%;z-index:8;pointer-events:none;animation:spellLifetime 700ms linear both}
+.spellChain g {fill:none;stroke-linejoin:round;stroke-linecap:round;animation:chainPulse 280ms var(--chain-delay) ease-out both}
+.chainGlow {stroke:#8572ff;stroke-width:8;opacity:.48}
+.chainCore {stroke:#f5f9ff;stroke-width:2}
+@keyframes spellLifetime {0%,72%{opacity:1}100%{opacity:0}}
+@keyframes spellCue {0%{opacity:.75;transform:scale(.35)}35%{opacity:.55}100%{opacity:0;transform:scale(1.05)}}
+@keyframes spellWake {0%{opacity:.28;transform:scale(.73,.7)}24%{opacity:.72}100%{opacity:0;transform:scale(1.48,.77)}}
+@keyframes spellSweep {0%{opacity:.45;transform:scaleX(.1)}25%{opacity:.9;transform:scaleX(1)}100%{opacity:0;transform:scaleX(1.04)}}
+@keyframes spellFlame {
+  0%{opacity:.8;transform:scale(.76,.58)}
+  24%{opacity:1;transform:scale(1.055,1.09) skewX(-3deg)}
+  53%{opacity:.91;transform:scale(.96,1.02) skewX(3deg)}
+  100%{opacity:0;transform:translateY(-13%) scale(.82,1.33) skewX(-4deg)}
+}
+@keyframes spellBolt {
+  0%{opacity:1;transform:translateY(-10%) scaleY(.95)}
+  13%{opacity:.98;transform:scaleY(1.07)}
+  29%{opacity:.35}
+  45%{opacity:.62}
+  86%,100%{opacity:0;transform:scaleY(1.08)}
+}
+@keyframes spellCrystal {
+  0%{opacity:.8;transform:scale(.88,.49)}
+  27%{opacity:1;transform:scale(1.03,1.06)}
+  67%{opacity:.92;transform:scale(1)}
+  100%{opacity:0;transform:scale(1.08,1)}
+}
+@keyframes spellLift {
+  0%{opacity:.57;transform:translateY(13%) scale(.75)}
+  33%{opacity:.95;transform:scale(1)}
+  100%{opacity:0;transform:translateY(-25%) scale(1.15)}
+}
+@keyframes spellFleck {
+  0%{opacity:0;transform:rotate(var(--angle)) scale(.45)}
+  16%{opacity:.97}
+  100%{opacity:0;transform:translate(var(--x),var(--y)) rotate(var(--angle)) scale(.15)}
+}
+@keyframes chainPulse {0%{opacity:0}12%{opacity:1}57%{opacity:.35}100%{opacity:0}}
+@media(prefers-reduced-motion:reduce) {
+  .spellScene,.spellScene>*,.spellChain,.spellChain g {animation-duration:180ms;animation-delay:0ms}
+}
+.spellScene--fire::after {
+  content:"";position:absolute;inset:10% 15% 13%;pointer-events:none;
+  background:radial-gradient(ellipse at 49% 70%,#4a302a66,transparent 60%);
+  opacity:0;animation:emberSmoke var(--spell-time) var(--impact-delay) ease-out forwards;
+}
+@keyframes emberSmoke {
+  0%,20%{opacity:0;transform:translateY(10%) scale(.6)}
+  50%{opacity:.48}
+  100%{opacity:0;transform:translateY(-22%) scale(1.36)}
+}
+@media(prefers-reduced-motion:reduce) {
+  .spellScene--fire::after {animation-duration:180ms;animation-delay:0ms}
+}
+.spellScene--wide .spellWake {
+  mask-image:radial-gradient(ellipse at 50% 74%,#000 12%,transparent 69%);
+}

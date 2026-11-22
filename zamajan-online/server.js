@@ -1,6 +1,7 @@
 'use strict';
 const express=require('express'),http=require('http'),{Server}=require('socket.io'),crypto=require('crypto');
 const app=express(),server=http.createServer(app),io=new Server(server,{maxHttpBufferSize:24e6});
+require('./zamatype-rooms')(io);
 app.use('/assets/tables',express.static('public/assets/tables',{maxAge:'30d',immutable:true}));app.use(express.static('public'));app.get('/',(req,res)=>res.redirect('/online.html'));
 // GitHub 共通設定。トークンと管理者パスワードはサーバー環境変数のみで管理。
 const GH_OWNER=process.env.GITHUB_OWNER||'kakatomaru-cloud';
