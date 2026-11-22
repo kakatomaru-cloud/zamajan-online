@@ -87,6 +87,7 @@
 
 ## 中ボスの選択肢、魔王戦の防御、BGM初期音量（2026-11-22 JST）
 
-- [中ボス直行](https://rawcdn.githack.com/kakatomaru-cloud/zamajan-online/1897dffd3623e8c1d6b03ed687ff62b0e5c38205/zamajan-online/public/minigames/zamatype/battle.html?midboss=1) · [魔王直行](https://rawcdn.githack.com/kakatomaru-cloud/zamajan-online/1897dffd3623e8c1d6b03ed687ff62b0e5c38205/zamajan-online/public/minigames/zamatype/battle.html?boss=1)
+- [中ボス直行](https://rawcdn.githack.com/kakatomaru-cloud/zamajan-online/79f330d0d1f4ca173169b440e6eb5ecc543c46d5/zamajan-online/public/minigames/zamatype/battle.html?midboss=1) · [魔王直行](https://rawcdn.githack.com/kakatomaru-cloud/zamajan-online/79f330d0d1f4ca173169b440e6eb5ecc543c46d5/zamajan-online/public/minigames/zamatype/battle.html?boss=1)
 - 中ボスは正解した枠だけ更新。魔王の攻撃予告中も直前の弱点を狙える。予告から5秒以内に「ぼうぎょ」または「BOUGYO」で、次の一撃から共通HPを守る。初回のBGM音量は10%。保存済みの音量は維持。
 - 共通エンジンの1〜4人設定で出題更新、ローマ字と日本語の防御、未防御時の被弾、全6部位の破壊と勝利を検証。
+- ソロ戦闘の進行を描画フレームから切り離し、登場後にタイマーと弱点判定が進むように修正。
