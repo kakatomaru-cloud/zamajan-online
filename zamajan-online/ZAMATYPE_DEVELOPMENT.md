@@ -139,3 +139,10 @@
 
 - [戦闘テスト版](https://rawcdn.githack.com/kakatomaru-cloud/zamajan-online/8ef7bbd23c6cf63e5bf2534540b0860d5f30d87e/zamajan-online/public/minigames/zamatype/battle.html)
 - 入力欄とESCを戦闘画面下へ戻し、戦闘情報を独立した欄に置いて攻撃のお題との間隔を確保。
+
+## ボス戦の実用文・回復・召喚・再戦（2026-11-23 JST）
+
+- [魔王戦テスト版](https://rawcdn.githack.com/kakatomaru-cloud/zamajan-online/facc378781aecfb193d51cc7c7879dd411f95b37/zamajan-online/public/minigames/zamatype/battle.html?boss=1)
+- 魔王の部位と神官の攻撃お題を、仕事・連絡・買い物・移動などの実用文に差し替え。敗北見出しは「冒険者たちは力尽きました。」。
+- ソロは再戦ボタンで再開。オンラインは終了後に部屋主が再戦を選ぶと、接続中の同じメンバーで開始。
+- ボス戦で攻撃や魔法をノーミスで連続成功すると、右欄に3/6/9回でヒール・ラヒール・ラヒーラ、5回ごとに属性召喚の候補を出す。ミスで連続数をリセットし、獲得済みの候補は保持。
