@@ -468,7 +468,8 @@ function rollBossReward(s,p,reward){
 function resetBossRewards(s){
  for(const p of s.players){p.bossClean=0;p.bossHeal=null;p.bossSummons=[];}
 }
-function availableBossRewards(p){return [p.bossHeal,...(p.bossSummons??[])].filter(Boolean);}
+const MAX_BOSS_REWARDS=3;
+function availableBossRewards(p){return [p.bossHeal,...(p.bossSummons??[])].filter(Boolean).slice(0,MAX_BOSS_REWARDS);}
 const summonDraws=new WeakMap();
 function drawSummon(s,p){
  let draw=summonDraws.get(p);
@@ -489,11 +490,14 @@ function countBossSuccess(s,p){
  const tier=count%9;
  if(tier%3===0){
   const heal=BOSS_HEALS[tier===0?2:tier/3-1];
-  if(!p.bossHeal||heal.value>=p.bossHeal.value)p.bossHeal=rollBossReward(s,p,heal);
+  if(!p.bossHeal||heal.value>=p.bossHeal.value){
+   p.bossHeal=rollBossReward(s,p,heal);
+   if(p.bossSummons.length>=MAX_BOSS_REWARDS)p.bossSummons.pop();
+  }
  }
  if(tier%3===0||count%5===0){
   const options=p.bossSummons??=[];
-  const limit=count%5===0?3:2;
+  const limit=Math.min(count%5===0?3:2,MAX_BOSS_REWARDS-(p.bossHeal?1:0));
   while(options.length<limit)options.push(drawSummon(s,p));
  }
 }
