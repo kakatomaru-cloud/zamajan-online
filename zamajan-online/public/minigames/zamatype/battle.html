@@ -77,6 +77,11 @@
  #bossRewardPanel .bossRewardCard {font-size:.75rem}
  #bossRewardPanel .bossRewardCard small {font-size:.65rem}
 }
+</style><style>
+.summonInvocation{position:fixed;z-index:2147483001;top:44%;left:50%;transform:translate(-50%,-50%);width:max-content;max-width:calc(100% - 32px);padding:.85rem 1.35rem;text-align:center;color:#fff4d7;background:rgba(10,16,30,.94);border:1px solid #dfa861;box-shadow:0 0 26px #0a0f1d;pointer-events:none}
+.summonInvocation strong,.summonInvocation span{display:block;overflow-wrap:anywhere}
+.summonInvocation strong{font-size:clamp(1.1rem,2.6vw,1.75rem);color:#f6c988;margin-bottom:.25rem}
+.summonInvocation span{font-size:clamp(.88rem,2vw,1.3rem)}
 </style></head><body><audio id="normalBattleMusic" src="battle-theme.mp3" preload="auto" loop></audio><div class="frame" id="app"><header class="header gold">
 <a class="battleBrand" href="index.html" aria-label="ZAMATYPE タイトルへ"><img src="emblem.webp" alt=""><span class="logo">ZAMATYPE</span></a>
 <div class="headerActions"><label class="bgmControl">BGM音量 <input id="bgmVolume" type="range" min="0" max="100" value="10"><output id="bgmPercent" for="bgmVolume">10%</output></label><div class="pill" id="statusPill">シングルプレイ</div><a class="returnTitle" href="index.html">タイトルへ</a></div>
@@ -118,10 +123,9 @@ function zamaBanner(label){const stage=$('stage');if(!stage)return;const el=docu
 const normalBattleMusic=$('normalBattleMusic');
 let bgmVolume=.10;
 let bossMusicGain;
-let chantDucking=1;
 function applyBattleMusicVolume(){
- normalBattleMusic.volume=bgmVolume*chantDucking;
- if(bossMusicGain)bossMusicGain.gain.value=bgmVolume*chantDucking;
+ normalBattleMusic.volume=bgmVolume;
+ if(bossMusicGain)bossMusicGain.gain.value=bgmVolume;
 }
 ZamaBgm.subscribe(volume=>{
  bgmVolume=volume;
@@ -166,7 +170,7 @@ async function startBossMusic(encounter){
  const volume=audio.createGain();
  source.buffer=buffer;
  source.loop=true;
- volume.gain.value=bgmVolume*chantDucking;
+ volume.gain.value=bgmVolume;
  bossMusicGain=volume;
  source.connect(volume).connect(audio.destination);
  source.start();
@@ -593,12 +597,6 @@ function processEvents() {
    playSummonSequence(name,()=>{
     if(e.spell.landed&&state?.events.some(event=>event.id===e.id&&event.kind===e.kind&&event.text===e.text)&&live())landedImpact(['boss'],true);
    });
-   const summon=document.createElement('div');
-   summon.className='bossSummonFX '+e.spell.art;
-   summon.innerHTML=summonPortraits.has(name)?'':'<i></i><b></b>';
-   $('effects').append(summon);
-   zamaBanner(e.text);
-   setTimeout(()=>summon.remove(),1200);
    continue;
   }
   if(e.kind==='guardSuccess'){zamaBanner('防御成功！');continue;}
@@ -746,105 +744,46 @@ const summonPortraits=new Map(summonPortraitNames.map((name,index)=>{
  image.src='summons/'+(index+1)+'.webp';
  return [name,image];
 }));
-const summonSpokenNames=['アグニル','ネヴァル','ヴォルティス','グラザン','イゼリア','ラザール','ドルガム','ネリオン','ヴァルグ','アストレイン','ソレリア','ヴェルカ','ルクシオン'];
-let activeSummonChant=0;
-let chantRestoreTimer;
-function playSummonChant(name){
- const spoken=summonSpokenNames[summonPortraitNames.indexOf(name)];
- if(spoken&&'speechSynthesis' in window){
-  const speech=window.speechSynthesis;
-  const voices=speech.getVoices().filter(option=>/^ja(?:-|$)/i.test(option.lang));
-  const voice=voices.find(option=>/natural|premium|enhanced|neural/i.test(option.name))??voices.find(option=>option.default)??voices[0];
-  const chant=new SpeechSynthesisUtterance('いでよ。 '+spoken+'！');
-  chant.lang='ja-JP';
-  if(voice)chant.voice=voice;
-  chant.rate=.96;
-  chant.pitch=.92;
-  chant.volume=.95;
-  const request=++activeSummonChant;
-  const restoreMusic=()=>{
-   if(request!==activeSummonChant)return;
-   clearTimeout(chantRestoreTimer);
-   chantDucking=1;
-   applyBattleMusicVolume();
-  };
-  speech.cancel();
-  clearTimeout(chantRestoreTimer);
-  chantDucking=.40;
-  applyBattleMusicVolume();
-  chant.onend=restoreMusic;
-  chant.onerror=restoreMusic;
-  chantRestoreTimer=setTimeout(restoreMusic,2800);
-  speech.speak(chant);
- }
- if(slashAudio?.state!=='running')return;
- const audio=slashAudio;
- const time=audio.currentTime;
- const length=Math.ceil(audio.sampleRate*1.22);
- const buffer=audio.createBuffer(1,length,audio.sampleRate);
- const samples=buffer.getChannelData(0);
- for(let i=0;i<length;i++)samples[i]=Math.random()*2-1;
- const wind=audio.createBufferSource();
- wind.buffer=buffer;
- const filter=audio.createBiquadFilter();
- filter.type='lowpass';
- filter.frequency.setValueAtTime(1250,time);
- filter.frequency.exponentialRampToValueAtTime(95,time+.84);
- const swell=audio.createGain();
- swell.gain.setValueAtTime(.001,time);
- swell.gain.exponentialRampToValueAtTime(.065,time+.14);
- swell.gain.exponentialRampToValueAtTime(.025,time+.46);
- swell.gain.exponentialRampToValueAtTime(.001,time+.95);
- wind.connect(filter).connect(swell).connect(audio.destination);
- wind.start(time);
- const impact=audio.createOscillator(), bass=audio.createGain();
- impact.frequency.setValueAtTime(68,time+.72);
- impact.frequency.exponentialRampToValueAtTime(30,time+1.07);
- bass.gain.setValueAtTime(.001,time+.72);
- bass.gain.exponentialRampToValueAtTime(.18,time+.75);
- bass.gain.exponentialRampToValueAtTime(.001,time+1.07);
- impact.connect(bass).connect(audio.destination);
- const reflection=audio.createDelay(.25), tail=audio.createGain();
- reflection.delayTime.value=.12;
- tail.gain.value=.22;
- bass.connect(reflection).connect(tail).connect(audio.destination);
- impact.start(time+.72);
- impact.stop(time+1.07);
-}
-const agunilChant=new Audio('summons/agunil-chant.mp3');
-agunilChant.preload='auto';
+const summonInvocations=[
+ '紅蓮の翼よ、敵陣を焼き払え。',
+ '凍てつく牙よ、敵の動きを封じよ。',
+ '雷雲よ、とどろきで敵の足を鈍らせよ。',
+ '地の底の炎よ、噴き上がれ。',
+ '白銀の吹雪よ、敵を凍てつかせよ。',
+ '天を裂く雷よ、敵の行く手を阻め。',
+ '大地よ、敵を揺さぶり、岩の盾となれ。',
+ '深海の渦よ、敵を絡め取れ。',
+ '黒鋼の刃よ、弱点を一閃せよ。',
+ '星の核よ、閃光で敵陣を貫け。',
+ '暁の炎よ、傷ついた仲間を癒やせ。',
+ '裂空の風よ、敵の動きを止めよ。',
+ '聖なる光よ、仲間を守る城壁となれ。'
+];
 let summonSequence=0;
 function playSummonSequence(name,onImpact=()=>{}){
  const sequence=++summonSequence;
- agunilChant.pause();
- const current=()=>sequence===summonSequence;
- const fallback=()=>{
-  if(!current())return;
+ ++summonPortraitRequest;
+ document.querySelector('.summonPortraitLayer')?.remove();
+ document.querySelector('.summonInvocation')?.remove();
+ const card=document.createElement('div');
+ card.className='summonInvocation';
+ card.setAttribute('role','status');
+ const title=document.createElement('strong');
+ title.textContent=name;
+ const line=document.createElement('span');
+ line.textContent=summonInvocations[summonPortraitNames.indexOf(name)]??'姿を現せ。';
+ card.append(title,line);
+ document.body.append(card);
+ setTimeout(()=>{
+  card.remove();
+  if(sequence!==summonSequence)return;
   showSummonPortrait(name);
-  playSummonChant(name);
-  setTimeout(()=>{if(current())onImpact();},760);
- };
- if(name!=='紅翼鳥アグニル'){fallback();return;}
- if('speechSynthesis' in window)window.speechSynthesis.cancel();
- agunilChant.currentTime=0;
- agunilChant.play().then(()=>{
-  if(!current())return;
-  const request=++activeSummonChant;
-  clearTimeout(chantRestoreTimer);
-  chantDucking=.40;
-  applyBattleMusicVolume();
-  chantRestoreTimer=setTimeout(()=>{
-   if(request!==activeSummonChant)return;
-   chantDucking=1;
-   applyBattleMusicVolume();
-  },1550);
-  setTimeout(()=>{if(current())showSummonPortrait(name);},700);
   setTimeout(()=>{
-   if(!current())return;
+   if(sequence!==summonSequence)return;
    zamaRumble(.48);
    onImpact();
-  },1270);
- }).catch(fallback);
+  },380);
+ },1400);
 }
 let summonPortraitRequest=0;
 function showSummonPortrait(name){
