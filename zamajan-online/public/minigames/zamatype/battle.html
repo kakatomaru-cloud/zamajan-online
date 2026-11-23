@@ -82,6 +82,23 @@
 .summonInvocation strong,.summonInvocation span{display:block;overflow-wrap:anywhere}
 .summonInvocation strong{font-size:clamp(1.1rem,2.6vw,1.75rem);color:#f6c988;margin-bottom:.25rem}
 .summonInvocation span{font-size:clamp(.88rem,2vw,1.3rem)}
+</style><style>
+@keyframes midboss-vanish {
+ 0%,14% {opacity:1;transform:none}
+ 56% {opacity:.90;transform:translateY(6%) rotate(3deg) scaleY(.92)}
+ 100% {opacity:0;transform:translateY(25%) rotate(7deg) scaleY(.73)}
+}
+@keyframes priest-unseal {
+ 0%,12% {opacity:1;transform:none}
+ 62% {opacity:.80;transform:translateY(8%) rotate(-3deg) scaleY(.91)}
+ 100% {opacity:0;transform:translateY(26%) rotate(-7deg) scaleY(.74)}
+}
+@keyframes bone-crumble {
+ 0%,12% {opacity:1;transform:none}
+ 50% {opacity:.94;transform:translateY(8%) rotate(1deg)}
+ 78% {opacity:.68;transform:translate(var(--fall-x),38%) rotate(var(--fall-angle))}
+ 100% {opacity:0;transform:translate(var(--fall-x),72%) rotate(var(--fall-angle)) scale(.78)}
+}
 </style></head><body><audio id="normalBattleMusic" src="battle-theme.mp3" preload="auto" loop></audio><div class="frame" id="app"><header class="header gold">
 <a class="battleBrand" href="index.html" aria-label="ZAMATYPE タイトルへ"><img src="emblem.webp" alt=""><span class="logo">ZAMATYPE</span></a>
 <div class="headerActions"><label class="bgmControl">BGM音量 <input id="bgmVolume" type="range" min="0" max="100" value="10"><output id="bgmPercent" for="bgmVolume">10%</output></label><div class="pill" id="statusPill">シングルプレイ</div><a class="returnTitle" href="index.html">タイトルへ</a></div>
@@ -562,8 +579,9 @@ function processEvents() {
    continue;
   }
   if(e.kind==='midbossDown'){
-   zamaBanner('中ボス撃破！');
-   zamaRumble(1);
+   setTimeout(()=>{
+    if(state?.midboss?.hp===0&&state.status!=='ended')zamaBanner('中ボス撃破！');
+   },reduceBossMotion.matches?200:1500);
    continue;
   }
   if(e.kind==='weapon'&&e.spell){
@@ -572,8 +590,9 @@ function processEvents() {
    continue;
   }
   if(e.kind==='priestDown'){
-   zamaBanner('神官の正体が姿を現す');
-   zamaRumble(2.3);
+   setTimeout(()=>{
+    if(state?.boss?.form==='priest'&&state.boss.hp===0)zamaBanner('神官の正体が姿を現す');
+   },reduceBossMotion.matches?200:2100);
    continue;
   }
   if(e.kind==='finalSpell'){
@@ -911,7 +930,6 @@ function finish(){
  zamaVictoryStarted=true;
  const arena=$('boss');
  const reduced=reduceBossMotion.matches;
- zamaRumble(2.6);
  setTimeout(()=>{
   if(zamaVictoryStarted&&state?.result==='victory')arena.classList.add('bonesDecay');
  },reduced?170:650);
