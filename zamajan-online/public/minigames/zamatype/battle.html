@@ -590,13 +590,13 @@ function processEvents() {
   }
   if(e.kind==='summon'){
    const name=e.text.split(' 召喚！')[0];
-   showSummonPortrait(name);
-   if(e.spell.landed)setTimeout(()=>{if(state?.events.some(event=>event.id===e.id&&event.kind===e.kind&&event.text===e.text)&&live())landedImpact(['boss'],true);},760);
+   playSummonSequence(name,()=>{
+    if(e.spell.landed&&state?.events.some(event=>event.id===e.id&&event.kind===e.kind&&event.text===e.text)&&live())landedImpact(['boss'],true);
+   });
    const summon=document.createElement('div');
    summon.className='bossSummonFX '+e.spell.art;
    summon.innerHTML=summonPortraits.has(name)?'':'<i></i><b></b>';
    $('effects').append(summon);
-   playSummonChant(name);
    zamaBanner(e.text);
    setTimeout(()=>summon.remove(),1200);
    continue;
@@ -811,6 +811,41 @@ function playSummonChant(name){
  impact.start(time+.72);
  impact.stop(time+1.07);
 }
+const agunilChant=new Audio('summons/agunil-chant.mp3');
+agunilChant.preload='auto';
+let summonSequence=0;
+function playSummonSequence(name,onImpact=()=>{}){
+ const sequence=++summonSequence;
+ agunilChant.pause();
+ const current=()=>sequence===summonSequence;
+ const fallback=()=>{
+  if(!current())return;
+  showSummonPortrait(name);
+  playSummonChant(name);
+  setTimeout(()=>{if(current())onImpact();},760);
+ };
+ if(name!=='紅翼鳥アグニル'){fallback();return;}
+ if('speechSynthesis' in window)window.speechSynthesis.cancel();
+ agunilChant.currentTime=0;
+ agunilChant.play().then(()=>{
+  if(!current())return;
+  const request=++activeSummonChant;
+  clearTimeout(chantRestoreTimer);
+  chantDucking=.40;
+  applyBattleMusicVolume();
+  chantRestoreTimer=setTimeout(()=>{
+   if(request!==activeSummonChant)return;
+   chantDucking=1;
+   applyBattleMusicVolume();
+  },1550);
+  setTimeout(()=>{if(current())showSummonPortrait(name);},700);
+  setTimeout(()=>{
+   if(!current())return;
+   zamaRumble(.48);
+   onImpact();
+  },1270);
+ }).catch(fallback);
+}
 let summonPortraitRequest=0;
 function showSummonPortrait(name){
  const image=summonPortraits.get(name);
@@ -837,8 +872,7 @@ if(new URLSearchParams(location.search).get('summons')==='1'){
  button.textContent='召喚演出を確認';
  button.addEventListener('click',()=>{
   audioReady();
-  showSummonPortrait(select.value);
-  playSummonChant(select.value);
+  playSummonSequence(select.value);
  });
  gallery.append(select,button);
  $('intro').append(gallery);
