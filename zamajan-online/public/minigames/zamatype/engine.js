@@ -154,7 +154,39 @@ const ROTATING_TOPICS=[
  ['外出', [['びじゅつかん','the art museum'],['としょかん','the library'],['おんせん','the hot springs'],['すいぞくかん','the aquarium'],['びょういん','the hospital'],['しやくしょ','city hall'],['ゆうびんきょく','the post office'],['たいいくかん','the gym']],
   [['までのちずをひらく','open the map to'],['のえいぎょうじかんをしらべる','look up the opening hours of'],['のちかくでまちあわせる','meet near'],['までばすでいく','take the bus to']]]
 ].map(([genre,objects,actions])=>[genre,objects.flatMap(([noun,translation])=>actions.map(([ending,verb])=>[noun+ending,verb.includes('{item}') ? verb.replace('{item}',translation) : verb+' '+translation]))]);
-const TOPIC_QUESTIONS=[...TOPICS,...EVERYDAY_TOPICS,...ROTATING_TOPICS].flatMap(([genre,entries])=>entries.map(([word,english])=>[word,english.toUpperCase(),genre]));
+const RUN_TOPICS=[
+ ['旅と交通',[
+  ['けんさつ','TICKET INSPECTION'],['しゃそう','TRAIN WINDOW'],['えきべん','RAILWAY LUNCH BOX'],['のりば','BOARDING POINT'],
+  ['かいさつをぬける','PASS THE TICKET GATE'],['まどがわにすわる','TAKE THE WINDOW SEAT'],['きっぷうりばをさがす','FIND THE TICKET OFFICE'],
+  ['しゅうでんのじかんをしらべる','CHECK THE LAST TRAIN TIME'],['おりるえきでにもつをまとめる','PACK YOUR BAG BEFORE GETTING OFF']
+ ]],
+ ['料理と食卓',[
+  ['おたま','LADLE'],['ふきん','DISHCLOTH'],['ざる','COLANDER'],['かたくりこ','POTATO STARCH'],
+  ['ねぎをこまかくきる','FINELY CHOP THE GREEN ONIONS'],['なべをよわびにする','TURN THE HEAT DOWN'],['おちゃをいれなおす','BREW A FRESH POT OF TEA'],
+  ['やきあがったぱんをあみにのせる','COOL THE BREAD ON A RACK'],['やさいのすいぶんをふきとる','PAT THE VEGETABLES DRY']
+ ]],
+ ['仕事と連絡',[
+  ['ぎだい','AGENDA'],['なふだ','NAME BADGE'],['かいとう','RESPONSE'],['ふせん','STICKY NOTE'],
+  ['ないせんでれんらくする','CALL THE EXTENSION'],['きげんをみなおす','REVIEW THE DEADLINE'],['あいてのいけんをきく','ASK FOR THEIR OPINION'],
+  ['はっぴょうのじゅんばんをきめる','SET THE PRESENTATION ORDER'],['ていしゅつしたふぁいるをひらく','OPEN THE SUBMITTED FILE']
+ ]],
+ ['自然と季節',[
+  ['こかげ','TREE SHADE'],['あさつゆ','MORNING DEW'],['こもれび','DAPPLED SUNLIGHT'],['わかば','YOUNG LEAVES'],
+  ['なみのおとをきく','LISTEN TO THE WAVES'],['かわべをさんぽする','WALK ALONG THE RIVERBANK'],['いけにうつるそらをみる','WATCH THE SKY IN THE POND'],
+  ['ひぐれまえにおかをくだる','WALK DOWN THE HILL BEFORE DUSK'],['やまのむこうにくもがひろがる','CLOUDS SPREAD BEYOND THE MOUNTAINS']
+ ]],
+ ['家の片づけ',[
+  ['たな','SHELF'],['ほうき','BROOM'],['まくら','PILLOW'],['せんたくばさみ','CLOTHESPIN'],
+  ['たおるをたたむ','FOLD THE TOWELS'],['はこになまえをかく','LABEL THE BOX'],['つかいおわったほんをもどす','PUT THE BOOK BACK'],
+  ['ひきだしのおくからかぎをだす','RETRIEVE THE KEY FROM THE DRAWER'],['よごれたまどをぬのでふく','WIPE THE WINDOW WITH A CLOTH']
+ ]],
+ ['音楽と舞台',[
+  ['がくふ','SHEET MUSIC'],['ふえ','FLUTE'],['まく','CURTAIN'],['きゃくせき','AUDIENCE SEATS'],
+  ['りずむにあわせててをたたく','CLAP TO THE BEAT'],['みじかいきょくをれんしゅうする','PRACTICE A SHORT PIECE'],['ぶたいのしょうめいをおとす','DIM THE STAGE LIGHTS'],
+  ['えんそうがおわってからはくしゅする','APPLAUD AFTER THE PERFORMANCE'],['まくがあがるまえにせきにつく','TAKE YOUR SEAT BEFORE THE CURTAIN RISES']
+ ]]
+];
+const TOPIC_QUESTIONS=[...TOPICS,...EVERYDAY_TOPICS,...ROTATING_TOPICS,...RUN_TOPICS].flatMap(([genre,entries])=>entries.map(([word,english])=>[word,english.toUpperCase(),genre]));
 const OTHER_QUESTIONS=Object.values(QUESTIONS).flat();
 function forms(q){return [...accepts(q[0]),q[1].replace(/\s/g,'').toUpperCase()];}
 const MAGIC_FORMS=Object.entries(SPELLS).flatMap(([key,spell])=>[key.toUpperCase(),...accepts(spell.word)]);
@@ -189,13 +221,15 @@ function chooseQuestion(s,f){
  }
  const bands=[0,1,0,2,1,2];
  const band=word=>word.length<=4?0:word.length<=8?1:2;
- const desired=bands[s.questionSeq++%bands.length];
+ const desired=bands[(s.questionSeq+++(s.questionBandOffset??0))%bands.length];
  const sameLength=candidates.filter(q=>band(q[0])===desired);
- const available=sameLength.length?sameLength:candidates;
+ const themed=candidates.filter(q=>q[2]===s.runTheme);
+ const themedLength=themed.filter(q=>band(q[0])===desired);
+ const available=themedLength.length?themedLength:themed.length?themed:sameLength.length?sameLength:candidates;
  const different=available.filter(q=>q[2]!==s.lastQuestionGenre);
  const choices=different.length?different:available;
  const review=candidates.filter(q=>s.reviewWords.includes(q[0]));
- const question=++s.reviewDraw%3===0&&review.length?review[Math.floor(rand(s)*review.length)]:choices[Math.floor(rand(s)*choices.length)];
+ const question=++s.reviewDraw%3===0&&s.questionSeq>5&&review.length?review[Math.floor(rand(s)*review.length)]:choices[Math.floor(rand(s)*choices.length)];
  used.add(question[0]);
  s.lastQuestionGenre=question[2];
  return question;
@@ -206,7 +240,7 @@ function spawn(s){if(s.status!=='playing'||s.boss||s.midboss||s.kills>=20||s.foe
  const maxHp=Math.round((base.tier===1?9:base.tier===2?14:20)*(0.78+0.22*s.players.length));
  const f={...base,uid:s.nextEnemy++,remaining:base.life*factor,maxLife:base.life*factor,hp:maxHp,maxHp,questionIndex:idx,word:question[0],english:question[1],genre:question[2]??null};s.foes.push(f);}
 function emit(s,text,kind='info',player=null,targetUid=null,spell=null){s.events.push({id:++s.eventSeq,text,kind,player,targetUid,spell});if(s.events.length>12)s.events.shift();}
-function init(s){matchQuestions.set(s,new Set());for(let i=0;i<5;i++)spawn(s);emit(s,'冒険が始まった！','start');return s;}
+function init(s){matchQuestions.set(s,new Set());s.runTheme=RUN_TOPICS[Math.floor(rand(s)*RUN_TOPICS.length)][0];s.questionBandOffset=Math.floor(rand(s)*6);for(let i=0;i<5;i++)spawn(s);emit(s,'冒険が始まった！','start');return s;}
 const BOSS_PARTS=[
  {id:'head',name:'頭',hp:9,words:BOSS_WORDS},
  {id:'torso',name:'胴体',hp:6,words:[
