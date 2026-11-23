@@ -42,6 +42,27 @@
  100% {opacity:0;transform:scale(1.025)}
 }
 @media (prefers-reduced-motion:reduce){.summonPortraitLayer img{animation:none}}
+</style><style>
+.battleLayout > .right {
+ min-width:0;
+ min-height:0;
+ overflow-y:auto;
+ scrollbar-width:thin;
+}
+.battleLayout > .right > .sidePanel {flex:none;min-width:0}
+#bossRewardPanel {padding:8px}
+#bossRewardPanel h3 {margin:0 0 4px;padding-bottom:4px}
+#bossRewardPanel .testNote {margin:3px 0 6px;line-height:1.25}
+#bossRewardPanel .bossRewardCard {margin:4px 0 0;padding:5px 7px;font-size:.85rem;line-height:1.25;overflow-wrap:anywhere}
+#bossRewardPanel .bossRewardCard small {display:block;margin-top:2px;font-size:.7rem;line-height:1.2}
+@media (min-width:881px){
+ .battleLayout > .right {contain:size;align-self:stretch}
+}
+@media (max-width:880px){
+ .battleLayout > .right {block-size:180px;align-content:start}
+ .battleLayout > .right > .sidePanel {max-height:none;overflow:visible}
+ #bossRewardPanel {grid-column:1/-1}
+}
 </style></head><body><audio id="normalBattleMusic" src="battle-theme.mp3" preload="auto" loop></audio><div class="frame" id="app"><header class="header gold">
 <a class="battleBrand" href="index.html" aria-label="ZAMATYPE タイトルへ"><img src="emblem.webp" alt=""><span class="logo">ZAMATYPE</span></a>
 <div class="headerActions"><label class="bgmControl">BGM音量 <input id="bgmVolume" type="range" min="0" max="100" value="10"><output id="bgmPercent" for="bgmVolume">10%</output></label><div class="pill" id="statusPill">シングルプレイ</div><a class="returnTitle" href="index.html">タイトルへ</a></div>
@@ -230,7 +251,7 @@ function refreshBossRewards(){
  const signature=JSON.stringify([clean,player.typed,rewards.map(reward=>[reward.name,reward.word])]);
  if(panel.dataset.signature===signature)return;
  panel.dataset.signature=signature;
- panel.innerHTML='<h3>回復・召喚</h3><p class="testNote">ノーミス '+clean+'回 ・ 回復・召喚候補 3/6/9回 ・ 召喚補充 5回ごと</p>'+rewards.map(reward=>
+ panel.innerHTML='<h3>回復・召喚</h3><p class="testNote">ノーミス '+clean+'回 ／ 候補は最大3つ</p>'+rewards.map(reward=>
   `<div class="bossRewardCard ${player.typed&&E.isPrefix(reward.word,player.typed)?'aimed':''}"><strong>${esc(reward.name)}</strong><div>${esc(reward.word)}</div><small>${esc(E.display(reward.word))}</small></div>`
  ).join('');
 }
