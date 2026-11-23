@@ -759,6 +759,56 @@ const summonInvocations=[
  '裂空の風よ、敵の動きを止めよ。',
  '聖なる光よ、仲間を守る城壁となれ。'
 ];
+// [filter, start frequency, end frequency, body frequency, ring frequency]
+const summonSoundProfiles={
+ fire:['lowpass',2400,115,84,310],
+ ice:['highpass',2500,7200,118,1740],
+ thunder:['lowpass',6400,150,63,470],
+ earth:['lowpass',680,85,53,190],
+ water:['bandpass',1300,290,79,390],
+ blade:['highpass',3400,1800,110,1300],
+ star:['bandpass',900,4700,98,1480],
+ dawn:['bandpass',1400,510,135,1150],
+ wind:['bandpass',390,3100,92,720],
+ holy:['highpass',2200,5200,124,1568]
+};
+const summonSoundElements=['fire','ice','thunder','fire','ice','thunder','earth','water','blade','star','dawn','wind','holy'];
+function playSummonEffect(name){
+ const audio=slashAudio;
+ if(audio?.state!=='running')return;
+ const element=summonSoundElements[summonPortraitNames.indexOf(name)]??'fire';
+ const [filterType,opening,closing,body,ring]=summonSoundProfiles[element];
+ const now=audio.currentTime;
+ const output=audio.createGain();
+ output.gain.value=.75;
+ output.connect(audio.destination);
+ const buffer=audio.createBuffer(1,Math.ceil(audio.sampleRate*.65),audio.sampleRate);
+ const samples=buffer.getChannelData(0);
+ for(let i=0;i<samples.length;i++)samples[i]=Math.random()*2-1;
+ const texture=audio.createBufferSource(), filter=audio.createBiquadFilter(), envelope=audio.createGain();
+ texture.buffer=buffer;
+ filter.type=filterType;
+ filter.frequency.setValueAtTime(opening,now);
+ filter.frequency.exponentialRampToValueAtTime(closing,now+.44);
+ envelope.gain.setValueAtTime(.001,now);
+ envelope.gain.exponentialRampToValueAtTime(.30,now+.03);
+ envelope.gain.exponentialRampToValueAtTime(.001,now+.58);
+ texture.connect(filter).connect(envelope).connect(output);
+ texture.start(now);
+ for(const [frequency,destination,delay,length,level] of [[body,body*.42,.055,.48,.24],[ring,ring*.92,.085,.55,.08],[ring*1.48,ring*1.40,.14,.48,.035]]){
+  const tone=audio.createOscillator(), gain=audio.createGain();
+  const at=now+delay;
+  tone.frequency.setValueAtTime(frequency,at);
+  tone.frequency.exponentialRampToValueAtTime(destination,at+length);
+  gain.gain.setValueAtTime(.001,at);
+  gain.gain.exponentialRampToValueAtTime(level,at+.018);
+  gain.gain.exponentialRampToValueAtTime(.001,at+length);
+  tone.connect(gain).connect(output);
+  tone.start(at);
+  tone.stop(at+length);
+ }
+ texture.onended=()=>output.disconnect();
+}
 let summonSequence=0;
 function playSummonSequence(name,onImpact=()=>{}){
  const sequence=++summonSequence;
@@ -777,18 +827,17 @@ function playSummonSequence(name,onImpact=()=>{}){
  setTimeout(()=>{
   card.remove();
   if(sequence!==summonSequence)return;
-  showSummonPortrait(name);
-  setTimeout(()=>{
+  showSummonPortrait(name,()=>{
    if(sequence!==summonSequence)return;
-   zamaRumble(.48);
-   onImpact();
-  },380);
+   playSummonEffect(name);
+   setTimeout(()=>{if(sequence===summonSequence)onImpact();},380);
+  });
  },1400);
 }
 let summonPortraitRequest=0;
-function showSummonPortrait(name){
+function showSummonPortrait(name,onReveal){
  const image=summonPortraits.get(name);
- if(!image)return;
+ if(!image){onReveal();return;}
  const request=++summonPortraitRequest;
  image.decode().then(()=>{
   if(request!==summonPortraitRequest)return;
@@ -799,7 +848,8 @@ function showSummonPortrait(name){
   layer.append(image);
   document.body.append(layer);
   setTimeout(()=>layer.remove(),1150);
- }).catch(()=>{});
+  onReveal();
+ },()=>{if(request===summonPortraitRequest)onReveal();});
 }
 if(new URLSearchParams(location.search).get('summons')==='1'){
  const gallery=document.createElement('div');
