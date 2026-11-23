@@ -70,6 +70,7 @@ function saveReviewWords(ranking){
  catch{}
 }
 function battleLogText(event){
+ if(event.kind==='magicHit')return event.text.replace(/ HP -\d+$/,' に一撃！');
  if(event.kind==='hurt')return '敵の攻撃！';
  if(event.kind==='finalSpell')return event.text.split('！')[0]+'！';
  if(event.kind==='hit')return event.text.replace(/ に \d+ ダメージ！$/,' に一撃！');
@@ -226,10 +227,10 @@ function refreshBossRewards(){
  if(!active)return;
  const rewards=E.availableBossRewards(player);
  const clean=player.bossClean??0;
- const signature=JSON.stringify([clean,player.typed,rewards.map(reward=>reward.name)]);
+ const signature=JSON.stringify([clean,player.typed,rewards.map(reward=>[reward.name,reward.word])]);
  if(panel.dataset.signature===signature)return;
  panel.dataset.signature=signature;
- panel.innerHTML='<h3>回復・召喚</h3><p class="testNote">ノーミス '+clean+'回 ・ 回復 3/6/9回 ・ 召喚 5回ごと</p>'+rewards.map(reward=>
+ panel.innerHTML='<h3>回復・召喚</h3><p class="testNote">ノーミス '+clean+'回 ・ 回復・召喚候補 3/6/9回 ・ 召喚補充 5回ごと</p>'+rewards.map(reward=>
   `<div class="bossRewardCard ${player.typed&&E.isPrefix(reward.word,player.typed)?'aimed':''}"><strong>${esc(reward.name)}</strong><div>${esc(reward.word)}</div><small>${esc(E.display(reward.word))}</small></div>`
  ).join('');
 }
@@ -397,6 +398,32 @@ function impactTarget(uid){
  if(typeof uid==='string')return $('boss').querySelector(`[data-impact=${CSS.escape(uid)}]`);
  return $('monsters').querySelector(`[data-uid="${uid}"] .sprite`);
 }
+let impactShake;
+const impactFlashes=new WeakMap();
+function landedImpact(targets,heavy=false){
+ const stage=$('stage');
+ const boss=$('boss');
+ const sprites=new Set(targets.map(uid=>{
+  if(typeof uid==='string')return boss.querySelector('.bossRig img, img')??boss;
+  return impactTarget(uid);
+ }).filter(Boolean));
+ if(!reduceBossMotion.matches){
+  const force=heavy?10:5;
+  impactShake?.cancel();
+  impactShake=stage.animate([
+   {translate:'0 0'},{translate:`${-force}px 2px`},{translate:`${force}px -2px`},
+   {translate:`${-force/2}px 1px`},{translate:'0 0'}
+  ],{duration:heavy?360:230,easing:'ease-out'});
+ }
+ for(const sprite of sprites){
+  impactFlashes.get(sprite)?.cancel();
+  impactFlashes.set(sprite,sprite.animate([
+   {filter:'brightness(1)'},{filter:'brightness(2.2) saturate(1.55) drop-shadow(0 0 12px #ff714f)',offset:.24},
+   {filter:'brightness(.8) sepia(.35)',offset:.60},{filter:'brightness(1)'}
+  ],{duration:heavy?430:280}));
+ }
+ if(targets.some(uid=>typeof uid==='string'))moveBoss(false);
+}
 function elementalFX({key, targets}) {
  ZamaSpellFX.render($('effects'),key,targets.map(impactTarget),slashAudio);
 }
@@ -500,6 +527,7 @@ function processEvents() {
   }
   if(e.kind==='weapon'&&e.spell){
    legendaryFX(e.spell);
+   landedImpact(e.spell.targets,true);
    continue;
   }
   if(e.kind==='priestDown'){
@@ -518,6 +546,7 @@ function processEvents() {
    }
    $('effects').append(effect);
    finalSpellSound(e.spell.key);
+   if(e.spell.damage>0)landedImpact(['abyss'],true);
    zamaBanner(e.text.split('！')[0]+'！');
    setTimeout(()=>effect.remove(),1750);
    continue;
@@ -525,6 +554,7 @@ function processEvents() {
   if(e.kind==='summon'){
    const name=e.text.split(' 召喚！')[0];
    showSummonPortrait(name);
+   if(e.spell.landed)setTimeout(()=>{if(state?.events.some(event=>event.id===e.id&&event.kind===e.kind&&event.text===e.text)&&live())landedImpact(['boss'],true);},950);
    const summon=document.createElement('div');
    summon.className='bossSummonFX '+e.spell.art;
    summon.innerHTML=summonPortraits.has(name)?'':'<i></i><b></b>';
@@ -545,7 +575,8 @@ function processEvents() {
   }
   if (e.kind === 'spell' && e.spell) {
    elementalFX(e.spell);
-   if ((state.boss||state.midboss) && e.spell.targets.some(uid => uid !== 'party')) moveBoss(false);
+   const targets=e.spell.targets.filter(uid=>uid!=='party');
+   if(targets.length)landedImpact(targets,targets.length>1);
    continue;
   }
   if (e.kind === 'bossAttack') {
@@ -554,7 +585,7 @@ function processEvents() {
    zamaRumble(.65);
    continue;
   }
-  if (e.kind === 'hit' && (state.boss||state.midboss)) moveBoss(false);
+  if(e.kind==='hit')landedImpact([e.targetUid]);
   if (['hit','hurt','enemyAttack'].includes(e.kind)) fx(e.kind,e.targetUid,e.text);
  }
 }
