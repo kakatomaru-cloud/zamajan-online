@@ -33,6 +33,15 @@
 .typingPanel #typeInput {min-width:0}
 .battleStatus {text-align:left;min-height:4rem}
 .battleStatus .hint,.battleStatus .feedback,.battleStatus .log {overflow-wrap:anywhere}
+</style><style>
+.summonPortraitLayer {position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;pointer-events:none}
+.summonPortraitLayer img {position:absolute;inset:0;width:100%;height:100%;max-width:100vw;max-height:100dvh;object-fit:contain;animation:summonPortrait 2.4s ease-out both}
+@keyframes summonPortrait {
+ 0% {opacity:0;transform:scale(.85)}
+ 16%,78% {opacity:1;transform:scale(1)}
+ 100% {opacity:0;transform:scale(1.025)}
+}
+@media (prefers-reduced-motion:reduce){.summonPortraitLayer img{animation:none}}
 </style></head><body><audio id="normalBattleMusic" src="battle-theme.mp3" preload="auto" loop></audio><div class="frame" id="app"><header class="header gold">
 <a class="battleBrand" href="index.html" aria-label="ZAMATYPE タイトルへ"><img src="emblem.webp" alt=""><span class="logo">ZAMATYPE</span></a>
 <div class="headerActions"><label class="bgmControl">BGM音量 <input id="bgmVolume" type="range" min="0" max="100" value="10"><output id="bgmPercent" for="bgmVolume">10%</output></label><div class="pill" id="statusPill">シングルプレイ</div><a class="returnTitle" href="index.html">タイトルへ</a></div>
@@ -513,9 +522,11 @@ function processEvents() {
    continue;
   }
   if(e.kind==='summon'){
+   const name=e.text.split(' 召喚！')[0];
+   showSummonPortrait(name);
    const summon=document.createElement('div');
    summon.className='bossSummonFX '+e.spell.art;
-   summon.innerHTML='<i></i><b></b>';
+   summon.innerHTML=summonPortraits.has(name)?'':'<i></i><b></b>';
    $('effects').append(summon);
    finalSpellSound({fire:'meteor',ice:'holy',thunder:'ultima'}[e.spell.art]);
    zamaBanner(e.text);
@@ -658,6 +669,41 @@ if(onlineMode){
    $('game').classList.add('hidden');
   });
  }
+}
+const summonPortraitNames=["紅翼鳥アグニル","氷角獣ネヴァル","雷雲竜ヴォルティス","獄炎鬼グラザン","氷晶后イゼリア","雷杖翁ラザール","地殻巨人ドルガム","深海蛇ネリオン","黒騎将ヴァルグ","星竜アストレイン","暁焔鳥ソレリア","風爪鳥ヴェルカ","聖塞機ルクシオン"];
+const summonPortraits=new Map(summonPortraitNames.map((name,index)=>{
+ const image=new Image();
+ image.alt='';
+ image.src='summons/'+(index+1)+'.webp';
+ return [name,image];
+}));
+let summonPortraitRequest=0;
+function showSummonPortrait(name){
+ const image=summonPortraits.get(name);
+ if(!image)return;
+ const request=++summonPortraitRequest;
+ image.decode().then(()=>{
+  if(request!==summonPortraitRequest)return;
+  document.querySelector('.summonPortraitLayer')?.remove();
+  const layer=document.createElement('div');
+  layer.className='summonPortraitLayer';
+  layer.setAttribute('aria-hidden','true');
+  layer.append(image);
+  document.body.append(layer);
+  setTimeout(()=>layer.remove(),2400);
+ }).catch(()=>{});
+}
+if(new URLSearchParams(location.search).get('summons')==='1'){
+ const gallery=document.createElement('div');
+ const select=document.createElement('select');
+ select.setAttribute('aria-label','召喚獣');
+ for(const name of summonPortraitNames)select.add(new Option(name));
+ const button=document.createElement('button');
+ button.type='button';
+ button.textContent='召喚演出を確認';
+ button.addEventListener('click',()=>showSummonPortrait(select.value));
+ gallery.append(select,button);
+ $('intro').append(gallery);
 }
 let battleReadyAt=0;function play(){
  stopBossMusic();
