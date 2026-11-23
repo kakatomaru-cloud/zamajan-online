@@ -147,13 +147,13 @@ const EVERYDAY_TOPICS=[
  ['仕事と暮らし', [['はんこ','STAMP'],['しおり','BOOKMARK'],['みつもり','ESTIMATE'],['てじゅんしょ','PROCEDURE GUIDE'],['しめきりをよていひょうにかく','MARK THE DEADLINE ON THE CALENDAR'],['らいしゅうのかいぎしつをとる','BOOK THE MEETING ROOM']]]
 ];
 const ROTATING_TOPICS=[
- ['仕事の連絡', [['かいぎのしりょう','the meeting materials'],['こうしんしたてじゅんしょ','the updated instructions'],['あたらしいみつもりしょ','the new estimate'],['こんしゅうのぎじろく','the weekly minutes'],['よやくのないよう','the booking details'],['しはらいのめいさい','the payment details'],['きのうのれぽーと','the previous report'],['らいげつのにってい','next months schedule']],
-  [['をかくにんする','check'],['をちーむにおくる','send the team'],['をいんさつする','print'],['をもういちどよむ','reread']]],
+ ['仕事の連絡', [['かいぎのしりょう','the meeting materials'],['こうしんしたてじゅんしょ','the updated instructions'],['あたらしいみつもりしょ','the new estimate'],['こんしゅうのぎじろく','the weekly minutes'],['よやくのないよう','the booking details'],['しはらいのめいさい','the payment details'],['きのうのれぽーと','the previous report'],['らいげつのにってい','the schedule for next month']],
+  [['をかくにんする','check'],['をちーむにおくる','share {item} with the team'],['をいんさつする','print'],['をもういちどよむ','reread']]],
  ['買い物と食事', [['りんご','apples'],['とまと','tomatoes'],['たまご','eggs'],['しょくぱん','bread'],['よーぐると','yogurt'],['にんじん','carrots'],['みかん','mandarins'],['おれんじじゅーす','orange juice']],
-  [['をまとめてかう','stock up on'],['をひとつかう','buy one pack of'],['をれいぞうこにしまう','refrigerate'],['をきょうのあさごはんにする','have for breakfast some']]],
+  [['をまとめてかう','stock up on'],['をかいものかごにいれる','put {item} in the basket'],['をれいぞうこにしまう','refrigerate'],['をわすれずにかう','remember to buy']]],
  ['外出', [['びじゅつかん','the art museum'],['としょかん','the library'],['おんせん','the hot springs'],['すいぞくかん','the aquarium'],['びょういん','the hospital'],['しやくしょ','city hall'],['ゆうびんきょく','the post office'],['たいいくかん','the gym']],
   [['までのちずをひらく','open the map to'],['のえいぎょうじかんをしらべる','look up the opening hours of'],['のちかくでまちあわせる','meet near'],['までばすでいく','take the bus to']]]
-].map(([genre,objects,actions])=>[genre,objects.flatMap(([noun,translation])=>actions.map(([ending,verb])=>[noun+ending,verb+' '+translation]))]);
+].map(([genre,objects,actions])=>[genre,objects.flatMap(([noun,translation])=>actions.map(([ending,verb])=>[noun+ending,verb.includes('{item}') ? verb.replace('{item}',translation) : verb+' '+translation]))]);
 const TOPIC_QUESTIONS=[...TOPICS,...EVERYDAY_TOPICS,...ROTATING_TOPICS].flatMap(([genre,entries])=>entries.map(([word,english])=>[word,english.toUpperCase(),genre]));
 const OTHER_QUESTIONS=Object.values(QUESTIONS).flat();
 function forms(q){return [...accepts(q[0]),q[1].replace(/\s/g,'').toUpperCase()];}
@@ -327,7 +327,16 @@ function startEncounter(s){
  if(s.kills>=10&&!s.midbossCleared)beginMidboss(s);
 }
 const PRIEST_STRIKES=['さきほどのけんについてごれんらくします','おみせのえいぎょうじかんをおしえてください','よやくしているなまえをおつたえします','おねがいしたないようをもういちどかくにんします','かいぎのしりょうをじぜんにきょうゆうします','つぎのおやすみにともだちとでかけます','このけんはあらためてごそうだんします'];
-const rotatingBossWords=ROTATING_TOPICS.flatMap(([,entries])=>entries.map(([word])=>word));
+const rotatingBossWords=[
+ 'しゅっせきするひとにれんらくする','ていしゅつまえにごじをさがす','つぎのかいぎをよやくする',
+ 'のうひんのひづけをきめる','かいじょうへのいきかたをしらべる','しりょうをいちまいずつくばる',
+ 'つくえにおいたでんわをとる','ひつようなしょるいをそろえる','へんしんがくるまでべつのさぎょうをする',
+ 'きろくしたじかんをみなおす','あしたのもくひょうをきめる','よやくのじかんにあわせてでかける',
+ 'くるまをちゅうしゃじょうにとめる','よるのうちにおかずをつくる','てんきをみてふくをきめる',
+ 'いそがしいときはさきにれんらくする','まちがえたところにしるしをつける','でかけるまえにかばんをたしかめる',
+ 'きゅうけいのあとでさぎょうにもどる','あたらしいぺーじをひらく','えきでかいすうけんをかう',
+ 'こしょうしたでんきゅうをとりかえる','のこったおかずをつめる','ともだちにたんじょうびのれんらくをする'
+];
 const priestAttackWords=[...new Set([...PRIEST_STRIKES,...rotatingBossWords.filter((_,i)=>i%2===0)])];
 const finalAttackWords=[...new Set([...BOSS_PARTS.flatMap(part=>part.words),...rotatingBossWords.filter((_,i)=>i%2===1)])];
 const bossWordDecks=new WeakMap();
@@ -419,10 +428,20 @@ const FINAL_SPELLS=[
 ];
 const finalSpellWords=[...new Set([
  ...FINAL_SPELLS.flatMap(spell=>spell.words),
- ...['せんたくもの','あたらしいくつ','おきにいりのほん','りょこうのにもつ','しゅうまつのよてい','かぞくのしゃしん','へやのかぎ','めがねのけーす'].flatMap(noun=>
-  ['をさきによういする','をもういちどたしかめる','のことをかぞくにはなす','のことをめもにのこす'].map(ending=>noun+ending)),
- ...['こうえん','にわ','みなと','きっさてん','ほんや','えき','かわべ','しょうてんがい'].flatMap(place=>
-  ['をあさのうちにおとずれる','のまえでしゃしんをとる','までゆっくりあるく','のちかくでひとやすみする'].map(ending=>place+ending))
+ 'くつひもをむすびなおす','まちあわせにすこしおくれる','かりたほんをとしょかんにかえす',
+ 'ちずでちかみちをみつける','あめがやむまでみせにいる','かさをげんかんにおく',
+ 'のみものをれいぞうこでひやす','やかんでおゆをわかす','なくしたかぎをさがす',
+ 'じてんしゃのくうきをいれる','ふるいはこをしょぶんする','きょうのぶんのこめをたく',
+ 'まえのぺーじにもどる','つかれたのでいすにすわる','あすのてんきをみておく',
+ 'につめたじゃむをびんにつめる','えきのかいさつであう','すずしいへやでひとやすみする',
+ 'てがみをぽすとにいれる','にもつのあてさきをたしかめる','かめらのじゅうでんをする',
+ 'しんごうがあおになってからわたる','でんきをけしてからねる','あついなべにふたをする',
+ 'こうえんのべんちでほんをよむ','こうさてんをひだりにまがる','でかけるまえにとじまりをする',
+ 'いらないめーるをけす','のりかえのじかんをしらべる','せんたくものをほす',
+ 'きったくだものをさらにならべる','ぬれたくつをかわかす','ゆうびんきょくでこづつみをおくる',
+ 'しおをいれずにすーぷをつくる','みせをでるまえにかさをとる','うけつけでなまえをつたえる',
+ 'まどをしめてからでかける','かえりみちでぱんをかう','こーひーをこぼしたのでふく',
+ 'ふうとうにきってをはる','べんとうのふたをしめる','ゆうがたのばすをまつ'
 ])];
 function rollFinalSpell(s,spell){
  const active=availableFinalSpells(s.boss).map(option=>option.word);
@@ -578,14 +597,16 @@ function tickAbyssLord(s,dt){
   const part=boss.parts.find(part=>part.id===boss.pendingPart&&part.hp>0);
   const previous=exposedPart(boss);
   const previousWord=previous?.word;
-  if(part)rotateBossWord(s,part);
-  boss.weakPart=part?.id??previous?.id??null;
+  const typingWeakness=previousWord&&s.players.some(player=>player.typed&&isPrefix(previousWord,player.typed));
+  if(part&&part!==previous&&!typingWeakness){
+   rotateBossWord(s,part);
+   boss.weakPart=part.id;
+  }
   boss.pendingPart=null;
   boss.remaining=boss.attackCycle;
   const target=exposedPart(boss);
   for(const player of s.players){
-   if(player.typed&&[DEFEND_WORD,previousWord].some(word=>word&&isPrefix(word,player.typed))
-    &&!(target&&isPrefix(target.word,player.typed))) player.typed='';
+   if(player.typed&&!inputTargets(s,player).some(option=>isPrefix(option.word,player.typed)))player.typed='';
   }
   emit(s,target?`魔王の攻撃！ ${target.name}に隙ができた！`:'魔王の攻撃！','bossAttack',null,part?.id);
   if(boss.guarded)emit(s,'防御成功！ 共通HPを守った！','guardSuccess');
@@ -599,6 +620,13 @@ function tickAbyssLord(s,dt){
  const start=order.indexOf(boss.lastPart)+1;
  const next=order.slice(start).concat(order.slice(0,start)).find(id=>boss.parts.some(part=>part.id===id&&part.hp>0));
  boss.pendingPart=next;
+ if(!exposedPart(boss)){
+  const part=boss.parts.find(part=>part.id===next);
+  if(part){
+   rotateBossWord(s,part);
+   boss.weakPart=part.id;
+  }
+ }
  boss.lastPart=next;
  boss.guarded=false;
  boss.windup=5;
