@@ -118,10 +118,14 @@ function zamaBanner(label){const stage=$('stage');if(!stage)return;const el=docu
 const normalBattleMusic=$('normalBattleMusic');
 let bgmVolume=.10;
 let bossMusicGain;
+let chantDucking=1;
+function applyBattleMusicVolume(){
+ normalBattleMusic.volume=bgmVolume*chantDucking;
+ if(bossMusicGain)bossMusicGain.gain.value=bgmVolume*chantDucking;
+}
 ZamaBgm.subscribe(volume=>{
  bgmVolume=volume;
- normalBattleMusic.volume=volume;
- if(bossMusicGain)bossMusicGain.gain.value=volume;
+ applyBattleMusicVolume();
 });
 function stopNormalBattleMusic(){
  normalBattleMusic.pause();
@@ -162,7 +166,7 @@ async function startBossMusic(encounter){
  const volume=audio.createGain();
  source.buffer=buffer;
  source.loop=true;
- volume.gain.value=bgmVolume;
+ volume.gain.value=bgmVolume*chantDucking;
  bossMusicGain=volume;
  source.connect(volume).connect(audio.destination);
  source.start();
@@ -743,24 +747,40 @@ const summonPortraits=new Map(summonPortraitNames.map((name,index)=>{
  return [name,image];
 }));
 const summonSpokenNames=['アグニル','ネヴァル','ヴォルティス','グラザン','イゼリア','ラザール','ドルガム','ネリオン','ヴァルグ','アストレイン','ソレリア','ヴェルカ','ルクシオン'];
+let activeSummonChant=0;
+let chantRestoreTimer;
 function playSummonChant(name){
  const spoken=summonSpokenNames[summonPortraitNames.indexOf(name)];
  if(spoken&&'speechSynthesis' in window){
   const speech=window.speechSynthesis;
-  const voice=speech.getVoices().find(option=>/^ja(?:-|$)/i.test(option.lang));
-  const chant=new SpeechSynthesisUtterance('いでよ、'+spoken+'！');
+  const voices=speech.getVoices().filter(option=>/^ja(?:-|$)/i.test(option.lang));
+  const voice=voices.find(option=>/natural|premium|enhanced|neural/i.test(option.name))??voices.find(option=>option.default)??voices[0];
+  const chant=new SpeechSynthesisUtterance('いでよ。 '+spoken+'！');
   chant.lang='ja-JP';
   if(voice)chant.voice=voice;
-  chant.rate=.92;
-  chant.pitch=.78;
-  chant.volume=.85;
+  chant.rate=.96;
+  chant.pitch=.92;
+  chant.volume=.95;
+  const request=++activeSummonChant;
+  const restoreMusic=()=>{
+   if(request!==activeSummonChant)return;
+   clearTimeout(chantRestoreTimer);
+   chantDucking=1;
+   applyBattleMusicVolume();
+  };
   speech.cancel();
+  clearTimeout(chantRestoreTimer);
+  chantDucking=.40;
+  applyBattleMusicVolume();
+  chant.onend=restoreMusic;
+  chant.onerror=restoreMusic;
+  chantRestoreTimer=setTimeout(restoreMusic,2800);
   speech.speak(chant);
  }
  if(slashAudio?.state!=='running')return;
  const audio=slashAudio;
  const time=audio.currentTime;
- const length=audio.sampleRate;
+ const length=Math.ceil(audio.sampleRate*1.22);
  const buffer=audio.createBuffer(1,length,audio.sampleRate);
  const samples=buffer.getChannelData(0);
  for(let i=0;i<length;i++)samples[i]=Math.random()*2-1;
@@ -768,21 +788,27 @@ function playSummonChant(name){
  wind.buffer=buffer;
  const filter=audio.createBiquadFilter();
  filter.type='lowpass';
- filter.frequency.setValueAtTime(660,time);
+ filter.frequency.setValueAtTime(1250,time);
  filter.frequency.exponentialRampToValueAtTime(95,time+.84);
  const swell=audio.createGain();
  swell.gain.setValueAtTime(.001,time);
- swell.gain.exponentialRampToValueAtTime(.16,time+.46);
+ swell.gain.exponentialRampToValueAtTime(.065,time+.14);
+ swell.gain.exponentialRampToValueAtTime(.025,time+.46);
  swell.gain.exponentialRampToValueAtTime(.001,time+.95);
  wind.connect(filter).connect(swell).connect(audio.destination);
  wind.start(time);
  const impact=audio.createOscillator(), bass=audio.createGain();
- impact.frequency.setValueAtTime(78,time+.63);
+ impact.frequency.setValueAtTime(68,time+.72);
  impact.frequency.exponentialRampToValueAtTime(30,time+1.07);
- bass.gain.setValueAtTime(.15,time+.63);
+ bass.gain.setValueAtTime(.001,time+.72);
+ bass.gain.exponentialRampToValueAtTime(.18,time+.75);
  bass.gain.exponentialRampToValueAtTime(.001,time+1.07);
  impact.connect(bass).connect(audio.destination);
- impact.start(time+.63);
+ const reflection=audio.createDelay(.25), tail=audio.createGain();
+ reflection.delayTime.value=.12;
+ tail.gain.value=.22;
+ bass.connect(reflection).connect(tail).connect(audio.destination);
+ impact.start(time+.72);
  impact.stop(time+1.07);
 }
 let summonPortraitRequest=0;
