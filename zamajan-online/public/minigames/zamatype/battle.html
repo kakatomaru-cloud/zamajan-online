@@ -35,7 +35,7 @@
 .battleStatus .hint,.battleStatus .feedback,.battleStatus .log {overflow-wrap:anywhere}
 </style><style>
 .summonPortraitLayer {position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;pointer-events:none}
-.summonPortraitLayer img {position:absolute;inset:0;width:100%;height:100%;max-width:100vw;max-height:100dvh;object-fit:contain;animation:summonPortrait 2.4s ease-out both}
+.summonPortraitLayer img {position:absolute;inset:0;width:100%;height:100%;max-width:100vw;max-height:100dvh;object-fit:contain;animation:summonPortrait 1.15s ease-out both}
 @keyframes summonPortrait {
  0% {opacity:0;transform:scale(.85)}
  16%,78% {opacity:1;transform:scale(1)}
@@ -65,8 +65,6 @@
  background:rgba(9,21,27,.90);
 }
 #bossRewardPanel.hidden {display:none}
-#bossRewardPanel h3 {margin:0 0 4px;padding-bottom:4px}
-#bossRewardPanel .testNote {margin:3px 0 6px;line-height:1.25}
 #bossRewardPanel .bossRewardCard {margin:4px 0 0;padding:5px 7px;font-size:.85rem;line-height:1.25;overflow-wrap:anywhere}
 #bossRewardPanel .bossRewardCard small {display:block;margin-top:2px;font-size:.7rem;line-height:1.2}
 @media (min-width:881px){
@@ -259,15 +257,13 @@ function refreshPriest(arena,boss){
 function refreshBossRewards(){
  const panel=$('bossRewardPanel');
  const player=p();
- const active=live()&&Boolean(state.boss?.hp||state.midboss?.hp);
- panel.classList.toggle('hidden',!active);
- if(!active)return;
- const rewards=E.availableBossRewards(player);
- const clean=player.bossClean??0;
- const signature=JSON.stringify([clean,player.typed,rewards.map(reward=>[reward.name,reward.word])]);
+ const rewards=live()&&(state.boss?.hp||state.midboss?.hp)?E.availableBossRewards(player):[];
+ panel.classList.toggle('hidden',!rewards.length);
+ if(!rewards.length)return;
+ const signature=JSON.stringify([player.typed,rewards.map(reward=>[reward.name,reward.word])]);
  if(panel.dataset.signature===signature)return;
  panel.dataset.signature=signature;
- panel.innerHTML='<h3>回復・召喚</h3><p class="testNote">ノーミス '+clean+'回 ／ 候補は最大3つ</p>'+rewards.map(reward=>
+ panel.innerHTML=rewards.map(reward=>
   `<div class="bossRewardCard ${player.typed&&E.isPrefix(reward.word,player.typed)?'aimed':''}"><strong>${esc(reward.name)}</strong><div>${esc(reward.word)}</div><small>${esc(E.display(reward.word))}</small></div>`
  ).join('');
 }
@@ -591,14 +587,14 @@ function processEvents() {
   if(e.kind==='summon'){
    const name=e.text.split(' 召喚！')[0];
    showSummonPortrait(name);
-   if(e.spell.landed)setTimeout(()=>{if(state?.events.some(event=>event.id===e.id&&event.kind===e.kind&&event.text===e.text)&&live())landedImpact(['boss'],true);},950);
+   if(e.spell.landed)setTimeout(()=>{if(state?.events.some(event=>event.id===e.id&&event.kind===e.kind&&event.text===e.text)&&live())landedImpact(['boss'],true);},760);
    const summon=document.createElement('div');
    summon.className='bossSummonFX '+e.spell.art;
    summon.innerHTML=summonPortraits.has(name)?'':'<i></i><b></b>';
    $('effects').append(summon);
-   finalSpellSound({fire:'meteor',ice:'holy',thunder:'ultima'}[e.spell.art]);
+   playSummonChant(name);
    zamaBanner(e.text);
-   setTimeout(()=>summon.remove(),1900);
+   setTimeout(()=>summon.remove(),1200);
    continue;
   }
   if(e.kind==='guardSuccess'){zamaBanner('防御成功！');continue;}
@@ -746,6 +742,49 @@ const summonPortraits=new Map(summonPortraitNames.map((name,index)=>{
  image.src='summons/'+(index+1)+'.webp';
  return [name,image];
 }));
+const summonSpokenNames=['アグニル','ネヴァル','ヴォルティス','グラザン','イゼリア','ラザール','ドルガム','ネリオン','ヴァルグ','アストレイン','ソレリア','ヴェルカ','ルクシオン'];
+function playSummonChant(name){
+ const spoken=summonSpokenNames[summonPortraitNames.indexOf(name)];
+ if(spoken&&'speechSynthesis' in window){
+  const speech=window.speechSynthesis;
+  const voice=speech.getVoices().find(option=>/^ja(?:-|$)/i.test(option.lang));
+  const chant=new SpeechSynthesisUtterance('いでよ、'+spoken+'！');
+  chant.lang='ja-JP';
+  if(voice)chant.voice=voice;
+  chant.rate=.92;
+  chant.pitch=.78;
+  chant.volume=.85;
+  speech.cancel();
+  speech.speak(chant);
+ }
+ if(slashAudio?.state!=='running')return;
+ const audio=slashAudio;
+ const time=audio.currentTime;
+ const length=audio.sampleRate;
+ const buffer=audio.createBuffer(1,length,audio.sampleRate);
+ const samples=buffer.getChannelData(0);
+ for(let i=0;i<length;i++)samples[i]=Math.random()*2-1;
+ const wind=audio.createBufferSource();
+ wind.buffer=buffer;
+ const filter=audio.createBiquadFilter();
+ filter.type='lowpass';
+ filter.frequency.setValueAtTime(660,time);
+ filter.frequency.exponentialRampToValueAtTime(95,time+.84);
+ const swell=audio.createGain();
+ swell.gain.setValueAtTime(.001,time);
+ swell.gain.exponentialRampToValueAtTime(.16,time+.46);
+ swell.gain.exponentialRampToValueAtTime(.001,time+.95);
+ wind.connect(filter).connect(swell).connect(audio.destination);
+ wind.start(time);
+ const impact=audio.createOscillator(), bass=audio.createGain();
+ impact.frequency.setValueAtTime(78,time+.63);
+ impact.frequency.exponentialRampToValueAtTime(30,time+1.07);
+ bass.gain.setValueAtTime(.15,time+.63);
+ bass.gain.exponentialRampToValueAtTime(.001,time+1.07);
+ impact.connect(bass).connect(audio.destination);
+ impact.start(time+.63);
+ impact.stop(time+1.07);
+}
 let summonPortraitRequest=0;
 function showSummonPortrait(name){
  const image=summonPortraits.get(name);
@@ -759,7 +798,7 @@ function showSummonPortrait(name){
   layer.setAttribute('aria-hidden','true');
   layer.append(image);
   document.body.append(layer);
-  setTimeout(()=>layer.remove(),2400);
+  setTimeout(()=>layer.remove(),1150);
  }).catch(()=>{});
 }
 if(new URLSearchParams(location.search).get('summons')==='1'){
@@ -770,7 +809,11 @@ if(new URLSearchParams(location.search).get('summons')==='1'){
  const button=document.createElement('button');
  button.type='button';
  button.textContent='召喚演出を確認';
- button.addEventListener('click',()=>showSummonPortrait(select.value));
+ button.addEventListener('click',()=>{
+  audioReady();
+  showSummonPortrait(select.value);
+  playSummonChant(select.value);
+ });
  gallery.append(select,button);
  $('intro').append(gallery);
 }
