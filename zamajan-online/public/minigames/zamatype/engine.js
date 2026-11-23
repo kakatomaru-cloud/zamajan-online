@@ -466,16 +466,16 @@ function rollBossReward(s,p,reward){
  return {...reward,word:drawBossWord(s,bossRewardWords,blocked)};
 }
 function resetBossRewards(s){
- for(const p of s.players){p.bossClean=0;p.bossHeal=null;p.bossSummon=null;}
+ for(const p of s.players){p.bossClean=0;p.bossHeal=null;p.bossSummons=[];}
 }
-function availableBossRewards(p){return [p.bossHeal,p.bossSummon].filter(Boolean);}
+function availableBossRewards(p){return [p.bossHeal,...(p.bossSummons??[])].filter(Boolean);}
 const summonDraws=new WeakMap();
 function drawSummon(s,p){
  let draw=summonDraws.get(p);
  if(!draw?.remaining.length){
   draw={last:draw?.last,remaining:[...BOSS_SUMMONS]};
  }
- const choices=draw.remaining.filter(summon=>summon!==draw.last);
+ const choices=draw.remaining.filter(summon=>summon!==draw.last&&!p.bossSummons?.some(option=>option.name===summon.name));
  const pool=choices.length?choices:draw.remaining;
  const summon=pool[Math.floor(rand(s)*pool.length)];
  draw.remaining.splice(draw.remaining.indexOf(summon),1);
@@ -491,7 +491,11 @@ function countBossSuccess(s,p){
   const heal=BOSS_HEALS[tier===0?2:tier/3-1];
   if(!p.bossHeal||heal.value>=p.bossHeal.value)p.bossHeal=rollBossReward(s,p,heal);
  }
- if(count%5===0&&!p.bossSummon)p.bossSummon=drawSummon(s,p);
+ if(tier%3===0||count%5===0){
+  const options=p.bossSummons??=[];
+  const limit=count%5===0?3:2;
+  while(options.length<limit)options.push(drawSummon(s,p));
+ }
 }
 function castBossReward(s,p,reward){
  if(reward===p.bossHeal){
@@ -501,7 +505,8 @@ function castBossReward(s,p,reward){
   emit(s,`${reward.name}！ 共通HP +${amount}`,'spell',p.id,null,{key:'curaga',targets:['party']});
   return;
  }
- p.bossSummon=null;
+ p.bossSummons=p.bossSummons.filter(option=>option!==reward);
+ const before=(s.boss??s.midboss)?.hp;
  if(s.boss?.parts){
   const part=exposedPart(s.boss);
   if(reward.focusedDamage&&part)hitBossPart(s,p,part,reward.focusedDamage);
@@ -515,7 +520,7 @@ function castBossReward(s,p,reward){
  s.hp+=healed;
  const move=reward.move?` ${reward.move}！`:'';
  const recovery=healed?` 共通HP +${healed}`:'';
- emit(s,`${reward.name} 召喚！${move}${recovery}`,'summon',p.id,null,{art:reward.art});
+ emit(s,`${reward.name} 召喚！${move}${recovery}`,'summon',p.id,null,{art:reward.art,landed:(s.boss??s.midboss)?.hp<before});
 }
 function castFinalSpell(s,p,spell){
  const boss=s.boss;
@@ -701,8 +706,9 @@ function cast(s,p,key){const spec=SPELLS[key];const idx=p.charges.indexOf(key);i
   }else if(s.boss){
    const part=exposedPart(s.boss);
    if(!part)return false;
-   targets.push(part.id);
-   hitBossPart(s,p,part,Math.max(0,Math.min(spec.value===3?2:1,part.hp-1)));
+   const amount=Math.max(0,Math.min(spec.value===3?2:1,part.hp-1));
+   if(amount>0)targets.push(part.id);
+   hitBossPart(s,p,part,amount);
   }
   else if(s.midboss){
    targets.push('midboss');
@@ -765,7 +771,7 @@ function handle(s,playerId,key){if(inputLocked(s))return;const p=s.players.find(
  let candidate=p.typed+k;
  const targets=inputTargets(s,p);
  let choices=targets.filter(t=>isPrefix(t.word,candidate));if(!choices.length){recordMiss(s,p,targets,p.typed);p.typed='';candidate=k;choices=targets.filter(t=>isPrefix(t.word,candidate));if(!choices.length)return;}
- p.typed=candidate;const matches=choices.filter(t=>complete(t.word,candidate));const ambiguous=choices.some(t=>!complete(t.word,candidate));if(!matches.length||(ambiguous&&!matches.some(t=>t.kind==='boss'||t.kind==='defend'||t.kind==='finalSpell'||((t.kind==='spell'||t.kind==='weapon')&&t.key.toUpperCase()===candidate))))return;
+ p.typed=candidate;const matches=choices.filter(t=>complete(t.word,candidate));const ambiguous=choices.some(t=>!complete(t.word,candidate));if(!matches.length||(ambiguous&&!matches.some(t=>t.kind==='boss'||t.kind==='defend'||t.kind==='finalSpell'||t.kind==='bossReward'||((t.kind==='spell'||t.kind==='weapon')&&t.key.toUpperCase()===candidate))))return;
  const chosen=matches.sort((a,b)=>({defend:0,enemy:0,boss:1,priest:1,midboss:1,finalSpell:1,bossReward:1,spell:2,weapon:2}[a.kind]-{defend:0,enemy:0,boss:1,priest:1,midboss:1,finalSpell:1,bossReward:1,spell:2,weapon:2}[b.kind]))[0];p.typed='';
  if(chosen.kind==='bossReward'){castBossReward(s,p,chosen.reward);return;}
  if(chosen.kind==='finalSpell'){castFinalSpell(s,p,chosen.spell);return;}
