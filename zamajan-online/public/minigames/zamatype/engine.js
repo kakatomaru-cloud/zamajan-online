@@ -280,7 +280,17 @@ const MIDBOSSES=[
  {id:'ahriman',name:'魔眼 アーリマン',damage:11}
 ];
 // Public-domain lyrics by Tatsuyuki Takano, transcribed in modern kana.
+// Lyrics from the original public-domain editions (modern kana).
+const MIDBOSS_CLASSICS=[
+ // 荒城の月 — 土井晩翠・瀧廉太郎
+ ['はるこうろうのはなのえん','めぐるさかずきかげさして','むかしのひかりいまいずこ','いまこうじょうのよわのつき'],
+ // 箱根八里 — 鳥居忱・瀧廉太郎
+ ['はこねのやまはてんかのけん','かんこくかんもものならず','ばんじょうのやませんじんのたに','ひるなおくらきすぎのなみき'],
+ // 花 — 武島羽衣・瀧廉太郎
+ ['はるのうららのすみだがわ','のぼりくだりのふなびとが','かいのしずくもはなとちる','ながめをなににたとうべき']
+];
 const MIDBOSS_WORDS=[
+ ...MIDBOSS_CLASSICS,
  // 故郷
  ['うさぎおいしかのやま','こぶなつりしかのかわ','ゆめはいまもめぐりて','わすれがたきふるさと','こころざしをはたして'],
  // 春が来た
@@ -299,11 +309,11 @@ const WEAPONS={
 };
 
 function midbossWords(s){
- const themes=[...MIDBOSS_WORDS];
- return Array.from({length:3},()=>{
-  const theme=themes.splice(Math.floor(rand(s)*themes.length),1)[0];
-  return chooseWord(s,theme);
- });
+ const classic=MIDBOSS_CLASSICS[Math.floor(rand(s)*MIDBOSS_CLASSICS.length)];
+ const themes=MIDBOSS_WORDS.filter(theme=>theme!==classic);
+ const opening=[classic];
+ while(opening.length<3)opening.push(themes.splice(Math.floor(rand(s)*themes.length),1)[0]);
+ return opening.map(theme=>chooseWord(s,theme));
 }
 function beginMidboss(s){
  resetBossRewards(s);
