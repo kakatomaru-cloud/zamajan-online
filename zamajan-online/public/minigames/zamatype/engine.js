@@ -281,24 +281,20 @@ const MIDBOSSES=[
 ];
 // Public-domain lyrics by Tatsuyuki Takano, transcribed in modern kana.
 // Lyrics from the original public-domain editions (modern kana).
-const MIDBOSS_CLASSICS=[
- // 荒城の月 — 土井晩翠・瀧廉太郎
- ['はるこうろうのはなのえん','めぐるさかずきかげさして','むかしのひかりいまいずこ','いまこうじょうのよわのつき'],
- // 箱根八里 — 鳥居忱・瀧廉太郎
- ['はこねのやまはてんかのけん','かんこくかんもものならず','ばんじょうのやませんじんのたに','ひるなおくらきすぎのなみき'],
- // 花 — 武島羽衣・瀧廉太郎
- ['はるのうららのすみだがわ','のぼりくだりのふなびとが','かいのしずくもはなとちる','ながめをなににたとうべき']
-];
+// Original retellings of traditional tales, written in kana for typing.
 const MIDBOSS_WORDS=[
- ...MIDBOSS_CLASSICS,
- // 故郷
- ['うさぎおいしかのやま','こぶなつりしかのかわ','ゆめはいまもめぐりて','わすれがたきふるさと','こころざしをはたして'],
- // 春が来た
- ['はるがきたはるがきたどこにきた','やまにきたさとにきたのにもきた','はながさくはながさくどこにさく','とりがなくとりがなくどこでなく'],
- // 紅葉
- ['あきのゆうひにてるやまもみじ','こいもうすいもかずあるなかに','まつをいろどるかえでやつたは','たにのながれにちりうくもみじ'],
- // 朧月夜
- ['なのはなばたけにいりひうすれ','みわたすやまのはかすみふかし','はるかぜそよふくそらをみれば','ゆうづきかかりてにおいあわし']
+ // 桃太郎
+ ['おおきなももがかわをながれてきました','おばあさんはももをひろっていえにかえりました','ももたろうはきびだんごをわけました','いぬとさるときじがなかまになりました'],
+ // 浦島太郎
+ ['うらしまたろうはかめをたすけました','かめのせなかにのってうみへでました','おとひめがりゅうぐうじょうでむかえました','たまてばこからしろいけむりがでました'],
+ // かぐや姫
+ ['たけとりのおきなはひかるたけをみつけました','たけのなかにちいさなおんなのこがいました','まんげつのよるにむかえがきました','かぐやひめはそらへとのぼっていきました'],
+ // 赤ずきん
+ ['あかずきんはおばあさんのいえへむかいました','もりのみちでおおかみにであいました','おおかみはさきにいえへたどりつきました','べっどのなかからおおきなみみがみえました'],
+ // 三びきのこぶた
+ ['はじめのこぶたはわらでいえをたてました','ふたりめのこぶたはきのいえをたてました','さいごのこぶたはれんがをつみました','おおかみがふいてもれんがのいえはたおれません'],
+ // うさぎとかめ
+ ['うさぎとかめがかけっこをしました','うさぎはきのしたでひるねをしました','かめはやすまずにあるきつづけました','うさぎがめをさますとかめはもうごーるにいました']
 ];
 const usedMidbossWords=new WeakMap();
 const WEAPONS={
@@ -309,11 +305,11 @@ const WEAPONS={
 };
 
 function midbossWords(s){
- const classic=MIDBOSS_CLASSICS[Math.floor(rand(s)*MIDBOSS_CLASSICS.length)];
- const themes=MIDBOSS_WORDS.filter(theme=>theme!==classic);
- const opening=[classic];
- while(opening.length<3)opening.push(themes.splice(Math.floor(rand(s)*themes.length),1)[0]);
- return opening.map(theme=>chooseWord(s,theme));
+ const tales=[...MIDBOSS_WORDS];
+ return Array.from({length:3},()=>{
+  const [tale]=tales.splice(Math.floor(rand(s)*tales.length),1);
+  return chooseWord(s,tale);
+ });
 }
 function beginMidboss(s){
  resetBossRewards(s);
