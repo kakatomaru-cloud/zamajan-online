@@ -516,9 +516,9 @@ function clearQuestionInput(s,words){
 }
 const DEFEND_WORD='ぼうぎょ';
 const FINAL_SPELLS=[
- {key:'ultima',name:'アルテマ',words:['きっぷをなくさずにしまう','まどぎわのせきをえらぶ','あさのいちばをのぞく','かいだんをゆっくりおりる','よるのえきでひとをまつ','ちずをひろげてみちをさがす','はしをわたってみなとへいく','えきまえでじてんしゃをかりる','ふるいしゃしんをみなおす'],damage:3},
- {key:'holy',name:'ホーリー',words:['あたたかいおちゃをいれる','しおをすこしだけふる','ひるのべんとうをつつむ','きゅうりをうすくきる','みかんのかわをむく','こめをといでみずをかえる','よるのうちにぱんをやく','あさごはんのさらをならべる','ふたをあけてゆげをにがす'],damage:1},
- {key:'meteor',name:'メテオ',words:['しめきりをてちょうにかく','かいぎのじかんをずらす','ふるいめもをよみなおす','しりょうにふせんをはる','あしたのよていをまとめる','とけいをみていえをでる','まどをあけてくうきをかえる','つくえのうえをかたづける','たのまれたほんをさがす'],damage:2}
+ {key:'ultima',name:'アルテマ',words:['きっぷをなくさずにしまう','まどぎわのせきをえらぶ','あさのいちばをのぞく','かいだんをゆっくりおりる','よるのえきでひとをまつ','ちずをひろげてみちをさがす','はしをわたってみなとへいく','えきまえでじてんしゃをかりる','ふるいしゃしんをみなおす'],damage:2},
+ {key:'holy',name:'ホーリー',words:['あたたかいおちゃをいれる','しおをすこしだけふる','ひるのべんとうをつつむ','きゅうりをうすくきる','みかんのかわをむく','こめをといでみずをかえる','よるのうちにぱんをやく','あさごはんのさらをならべる','ふたをあけてゆげをにがす'],damage:1,maxTargets:4},
+ {key:'meteor',name:'メテオ',words:['しめきりをてちょうにかく','かいぎのじかんをずらす','ふるいめもをよみなおす','しりょうにふせんをはる','あしたのよていをまとめる','とけいをみていえをでる','まどをあけてくうきをかえる','つくえのうえをかたづける','たのまれたほんをさがす'],damage:1}
 ];
 const finalSpellWords=[...new Set([
  ...FINAL_SPELLS.flatMap(spell=>spell.words),
@@ -643,15 +643,16 @@ function castFinalSpell(s,p,spell){
  const boss=s.boss;
  const index=boss.finalSpells.indexOf(spell);
  boss.finalSpells[index]=rollFinalSpell(s,spell);
- const damage=damageFinalParts(boss,spell.damage,s,p);
+ const damage=damageFinalParts(boss,spell.damage,s,p,spell.maxTargets);
  clearQuestionInput(s,[spell.word]);
  if(damage>0)p.score+=150;
  countBossSuccess(s,p);
  emit(s,`${p.name}が ${spell.name} を発動！ 魔王に ${damage} ダメージ！`,'finalSpell',p.id,'abyss',{key:spell.key,damage});
 }
-function damageFinalParts(boss,value,s,p){
+function damageFinalParts(boss,value,s,p,maxTargets=boss.parts.length){
  let damage=0;
- for(const part of boss.parts){
+ const targets=boss.parts.filter(part=>part.hp>0).slice(0,maxTargets);
+ for(const part of targets){
   const amount=Math.min(Math.max(0,part.hp-(s?0:1)),value);
   if(!amount)continue;
   if(s)hitBossPart(s,p,part,amount);
