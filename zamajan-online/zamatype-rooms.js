@@ -2,7 +2,7 @@
 const { randomUUID } = require('node:crypto');
 const engine = require('./public/minigames/zamatype/engine');
 
-module.exports = function attachZamatype(io) {
+module.exports = function attachZamatype(io, getYaku=()=>undefined) {
   const namespace = io.of('/zamatype');
   const rooms = new Map();
   const maxPlayers = 4;
@@ -39,6 +39,11 @@ module.exports = function attachZamatype(io) {
     function leave() {
       if (!room) return;
       room.reviewWords.delete(socket.id);
+      room.words.delete(socket.id);
+      if(room.game) {
+        const player=room.game.players.find(entry=>entry.id===socket.id);
+        if(player){player.typed='';player.aimText='';}
+      }
       socket.leave(room.id);
       room.players = room.players.filter(player => player.id !== socket.id);
       if (!room.players.length) rooms.delete(room.id);
@@ -59,7 +64,7 @@ module.exports = function attachZamatype(io) {
       if (data.create === true) {
         if (rooms.size >= 512) return reply('ルームの上限に達しました。');
         const id = randomUUID();
-        room = {id, host: socket.id, players: [], reviewWords: new Map(), game: null, round: 0};
+        room = {id, host: socket.id, players: [], reviewWords: new Map(), words: new Map(), game: null, round: 0};
         rooms.set(id, room);
       } else {
         const target = rooms.get(data.roomId);
@@ -70,6 +75,7 @@ module.exports = function attachZamatype(io) {
       }
       room.players.push({id: socket.id, name});
       room.reviewWords.set(socket.id, engine.normalizeReviewWords(data.reviewWords));
+      room.words.set(socket.id, engine.normalizeRegisteredWords(data.words));
       socket.join(room.id);
       reply(null);
       publish(room);
@@ -87,7 +93,13 @@ module.exports = function attachZamatype(io) {
         }
       }
       room.round += 1;
-      room.game = engine.init(engine.make(room.players, {reviewWords: [...room.reviewWords.values()]}));
+      const firstJob=Math.floor(Math.random()*4);
+      for(const [index,player] of room.players.entries())player.job=(firstJob+index)%4;
+      room.game = engine.init(engine.make(room.players, {
+        reviewWords: [...room.reviewWords.values()],
+        words: [...room.words.values()].flat(),
+        yaku: getYaku()
+      }));
       room.readyAt = Date.now() + 1450;
       room.lastTick = room.readyAt;
       reply(null);
@@ -96,9 +108,16 @@ module.exports = function attachZamatype(io) {
     }
     socket.on('start', reply => startRound(reply, false));
     socket.on('rematch', reply => startRound(reply, true));
+    socket.on('aim', text => {
+      if(room?.game?.status!=='playing'||Date.now()<room.readyAt||typeof text!=='string'||text.length>120)return;
+      const player=room.game.players.find(entry=>entry.id===socket.id);
+      if(player)player.aimText=text;
+    });
     socket.on('input', (text) => {
       if (room?.game?.status !== 'playing' || Date.now() < room.readyAt) return;
       if (typeof text !== 'string' || !text || text.length > 120) return;
+      const player=room.game.players.find(entry=>entry.id===socket.id);
+      if(player)player.aimText='';
       if (text === 'ESCAPE' || text === 'BACKSPACE') engine.handle(room.game, socket.id, text);
       else if (!engine.handleText(room.game, socket.id, text) && /^[a-z-]+$/i.test(text)) {
         for (const key of text) engine.handle(room.game, socket.id, key);

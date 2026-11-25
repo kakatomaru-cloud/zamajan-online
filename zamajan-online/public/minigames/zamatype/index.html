@@ -37,12 +37,17 @@ input,select {width:100%;padding:10px;background:#080f23;color:#fff;border:1px s
 #party {padding-left:24px;line-height:1.7}
 .note {color:#bfcbe0;line-height:1.6}
 .bgmControl{position:fixed;bottom:16px;left:16px;display:flex;align-items:center;gap:.4rem;padding:.4rem .6rem;background:#0b1422;color:#dbe9fa;border:1px solid #38546e}.bgmControl input{width:88px;accent-color:#85bded}</style>
-</head>
+<style>
+#wordForm{display:grid;gap:.45rem}
+#registeredWords,#yakuWords{padding-left:1.2rem;text-align:left;max-height:14rem;overflow:auto}
+#registeredWords li,#yakuWords li{margin:.35rem 0;overflow-wrap:anywhere}
+#registeredWords button,#yakuWords button{margin-left:.5rem;padding:.2rem .5rem}
+</style></head>
 <body>
 <main>
 <section id="title" aria-labelledby="logo">
 <div class="brand"><img class="emblem" src="emblem.webp" alt="" fetchpriority="high"><h1 id="logo">ZAMATYPE</h1></div><div class="rule"></div><p class="subtitle">ザマタイプ</p>
-<div class="buttons"><button id="start" class="primary">START</button><button data-view="practice">弱点克服モード</button><a class="spellPreviewLink" href="spell-preview.html">魔法演出サンプル</a></div>
+<div class="buttons"><button id="start" class="primary">START</button><button data-view="words">ワード登録</button><button data-view="practice">弱点克服モード</button><a class="spellPreviewLink" href="spell-preview.html">魔法演出サンプル</a></div>
 </section>
 <section id="setup" class="card" hidden>
 <h2 tabindex="-1">冒険者の登録</h2>
@@ -65,9 +70,22 @@ input,select {width:100%;padding:10px;background:#080f23;color:#fff;border:1px s
 <button class="back" data-view="title">タイトルへ戻る</button>
 </section>
 
+<section id="words" class="card" hidden>
+<h2 tabindex="-1">ワード登録</h2>
+<form id="wordForm">
+<label for="wordLabel">表示するワード</label><input id="wordLabel" maxlength="48" required>
+<label for="wordReading">読み（ひらがな・カタカナ・英字）</label><input id="wordReading" maxlength="40" autocomplete="off" required>
+<button class="primary">追加する</button>
+</form>
+<p id="wordStatus" role="status"></p>
+<h3>登録ワード</h3><ul id="registeredWords"></ul>
+<details><summary>ザマじゃんの役ワード</summary><ul id="yakuWords"></ul></details>
+<button class="back" data-view="title">タイトルへ戻る</button>
+</section>
 </main>
 <audio id="music" src="opening.mp3" preload="none" autoplay loop></audio>
 <label class="bgmControl">BGM音量 <input id="bgmVolume" type="range" min="0" max="100" value="10"><output id="bgmPercent" for="bgmVolume">10%</output></label><button id="sound" aria-pressed="false">BGMを再生</button>
+<script src="engine.js"></script>
 <script src="bgm-volume.js"></script>
 <script>
 const byId = id => document.getElementById(id);
@@ -101,6 +119,63 @@ document.querySelectorAll('[data-view]').forEach(button => {
   button.addEventListener('click', () => { playOpening(); show(button.dataset.view); });
 });
 
+const wordStorageKey='zamatype:registered-words';
+let wordList=[];
+try{wordList=ZamaEngine.normalizeRegisteredWords(JSON.parse(localStorage.getItem(wordStorageKey)??'[]'));}catch{}
+function updateWords(next,message){
+ try{localStorage.setItem(wordStorageKey,JSON.stringify(next));}
+ catch{byId('wordStatus').textContent='このブラウザに保存できませんでした。';return;}
+ wordList=next;
+ renderWords();
+ byId('wordStatus').textContent=message;
+}
+function renderWords(){
+ const list=byId('registeredWords');
+ list.replaceChildren();
+ if(!wordList.length){
+  const row=document.createElement('li');row.textContent='登録ワードはありません。';list.append(row);
+ }
+ for(const word of wordList){
+  const row=document.createElement('li');
+  row.textContent=word.label+' ／ '+word.reading;
+  const button=document.createElement('button');
+  button.type='button';button.textContent='削除';
+  button.setAttribute('aria-label',word.label+'を削除');
+  button.onclick=()=>updateWords(wordList.filter(item=>item!==word),'削除しました。');
+  row.append(button);list.append(row);
+ }
+}
+byId('wordForm').addEventListener('submit',event=>{
+ event.preventDefault();
+ const [word]=ZamaEngine.normalizeRegisteredWords([{label:byId('wordLabel').value,reading:byId('wordReading').value}]);
+ if(!word){byId('wordStatus').textContent='読みをひらがな・カタカナ・英字で入力してください。';return;}
+ if(wordList.some(item=>item.reading===word.reading)){byId('wordStatus').textContent='同じ読みのワードが登録されています。';return;}
+ if(wordList.length>=100){byId('wordStatus').textContent='登録できるのは100件までです。';return;}
+ updateWords([...wordList,word],'追加しました。');
+ if(wordList.includes(word))event.target.reset();
+});
+renderWords();
+function renderYaku(names){
+ const list=byId('yakuWords');
+ const known=ZamaEngine.yakuWords(names);
+ const readings=new Map(known.map(word=>[word.label,word.reading]));
+ list.replaceChildren();
+ for(const label of names??known.map(word=>word.label)){
+  const row=document.createElement('li'),reading=readings.get(label);
+  row.textContent=label+(reading?' ／ '+reading:'');
+  if(!reading){
+   const button=document.createElement('button');
+   button.type='button';button.textContent='読みを登録';
+   button.onclick=()=>{byId('wordLabel').value=label;byId('wordReading').focus();};
+   row.append(button);
+  }
+  list.append(row);
+ }
+}
+renderYaku();
+fetch('/api/zamatype/yaku').then(response=>response.ok?response.json():null).then(result=>{
+ if(Array.isArray(result?.names))renderYaku(result.names);
+}).catch(()=>{});
 let playerName = '';
 const registration = byId('registration');
 const nameInput = byId('name');

@@ -96,12 +96,49 @@ function variants(raw){const s=toHira(raw),out=[];function gen(i,str){if(out.len
 if(s[i]==='ん'){const next=s[i+1];const options=next&&/[あいうえおやゆよなにぬねの]/.test(next)?['NN']:['N','NN'];for(const a of options)gen(i+1,str+a);return;}
 for(let l=2;l>=1;l--){const part=s.slice(i,i+l);if(ROM[part])for(const r of ROM[part])gen(i+l,str+r);}}
 gen(0,'');return [...new Set(out)].filter(Boolean);}
-const cached=new Map();function accepts(word){if(!cached.has(word))cached.set(word,variants(word));return cached.get(word);}
+const cached=new Map();function accepts(word){if(!cached.has(word)){if(cached.size>=2048)cached.delete(cached.keys().next().value);cached.set(word,variants(word));}return cached.get(word);}
 function isPrefix(word,str){return (/^[A-Z -]+$/.test(word)?word.replace(/\s/g,'').startsWith(str):accepts(word).some(v=>v.startsWith(str)));}
 function complete(word,str){return (/^[A-Z -]+$/.test(word)?word.replace(/\s/g,'')===str:accepts(word).includes(str));}
 function display(word){return /^[A-Z -]+$/.test(word)?word:(accepts(word)[0]||word);}
 const BATTLE_DURATION=300;
-function make(seedPlayers,opts={}){const p=seedPlayers.map((x,i)=>({id:x.id,name:String(x.name||`P${i+1}`).slice(0,20),score:0,combo:0,kills:0,miss:0,typed:'',missWords:Object.create(null),charges:[],weapon:null,magicMeter:0,lastInput:0}));return {status:'playing',duration:BATTLE_DURATION,remaining:BATTLE_DURATION,hp:100,maxHp:100,players:p,foes:[],midboss:null,midbossCleared:false,boss:null,bossIndex:0,kills:0,nextEnemy:1,magicSeq:0,shield:0,freezeUntil:0,slowUntil:0,elapsed:0,events:[],eventSeq:0,result:null,randomSeed:opts.seed||Math.floor(Math.random()*100000000),lastTick:null,questionSeq:0,reviewWords:[...new Set((opts.reviewWords??[]).flatMap(normalizeReviewWords))].slice(0,20),reviewDraw:0};}
+const YAKU_READINGS={
+ '大阪万博':'おおさかばんぱく','悲しみの名古屋':'かなしみのなごや','悪魔のコンビ':'あくまのこんび','光の戦士':'ひかりのせんし',
+ 'モダン(笑)':'もだん','日大一中一高':'にちだいいっちゅういちこう','東京ゲームデザイナー学院':'とうきょうげーむでざいなーがくいん',
+ 'ゴンタ杯':'ごんたはい','キン肉マン':'きんにくまん','お父さん':'おとうさん','幼女':'ようじょ','ザマ一色':'ざまいっしょく',
+ '航空ショー':'こうくうしょー','踵丸ひきとめ':'かかとまるひきとめ','長老':'ちょうろう','梨狩り':'なしがり','眼鏡':'めがね',
+ '実家暮らし':'じっかぐらし','アル中':'あるちゅう','VT好き':'ぶいてぃーずき','固定資産税':'こていしさんぜい','錦糸中':'きんしちゅう',
+ '部屋つくりしもの':'へやつくりしもの','ザマンとその友達':'ざまんとそのともだち','豪鬼':'ごうき','北陸':'ほくりく','女キャラ好き':'おんなきゃらずき',
+ '九州男児':'きゅうしゅうだんじ','FF14':'えふえふじゅうよん','溝ノ口':'みぞのくち','ランク廃人':'らんくはいじん',
+ 'カプセルサウナ310組':'かぷせるさうなさんいちぜろぐみ','マダムmana2':'まだむまなつー','納豆食えない':'なっとうくえない'
+};
+const DEFAULT_YAKU=[...Object.keys(YAKU_READINGS),'LOL','ちいかわ','レバーレス','バーチャロン','キッズ','アルマス','ロックマン','AI','ツインタニア','ペット','マッシブ','パワーウオッシュ','ブレイカーズリベンジ'];
+function normalizeRegisteredWords(entries){
+ if(!Array.isArray(entries))return [];
+ const words=new Map();
+ for(const entry of entries.slice(0,100)){
+  if(typeof entry?.label!=='string'||typeof entry?.reading!=='string')continue;
+  const label=entry.label.trim().slice(0,48);
+  const reading=toHira(entry.reading.trim().normalize('NFKC')).replace(/\s/g,'');
+  if(!label||!(/^[ぁ-ゖー]{1,40}$/.test(reading)||/^[a-z-]{1,40}$/i.test(reading)))continue;
+  const word=/^[a-z-]+$/i.test(reading)?reading.toUpperCase():reading;
+  if(!/^[A-Z-]+$/.test(display(word)))continue;
+  if(!words.has(word))words.set(word,{label,reading:word});
+ }
+ return [...words.values()];
+}
+function yakuWords(names=DEFAULT_YAKU){
+ if(!Array.isArray(names))return [];
+ return normalizeRegisteredWords(names.filter(name=>typeof name==='string').map(label=>({label,reading:Object.hasOwn(YAKU_READINGS,label)?YAKU_READINGS[label]:label})));
+}
+const extraQuestions=new WeakMap();
+function make(seedPlayers,opts={}){const p=seedPlayers.map((x,i)=>({id:x.id,job:Number.isInteger(x.job)?x.job:i%4,name:String(x.name||`P${i+1}`).slice(0,20),score:0,combo:0,kills:0,miss:0,typed:'',missWords:Object.create(null),charges:[],weapon:null,magicMeter:0,lastInput:0}));const game={status:'playing',duration:BATTLE_DURATION,remaining:BATTLE_DURATION,hp:100,maxHp:100,players:p,foes:[],midboss:null,midbossCleared:false,boss:null,bossIndex:0,kills:0,nextEnemy:1,magicSeq:0,shield:0,freezeUntil:0,slowUntil:0,elapsed:0,events:[],eventSeq:0,result:null,randomSeed:opts.seed||Math.floor(Math.random()*100000000),lastTick:null,questionSeq:0,reviewWords:[...new Set((opts.reviewWords??[]).flatMap(normalizeReviewWords))].slice(0,20),reviewDraw:0};
+ const registered=normalizeRegisteredWords(opts.words);
+ const rows=[...registered,...yakuWords(opts.yaku)];
+ const unique=new Map();
+ for(const row of rows)if(!unique.has(row.reading))unique.set(row.reading,[row.reading,display(row.reading), 'ザマじゃんの役・登録ワード',row.label,registered.includes(row)]);
+ extraQuestions.set(game,[...unique.values()]);
+ return game;
+}
 function rand(s){s.randomSeed=(s.randomSeed*1664525+1013904223)>>>0;return s.randomSeed/4294967296;}
 function pickEnemy(s){const idx=Math.floor(rand(s)*ENEMIES.length);return ENEMIES[idx];}
 
@@ -210,10 +247,11 @@ function missRanking(game,playerId){
 const matchQuestions=new WeakMap();
 function chooseQuestion(s,f){
  const blocked=[...MAGIC_FORMS,...s.foes.filter(enemy=>enemy.uid!==f.uid).flatMap(enemy=>forms([enemy.word,enemy.english]))];
- const valid=q=>q[0]!==f.word&&q[1]!==f.english&&PROMPT_FORMS.get(q).length>1&&PROMPT_FORMS.get(q).every(x=>blocked.every(y=>!x.startsWith(y)&&!y.startsWith(x)));
+ const valid=q=>q[0]!==f.word&&q[1]!==f.english&&(PROMPT_FORMS.get(q)??forms(q)).every(x=>blocked.every(y=>!x.startsWith(y)&&!y.startsWith(x)));
  if(!matchQuestions.has(s))matchQuestions.set(s,new Set());
  const used=matchQuestions.get(s);
- const pool=[...TOPIC_QUESTIONS,...OTHER_QUESTIONS].filter(valid);
+ const extras=extraQuestions.get(s)??[];
+ const pool=[...extras,...TOPIC_QUESTIONS,...OTHER_QUESTIONS].filter(valid);
  let candidates=pool.filter(q=>!used.has(q[0]));
  if(!candidates.length){
   used.clear();
@@ -227,7 +265,9 @@ function chooseQuestion(s,f){
  const themedLength=themed.filter(q=>band(q[0])===desired);
  const available=themedLength.length?themedLength:themed.length?themed:sameLength.length?sameLength:candidates;
  const different=available.filter(q=>q[2]!==s.lastQuestionGenre);
- const choices=different.length?different:available;
+ const extraLength=sameLength.filter(q=>q[3]);
+ const ownLength=extraLength.filter(q=>q[4]);
+ const choices=s.questionSeq%3===1&&ownLength.length?ownLength:s.questionSeq%2===1&&extraLength.length?extraLength:different.length?different:available;
  const review=candidates.filter(q=>s.reviewWords.includes(q[0]));
  const question=++s.reviewDraw%3===0&&s.questionSeq>5&&review.length?review[Math.floor(rand(s)*review.length)]:choices[Math.floor(rand(s)*choices.length)];
  used.add(question[0]);
@@ -238,7 +278,7 @@ function chooseQuestion(s,f){
 function spawn(s){if(s.status!=='playing'||s.boss||s.midboss||s.kills>=20||s.foes.length>=5)return;let tries=0,base;do{base=pickEnemy(s);tries++}while(tries<8&&s.foes.some(e=>e.word===base.word));let factor=s.players.length===1?1.3:s.players.length===2?1.15:1;const idx=0;
  const question=chooseQuestion(s,{uid:-1});
  const maxHp=Math.round((base.tier===1?9:base.tier===2?14:20)*(0.78+0.22*s.players.length));
- const f={...base,uid:s.nextEnemy++,remaining:base.life*factor,maxLife:base.life*factor,hp:maxHp,maxHp,questionIndex:idx,word:question[0],english:question[1],genre:question[2]??null};s.foes.push(f);}
+ const f={...base,uid:s.nextEnemy++,remaining:base.life*factor,maxLife:base.life*factor,hp:maxHp,maxHp,questionIndex:idx,word:question[0],english:question[1],genre:question[2]??null,label:question[3]??null};s.foes.push(f);}
 function emit(s,text,kind='info',player=null,targetUid=null,spell=null){s.events.push({id:++s.eventSeq,text,kind,player,targetUid,spell});if(s.events.length>12)s.events.shift();}
 function init(s){matchQuestions.set(s,new Set());s.runTheme=RUN_TOPICS[Math.floor(rand(s)*RUN_TOPICS.length)][0];s.questionBandOffset=Math.floor(rand(s)*6);for(let i=0;i<5;i++)spawn(s);emit(s,'冒険が始まった！','start');return s;}
 const BOSS_PARTS=[
@@ -304,12 +344,26 @@ const WEAPONS={
  yoichi:{name:'与一の弓',word:'よいちのゆみ',damage:34,color:'#a0ffe7'}
 };
 
+function distinctMidbossWords(words,active){
+ const blocked=active.flatMap(word=>/^[A-Z-]+$/.test(word)?[word]:accepts(word));
+ return words.filter(word=>(/^[A-Z-]+$/.test(word)?[word]:accepts(word)).every(form=>blocked.every(other=>!form.startsWith(other)&&!other.startsWith(form))));
+}
 function midbossWords(s){
  const tales=[...MIDBOSS_WORDS];
- return Array.from({length:3},()=>{
+ const extras=(extraQuestions.get(s)??[]).map(q=>q[0]).filter(word=>!MIDBOSS_WORDS.some(tale=>tale.includes(word)));
+ const words=[];
+ for(let index=0;index<4;index++){
+  const eligible=index<2?distinctMidbossWords(extras,words):[];
+  const matching=eligible.filter(word=>index===0?word.length<=8:word.length>8);
+  if(eligible.length){
+   words.push(chooseWord(s,matching.length?matching:eligible));
+   continue;
+  }
   const [tale]=tales.splice(Math.floor(rand(s)*tales.length),1);
-  return chooseWord(s,tale);
- });
+  const options=distinctMidbossWords(tale,words);
+  words.push(chooseWord(s,options.length?options:distinctMidbossWords(MIDBOSS_WORDS.flat(),words)));
+ }
+ return words;
 }
 function beginMidboss(s){
  resetBossRewards(s);
@@ -317,7 +371,7 @@ function beginMidboss(s){
  const maxHp=48+12*(s.players.length-1);
  s.foes=[];
  s.players.forEach(p=>p.typed='');
- s.midboss={...spec,maxHp,hp:maxHp,words:midbossWords(s),introRemaining:3,remaining:9,exitRemaining:0};
+ s.midboss={...spec,maxHp,hp:maxHp,words:midbossWords(s),labels:Object.fromEntries((extraQuestions.get(s)??[]).map(q=>[q[0],q[3]])),introRemaining:3,remaining:9,exitRemaining:0};
  usedMidbossWords.set(s.midboss,new Set(s.midboss.words));
  emit(s,`中ボス ${spec.name} が現れた！`,'midboss');
 }
@@ -330,7 +384,7 @@ function hitMidboss(s,p,amount,answeredWord){
  if(boss.hp>0){
   if(answeredWord){
    const choices=boss.words.slice();
-   const pool=MIDBOSS_WORDS.flat().filter(word=>!choices.includes(word));
+   const pool=distinctMidbossWords([...new Set([...MIDBOSS_WORDS.flat(),...(extraQuestions.get(s)??[]).map(q=>q[0])])],choices);
    const used=usedMidbossWords.get(boss)??new Set(choices);
    const fresh=pool.filter(word=>!used.has(word));
    if(!fresh.length)used.clear();
@@ -589,21 +643,21 @@ function castFinalSpell(s,p,spell){
  const boss=s.boss;
  const index=boss.finalSpells.indexOf(spell);
  boss.finalSpells[index]=rollFinalSpell(s,spell);
- const damage=damageFinalParts(boss,spell.damage);
+ const damage=damageFinalParts(boss,spell.damage,s,p);
  clearQuestionInput(s,[spell.word]);
  if(damage>0)p.score+=150;
  countBossSuccess(s,p);
  emit(s,`${p.name}が ${spell.name} を発動！ 魔王に ${damage} ダメージ！`,'finalSpell',p.id,'abyss',{key:spell.key,damage});
 }
-function damageFinalParts(boss,value){
+function damageFinalParts(boss,value,s,p){
  let damage=0;
  for(const part of boss.parts){
-  if(part.hp<=1)continue;
-  const amount=Math.min(part.hp-1,value);
-  part.hp-=amount;
+  const amount=Math.min(Math.max(0,part.hp-(s?0:1)),value);
+  if(!amount)continue;
+  if(s)hitBossPart(s,p,part,amount);
+  else {part.hp-=amount;boss.hp-=amount;}
   damage+=amount;
  }
- boss.hp-=damage;
  updateBossPhase(boss);
  return damage;
 }
@@ -737,7 +791,7 @@ function hitBossPart(s,p,part,amount,typed=false){
  if(typed)emit(s,`${p.name}が ${part.name} に一撃！`,'hit',p.id,part.id);
  if(!part.hp){
   clearQuestionInput(s,[part.word]);
-  boss.weakPart=null;
+  if(boss.weakPart===part.id)boss.weakPart=null;
   boss.remaining=Math.min(boss.remaining,1.4);
   emit(s,`${part.name}が骨に変わった！`,'partBreak',p.id,part.id);
  }
@@ -755,7 +809,7 @@ function typeBossPart(s,p,part){
  hitBossPart(s,p,part,3,true);
 }
 function changeQuestion(s,f){
- const q=chooseQuestion(s,f);f.questionIndex++;f.word=q[0];f.english=q[1];f.genre=q[2]??null;
+ const q=chooseQuestion(s,f);f.questionIndex++;f.word=q[0];f.english=q[1];f.genre=q[2]??null;f.label=q[3]??null;
 }
 function defeatEnemy(s,p,foe,magic=false){
  s.foes=s.foes.filter(f=>f.uid!==foe.uid);s.kills++;if(!magic){p.kills++;reward(s,p,foe.score);}
@@ -778,7 +832,7 @@ function cast(s,p,key){const spec=SPELLS[key];const idx=p.charges.indexOf(key);i
   }else if(s.boss){
    const part=exposedPart(s.boss);
    if(!part)return false;
-   const amount=Math.max(0,Math.min(spec.value===3?2:1,part.hp-1));
+   const amount=Math.max(0,Math.min(spec.value===3?2:1,part.hp));
    if(amount>0)targets.push(part.id);
    hitBossPart(s,p,part,amount);
   }
@@ -861,7 +915,7 @@ function handle(s,playerId,key){if(inputLocked(s))return;const p=s.players.find(
  else {emit(s,`${p.name}が ${foe.name} に ${blow} ダメージ！`,'hit',p.id,foe.uid);changeQuestion(s,foe);}
 }
 function handleText(s,playerId,text){const t=toHira(String(text).trim()).toLowerCase().replace(/\s+/g,'');if(!t||inputLocked(s))return false;const p=s.players.find(x=>x.id===playerId);if(!p)return false;
- const matches=word=>word===t||accepts(word).some(roman=>roman.toLowerCase()===t);
+ const matches=word=>word.toLowerCase()===t||accepts(word).some(roman=>roman.toLowerCase()===t);
  if(s.boss?.pendingPart&&!s.boss.guarded&&matches(DEFEND_WORD)){p.typed='';defend(s,p);return true;}
  const bossReward=(s.boss?.hp||s.midboss?.hp)&&availableBossRewards(p).find(reward=>matches(reward.word));
  if(bossReward){p.typed='';castBossReward(s,p,bossReward);return true;}
@@ -894,5 +948,5 @@ function previewFinal(s,form){
  return s;
 }
 function snapshot(s){return JSON.parse(JSON.stringify(s));}
-return {ENEMIES,QUESTIONS,SPELLS,WEAPONS,ENGLISH,BOSS_WORDS,normalizeReviewWords,missRanking,availableBossRewards,availableFinalSpells,handleText,variants,accepts,isPrefix,complete,display,make,init,tick,handle,snapshot,emit,previewFinal};
+return {normalizeRegisteredWords,yakuWords,ENEMIES,QUESTIONS,SPELLS,WEAPONS,ENGLISH,BOSS_WORDS,normalizeReviewWords,missRanking,availableBossRewards,availableFinalSpells,handleText,variants,accepts,isPrefix,complete,display,make,init,tick,handle,snapshot,emit,previewFinal};
 });

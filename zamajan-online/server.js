@@ -1,7 +1,7 @@
 'use strict';
 const express=require('express'),http=require('http'),{Server}=require('socket.io'),crypto=require('crypto');
 const app=express(),server=http.createServer(app),io=new Server(server,{maxHttpBufferSize:24e6});
-require('./zamatype-rooms')(io);
+require('./zamatype-rooms')(io, zamatypeYakuNames);
 app.use('/assets/tables',express.static('public/assets/tables',{maxAge:'30d',immutable:true}));app.use(express.static('public'));app.get('/',(req,res)=>res.redirect('/online.html'));
 // GitHub 共通設定。トークンと管理者パスワードはサーバー環境変数のみで管理。
 const GH_OWNER=process.env.GITHUB_OWNER||'kakatomaru-cloud';
@@ -132,6 +132,13 @@ app.post('/api/admin/riichi-minigames',express.json({limit:'8kb'}),(req,res)=>{
  res.set('Cache-Control','no-store');if(!adminAuth(req,res))return;
  const enabled=req.body?.enabled;if(!Array.isArray(enabled)||enabled.length<1||enabled.length>ZJ_MINIGAME_IDS.length||enabled.some(x=>typeof x!=='string'||!ZJ_MINIGAME_IDS.includes(x)))return res.status(400).json({error:'有効にするミニゲームを1つ以上選んでください'});
  const valid=[...new Set(enabled)];try{fs.mkdirSync(path.dirname(ZJ_MINIGAME_FILE),{recursive:true,mode:0o700});const temp=ZJ_MINIGAME_FILE+'.tmp-'+process.pid;fs.writeFileSync(temp,JSON.stringify({enabled:valid,updatedAt:new Date().toISOString()},null,2),{mode:0o600});fs.renameSync(temp,ZJ_MINIGAME_FILE);zjEnabledMinigames=valid;res.json({ok:true,enabled:valid,appliesTo:'next minigame'})}catch(e){res.status(500).json({error:'保存に失敗しました: '+e.message})}
+});
+function zamatypeYakuNames(){
+ return (sharedConfig?.yaku??require('./game-config.json').yaku).map(role=>role.name);
+}
+app.get('/api/zamatype/yaku',(req,res)=>{
+ res.set('Cache-Control','no-store');
+ res.json({names:zamatypeYakuNames()});
 });
 app.get('/api/shared-config',(req,res)=>{res.set('Cache-Control','no-store');res.json({available:!!sharedConfig,config:sharedConfig,updatedAt:sharedUpdatedAt,source:'KAGOYA'} )});
 app.post('/api/admin/save-server-config',express.json({limit:'14mb'}),(req,res)=>{
