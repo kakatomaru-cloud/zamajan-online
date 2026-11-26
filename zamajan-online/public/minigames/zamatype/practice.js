@@ -1,6 +1,6 @@
 'use strict';
 const ZamaPractice=(()=>{
- const kinds=['英字・大文字','数字','記号と数字','ローマ字','日本語IME'];
+ const kinds=['英字','数字','記号と数字','ローマ字','日本語IME'];
  const source=[
   ['The quick brown fox jumps over the lazy dog.','PACK MY BOX WITH FIVE DOZEN LIQUOR JUGS','Tokyo to Kyoto','Check the next train','ZAMA TYPE Master','Keep your hands relaxed','New Project Draft','Update the ZIP file'],
   ['0123456789','9071 4268 35','2026 11 26','470 218 965','13579 24680','1200 4050 8700','003 408 759 261'],
@@ -10,6 +10,7 @@ const ZamaPractice=(()=>{
  ];
  const pools=source.map((items,kind)=>items.map(text=>({kind,text:kind===3?globalThis.ZamaEngine.display(text).toLowerCase():text,reading:kind===3?text:''})));
  const normalize=value=>value.normalize('NFKC');
+ const matchText=(text,question)=>question.kind===4&&!question.drill?text:text.toLowerCase();
  const bosses=[
   ['黒炎竜 イグニス','midboss-dragon.webp','🐉',2],
   ['魔獣 ベヒーモス','midboss-behemoth.webp','🐗',2],
@@ -74,7 +75,7 @@ const ZamaPractice=(()=>{
   state.hp=enemy(state.stage,state.loop)[3];
   return true;
  }
- return {create,enemy,kinds,question,record,hit,weakest,normalize};
+ return {create,enemy,kinds,question,record,hit,weakest,normalize,matchText};
 })();
 if(typeof module==='object')module.exports=ZamaPractice;
 
@@ -169,7 +170,7 @@ if(typeof document!=='undefined'){
   previous='';
   answer.value='';
   const type=current.drill?'キー反復':E.kinds[current.kind];
-  byId('kind').textContent=type+(current.key?' ／ 苦手なキー「'+describe(current.key)+'」':'')+(current.kind===4&&!current.drill?' ／ 日本語入力で変換して確定':' ／ 半角入力');
+  byId('kind').textContent=type+(current.key?' ／ 苦手なキー「'+describe(current.key)+'」':'')+(current.kind===4&&!current.drill?' ／ 日本語入力で変換して確定':' ／ 半角入力（英字の大文字・小文字はどちらでも可）');
   byId('reading').textContent=current.reading;
   byId('reading').hidden=!current.reading;
   highlight(0);
@@ -180,8 +181,10 @@ if(typeof document!=='undefined'){
   profile=readProfile(profileName,profile);
   session.stats=profile.keys;
   const {attempts,mistakes}=session;
+  const matchedInput=E.matchText(entered,current);
+  const matchedGoal=E.matchText(goal,current);
   let prefix=0;
-  while(prefix<entered.length&&entered[prefix]===goal[prefix])prefix++;
+  while(prefix<matchedInput.length&&matchedInput[prefix]===matchedGoal[prefix])prefix++;
   for(let position=credited;position<prefix;position++)E.record(session,goal[position],true);
   credited=Math.max(credited,prefix);
   previous=entered;
