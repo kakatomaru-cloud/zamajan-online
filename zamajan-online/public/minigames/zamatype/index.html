@@ -47,7 +47,7 @@ input,select {width:100%;padding:10px;background:#080f23;color:#fff;border:1px s
 <main>
 <section id="title" aria-labelledby="logo">
 <div class="brand"><img class="emblem" src="emblem.webp" alt="" fetchpriority="high"><h1 id="logo">ZAMATYPE</h1></div><div class="rule"></div><p class="subtitle">ザマタイプ</p>
-<div class="buttons"><button id="start" class="primary">START</button><button data-view="words">ワード登録</button><button data-view="practice">弱点克服モード</button><a class="spellPreviewLink" href="spell-preview.html">魔法演出サンプル</a></div>
+<div class="buttons"><button id="start" class="primary">START</button><button data-view="words">ワード登録</button><a class="spellPreviewLink" href="practice.html">弱点克服モード</a><a class="spellPreviewLink" href="spell-preview.html">魔法演出サンプル</a></div>
 </section>
 <section id="setup" class="card" hidden>
 <h2 tabindex="-1">冒険者の登録</h2>
@@ -58,17 +58,6 @@ input,select {width:100%;padding:10px;background:#080f23;color:#fff;border:1px s
 <button class="back" data-view="title">タイトルへ戻る</button>
 </section>
 
-
-<section id="practice" class="card" hidden>
-<h2 tabindex="-1">弱点克服モード</h2>
-<p class="note">文末のタイピングを試せます。</p>
-<form id="training">
-<label for="phrase">「よろしくお願いします。」と入力</label><input id="phrase" autocomplete="off">
-<button class="primary">確認する</button>
-</form>
-<p id="trainingResult" role="status"></p>
-<button class="back" data-view="title">タイトルへ戻る</button>
-</section>
 
 <section id="words" class="card" hidden>
 <h2 tabindex="-1">ワード登録</h2>
@@ -191,10 +180,7 @@ registration.addEventListener('submit', event => {
   try { sessionStorage.setItem('zamatype.playerName', playerName); } catch {}
   location.href = event.submitter?.value === 'team' ? 'battle.html?multi=1' : 'battle.html';
 });
-byId('training').addEventListener('submit', event => {
-  event.preventDefault();
-  byId('trainingResult').textContent = byId('phrase').value === 'よろしくお願いします。' ? '正解！' : '文末まで確認して、もう一度入力してください。';
-});
+
 </script>
 </body>
 </html>

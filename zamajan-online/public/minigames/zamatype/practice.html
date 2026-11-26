@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>弱点克服モード | ザマタイプ</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;min-height:100svh;color:#eef3f7;background:#080d16;font:16px system-ui,sans-serif}
+main{width:min(1050px,100% - 28px);margin:auto;padding:18px 0 32px}
+header{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px}
+h1,h2,p{margin:.2em 0}h1{font-size:clamp(1.2rem,4vw,1.85rem)}h2{font-size:1.15rem}
+a{color:#bde5fd}.layout{display:grid;grid-template-columns:minmax(0,1fr) 235px;gap:14px}
+.arena,.typing,.practiceStats{border:1px solid #35445b;border-radius:14px;background:#111a28}
+.arena{position:relative;min-height:330px;overflow:hidden;isolation:isolate;display:grid;grid-template-rows:auto 1fr auto;padding:18px;text-align:center;background:center/cover url(boss-sanctuary.webp),#141c2e}
+.arena::before{content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(#080d16d9,#080d1635,#080d16d9)}
+.arena h2,.arena p{text-shadow:0 2px 5px #000}
+.enemyStage{min-height:175px;display:grid;place-items:center}
+#enemyArt{max-width:100%;width:auto;height:clamp(140px,30vh,235px);object-fit:contain;filter:drop-shadow(0 4px 12px #0c1017)}
+#enemyGlyph{font-size:clamp(4rem,16vw,8rem);filter:drop-shadow(0 4px 12px #0c1017)}
+.hit .enemyStage{animation:hit .28s ease-out}
+@keyframes hit{25%{transform:translateX(5px);filter:brightness(1.8)}55%{transform:translateX(-3px)}}
+progress{width:min(300px,100%);height:12px;accent-color:#dbb36e}
+.typing{margin-top:12px;padding:16px}
+#prompt{font:700 clamp(1.1rem,3.8vw,1.65rem)/1.55 ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere;margin:.4rem 0}
+#done{color:#84eac5}#next{color:#ffe0a5;border-bottom:2px solid #f0be72}
+#answer{width:100%;min-height:48px;background:#070e19;color:#f4f8ff;border:1px solid #53687f;border-radius:7px;padding:8px 12px;font:inherit}
+#answer:focus{outline:2px solid #7bc8ff;outline-offset:2px}
+#feedback{margin-top:9px;min-height:1.55em;color:#ffd5a2}
+.practiceStats{padding:14px;align-self:start}
+.practiceStats h2{margin-top:1rem}.practiceStats ol{padding-left:1.35rem}.practiceStats li{margin:.38rem 0}
+.muted{color:#bdcbdc;font-size:.87rem}
+[hidden]{display:none!important}
+@media(max-width:700px){.layout{grid-template-columns:1fr}.arena{min-height:250px}.practiceStats{padding:12px}}
+@media(prefers-reduced-motion:reduce){.hit .enemyStage{animation:none}}
+</style>
+<script src="engine.js" defer></script>
+<script src="practice.js" defer></script>
+</head>
+<body>
+<main>
+<header><h1>弱点克服モード</h1><a href="index.html">タイトルへ</a></header>
+<div class="layout">
+<div>
+<section class="arena" id="arena" aria-label="練習バトル">
+<div><p id="stage"></p><h2 id="enemyName"></h2></div>
+<div class="enemyStage"><img id="enemyArt" alt="" hidden><span id="enemyGlyph" aria-hidden="true">⚔️</span></div>
+<div><progress id="enemyHp" aria-label="敵の残り体力"></progress><p id="enemyHits"></p></div>
+</section>
+<section class="typing" aria-label="タイピング">
+<p id="kind" class="muted"></p>
+<p id="prompt"><span id="done"></span><span id="next"></span><span id="remaining"></span></p>
+<p id="reading" class="muted" hidden></p>
+<label for="answer" class="muted">お題を入力</label>
+<input id="answer" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="kind prompt reading">
+<p id="feedback" role="status"></p>
+</section>
+</div>
+<aside class="practiceStats">
+<p id="clears"></p><p id="accuracy"></p>
+<h2>苦手なキー</h2>
+<ol id="weakKeys"></ol>
+<p class="muted">入力ミスを記録し、苦手なキーが出る練習を増やします。記録はこのブラウザに保存されます。</p>
+</aside>
+</div>
+</main>
+</body>
+</html>
