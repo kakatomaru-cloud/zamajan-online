@@ -28,6 +28,11 @@ progress{width:min(300px,100%);height:12px;accent-color:#dbb36e}
 #answer:focus{outline:2px solid #7bc8ff;outline-offset:2px}
 #feedback{margin-top:9px;min-height:1.55em;color:#ffd5a2}
 .practiceStats{padding:14px;align-self:start}
+.profileForm{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:14px}
+.profileForm input,.profileForm button{font:inherit;color:inherit;background:#111a28;border:1px solid #53687f;border-radius:7px;padding:7px 10px}
+.profileForm input{width:min(240px,100%)}.profileForm button{cursor:pointer}
+#profileLabel{overflow-wrap:anywhere}.totals{display:grid;grid-template-columns:1fr auto;gap:7px}
+.totals dd{margin:0;font-variant-numeric:tabular-nums}
 .practiceStats h2{margin-top:1rem}.practiceStats ol{padding-left:1.35rem}.practiceStats li{margin:.38rem 0}
 .muted{color:#bdcbdc;font-size:.87rem}
 [hidden]{display:none!important}
@@ -40,7 +45,12 @@ progress{width:min(300px,100%);height:12px;accent-color:#dbb36e}
 <body>
 <main>
 <header><h1>弱点克服モード</h1><a href="index.html">タイトルへ</a></header>
-<div class="layout">
+<form id="profileForm" class="profileForm">
+<label for="playerName">プレイヤー名</label>
+<input id="playerName" type="text" maxlength="40" required autocomplete="off">
+<button type="submit">練習・記録を開く</button>
+</form>
+<div class="layout" id="practiceLayout" hidden>
 <div>
 <section class="arena" id="arena" aria-label="練習バトル">
 <div><p id="stage"></p><h2 id="enemyName"></h2></div>
@@ -57,10 +67,16 @@ progress{width:min(300px,100%);height:12px;accent-color:#dbb36e}
 </section>
 </div>
 <aside class="practiceStats">
+<h2 id="profileLabel"></h2>
+<dl class="totals">
+<dt>累計タイプ数</dt><dd id="totalAttempts"></dd>
+<dt>累計ミス数</dt><dd id="totalMisses"></dd>
+</dl>
 <p id="clears"></p><p id="accuracy"></p>
 <h2>苦手なキー</h2>
 <ol id="weakKeys"></ol>
-<p class="muted">入力ミスを記録し、苦手なキーが出る練習を増やします。記録はこのブラウザに保存されます。</p>
+<p class="muted">累計タイプ数にはミスも含みます。記録はこのブラウザに名前ごとに保存されます。</p>
+<p id="storageStatus" class="muted" role="status"></p>
 </aside>
 </div>
 </main>

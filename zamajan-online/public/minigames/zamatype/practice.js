@@ -55,12 +55,12 @@ const ZamaPractice=(()=>{
   return {...item,key};
  }
  function record(state,key,correct){
+  state.attempts++;
+  if(!correct)state.mistakes++;
   if(!key||(key!==' '&&key.trim()===''))return;
   const entry=state.stats[key]??={miss:0,need:0};
-  state.attempts++;
   if(correct)entry.need=Math.max(0,entry.need-1);
   else{
-   state.mistakes++;
    entry.miss++;
    entry.need=Math.min(24,entry.need+4);
   }
@@ -81,33 +81,64 @@ if(typeof module==='object')module.exports=ZamaPractice;
 if(typeof document!=='undefined'){
  const E=ZamaPractice;
  const byId=id=>document.getElementById(id);
- const storageKey='zamatype:practice-keys:v1';
- const answer=byId('answer');
- const stats=Object.create(null);
- try{
-  const saved=JSON.parse(localStorage.getItem(storageKey)??'{}');
-  for(const [key,value] of Object.entries(saved).slice(0,500)){
-   if(key.length===1&&Number.isFinite(value?.need)&&Number.isFinite(value?.miss))stats[key]={need:Math.max(0,Math.min(24,value.need)),miss:Math.max(0,value.miss)};
-  }
- }catch{}
- const session=E.create(stats);
+ const profilePrefix='zamatype:practice-profile:v1:';
+ const lastProfileKey='zamatype:practice-last-profile:v1';
+ const answer=byId('answer'),nameField=byId('playerName');
+ const format=new Intl.NumberFormat('ja-JP');
+ let profileName='',profile,session;
  let current,goal,credited=0,previous='',composing=false;
+ function readProfile(name,fallback){
+  try{
+   const saved=JSON.parse(localStorage.getItem(profilePrefix+name));
+   if(saved)return {attempts:saved.attempts,misses:saved.misses,keys:Object.assign(Object.create(null),saved.keys)};
+  }catch{}
+  return fallback??{attempts:0,misses:0,keys:Object.create(null)};
+ }
+ function openProfile(name){
+  if(name===profileName){
+   profile=readProfile(name,profile);
+   session.stats=profile.keys;
+   updateStats();
+   answer.focus();
+   return;
+  }
+  profileName=name;
+  profile=readProfile(name);
+  session=E.create(profile.keys);
+  composing=false;
+  try{localStorage.setItem(lastProfileKey,name);}catch{}
+  byId('profileLabel').textContent=name+' の記録';
+  byId('feedback').textContent='';
+  byId('practiceLayout').hidden=false;
+  renderEnemy();
+  updateStats();
+  nextQuestion();
+  answer.focus();
+ }
  const describe=key=>key===' '?'スペース':key;
  function updateStats(){
   byId('clears').textContent='撃破数 '+session.cleared;
   byId('accuracy').textContent=session.attempts
    ?'正確率 '+Math.round(100*(session.attempts-session.mistakes)/session.attempts)+'%'
    :'正確率 —';
-  const weak=E.weakest(stats).slice(0,5);
+  byId('totalAttempts').textContent=format.format(profile.attempts);
+  byId('totalMisses').textContent=format.format(profile.misses);
+  const weak=E.weakest(profile.keys).slice(0,5);
   byId('weakKeys').replaceChildren(...(weak.length?weak:[['記録なし']]).map(([key])=>{
    const li=document.createElement('li');
    li.textContent=describe(key);
    return li;
   }));
  }
- function save(){
-  const entries=Object.fromEntries(Object.entries(stats).filter(([,entry])=>entry.need>0));
-  try{localStorage.setItem(storageKey,JSON.stringify(entries));}catch{}
+ function save(attempts,misses){
+  profile.attempts+=session.attempts-attempts;
+  profile.misses+=session.mistakes-misses;
+  try{
+   localStorage.setItem(profilePrefix+profileName,JSON.stringify(profile));
+   byId('storageStatus').textContent='';
+  }catch{
+   byId('storageStatus').textContent='このブラウザに記録を保存できません。この画面を開いている間は確認できます。';
+  }
  }
  function renderEnemy(){
   const [name,image,glyph,max]=E.enemy(session.stage,session.loop);
@@ -145,7 +176,10 @@ if(typeof document!=='undefined'){
  }
  function checkInput(){
   const entered=E.normalize(answer.value);
-  if(entered===previous)return;
+  if(!session||entered===previous)return;
+  profile=readProfile(profileName,profile);
+  session.stats=profile.keys;
+  const {attempts,mistakes}=session;
   let prefix=0;
   while(prefix<entered.length&&entered[prefix]===goal[prefix])prefix++;
   for(let position=credited;position<prefix;position++)E.record(session,goal[position],true);
@@ -163,21 +197,33 @@ if(typeof document!=='undefined'){
    renderEnemy();
    nextQuestion();
   }else if(prefix<entered.length){
-   if(goal[prefix])E.record(session,goal[prefix],false);
+   E.record(session,goal[prefix],false);
    byId('feedback').textContent=goal[prefix]?'次は「'+describe(goal[prefix])+'」です。':'余分な文字を削除してください。';
    if(current.kind!==4||current.drill){
     answer.value=entered.slice(0,prefix);
     previous=answer.value;
    }
   }else byId('feedback').textContent='';
+  if(session.attempts!==attempts)save(attempts,mistakes);
   updateStats();
-  save();
  }
  answer.addEventListener('compositionstart',()=>{composing=true;});
  answer.addEventListener('compositionend',()=>{composing=false;checkInput();});
  answer.addEventListener('input',event=>{if(!composing&&!event.isComposing)checkInput();});
- renderEnemy();
- updateStats();
- nextQuestion();
- answer.focus();
+ byId('profileForm').addEventListener('submit',event=>{
+  event.preventDefault();
+  const name=nameField.value.normalize('NFC').trim();
+  if(!name){nameField.focus();return;}
+  nameField.value=name;
+  openProfile(name);
+ });
+ let savedName;
+ try{savedName=localStorage.getItem(lastProfileKey);}catch{}
+ if(!savedName){
+  try{nameField.value=sessionStorage.getItem('zamatype.playerName')??'';}catch{}
+ }
+ if(savedName){
+  nameField.value=savedName;
+  openProfile(savedName);
+ }
 }
