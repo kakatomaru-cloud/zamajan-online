@@ -8,7 +8,51 @@ const ZamaPractice=(()=>{
   ['あさのよていをかくにんする','いきさきのちずをひらく','おつかれさまでした','よろしくおねがいします','しゅっせきのへんじをおくる','ひつようなものをとりにいく','おいそがしいところすみません','ごかくにんをおねがいします','きをつけておかえりください','じかんがきまったらおしえてください'],
   ['よろしくお願いします。','ご確認をお願いします。','添付資料をご覧ください。','会議は14時30分からです。','来週の予定を共有します。','新しいファイルを保存します。','お名前と連絡先を入力してください。','第2会議室でお待ちしています。','質問があれば、お知らせください。','次の駅で乗り換えます。','明日は10時に出発します。']
  ];
- const pools=source.map((items,kind)=>items.map(text=>({kind,text:kind===3?globalThis.ZamaEngine.display(text).toLowerCase():text,reading:kind===3?text:''})));
+ const pick=(items,random)=>items[Math.floor(random()*items.length)];
+ const digits=(count,random)=>Array.from({length:count},()=>Math.floor(random()*10)).join('');
+ function generate(kind,random){
+  const choose=items=>pick(items,random);
+  const number=count=>digits(count,random);
+  const label=choose(['draft','report','memo','review','plan','log','check','backup','notes','invoice']);
+  const document=choose(['議事録','報告書','見積書','提案書','資料','請求書','作業手順書','スケジュール']);
+  const day=choose(['今日の午後','明日の朝','金曜日の夕方','来週の月曜日','今月末']);
+  switch(kind){
+   case 0:{
+    const subject=choose(['the project plan','the meeting notes','the budget','the test results','the new layout','the invoice','the delivery date','the final draft','the backup files']);
+    const action=choose(['Review','Check','Update','Double-check','Please review','Remember to check']);
+    const ending=choose(['',' before lunch',' by Friday',' after the meeting',' before you leave',' this afternoon',' one more time']);
+    return choose([label,subject,action+' '+subject+ending+'.']);
+   }
+   case 1:
+    return Array.from({length:choose([1,2,3,4])},()=>number(choose([2,3,4,5]))).join(' ');
+   case 2:{
+    const price=Number(number(5)).toLocaleString('en-US');
+    return choose([
+     label+'_'+number(4)+'.txt', '['+label+'] v'+number(1)+'.'+number(2),
+     label+'+'+number(3)+'@example.com', '{x: '+number(3)+', y: '+number(3)+'}',
+     label+'/'+number(2)+'?id='+number(4)+'#top', '$'+price+' / '+number(2)+'%',
+     '('+number(3)+' + '+number(2)+') * '+number(1), '"'+label+'" & '+number(3)+'!',
+     '<'+label+'> '+number(4)+' </'+label+'>', label+'-'+number(3)+' = '+number(4)
+    ]);
+   }
+   case 3:{
+    const item=choose(['しりょう','けいかく','みつもり','れんらくさき','えきまでのみち','つぎのでんしゃ','うけとりじかん','とどけさき','りょこうのよてい','かいぎのじかん']);
+    const when=choose(['あさのうちに','かいぎのまえに','あしたまでに','きんようびまでに','ひるやすみに','かえるまえに']);
+    return choose([item,when+item+'をかくにんする',item+'のかくにんをおねがいします']);
+   }
+   case 4:
+    return choose([
+     day+'までに'+document+'を確認してください。',
+     day+'までに'+document+'の共有をお願いします。',
+     document+'を'+choose(['担当者','営業チーム','総務部','製作チーム','受付窓口','新しい担当者'])+'に送ってください。',
+     document+'の'+(Number(number(2))+1)+'ページ目を確認してください。',
+     choose(['新しい','修正済みの','昨日受け取った','先週作成した'])+document+'をご覧ください。'
+    ]);
+  }
+ }
+ function makeQuestion(kind,reading){
+  return kind===3?{kind,text:globalThis.ZamaEngine.display(reading).toLowerCase(),reading}:{kind,text:reading,reading:''};
+ }
  const normalize=value=>value.normalize('NFKC');
  const matchText=(text,question)=>question.kind===4&&!question.drill?text:text.toLowerCase();
  const bosses=[
@@ -29,30 +73,44 @@ const ZamaPractice=(()=>{
   return Object.entries(stats).filter(([,v])=>v.need>0).sort((a,b)=>b[1].need-a[1].need||b[1].miss-a[1].miss);
  }
  function create(stats=Object.create(null),random=Math.random){
-  return {stats,random,stage:0,loop:1,cleared:0,questions:0,attempts:0,mistakes:0,recent:[],rotation:0,hp:1};
+  return {stats,random,stage:0,loop:1,cleared:0,questions:0,attempts:0,mistakes:0,recent:[],categories:[],hp:1};
  }
  function question(state){
+  const {random,recent}=state;
   const weak=weakest(state.stats).slice(0,3);
   const step=state.questions++;
-  const kind=state.rotation%pools.length;
-  const focused=weak.length&&(step%4===1||step%4===3);
-  const key=focused?weak[Math.floor(step/2)%weak.length][0]:'';
-  const full=pools.flat();
-  let eligible;
-  if(key){
-   eligible=full.filter(item=>normalize(item.text).includes(key)&&!state.recent.includes(item.text));
-   if(!eligible.length){
-    const token=key===' '?'A B C':key+' '+key+' '+key;
-    return {kind:4,text:token,reading:'',key,drill:true};
+  const key=weak.length&&step%2?weak[Math.floor(step/2)%weak.length][0]:'';
+  if(!state.categories.length)state.categories=kinds.map((_,index)=>index);
+  const normalKind=pick(state.categories,random);
+  const fingerprint=item=>matchText(normalize(item.text),item);
+  const fresh=item=>!recent.includes(fingerprint(item));
+  const eligible=item=>normalize(item.text).includes(key)&&fresh(item);
+  let item;
+  for(let attempt=0;attempt<60;attempt++){
+   const kind=key?Math.floor(random()*kinds.length):normalKind;
+   const candidate=makeQuestion(kind,generate(kind,random));
+   if(eligible(candidate)){
+    item=candidate;
+    break;
    }
-  }else{
-   state.rotation++;
-   eligible=pools[kind].filter(item=>!state.recent.includes(item.text));
-   if(!eligible.length)eligible=pools[kind];
   }
-  const item=eligible[Math.floor(state.random()*eligible.length)];
-  state.recent.push(item.text);
-  if(state.recent.length>12)state.recent.shift();
+  if(!item){
+   const relevant=(key?source.map((_,kind)=>kind):[normalKind])
+    .flatMap(kind=>source[kind].map(value=>makeQuestion(kind,value))).filter(eligible);
+   if(relevant.length)item=pick(relevant,random);
+  }
+  if(!item){
+   const isJapanese=/[^\x00-\x7f]/.test(key);
+   let suffix=Number(digits(5,random));
+   do{
+    const code=String(suffix++).padStart(5,'0');
+    const text=key===' '?'A '+code+' B':key?key+' '+code+' '+key:'ID '+code;
+    item={kind:isJapanese?4:2,text,reading:'',drill:!isJapanese};
+   }while(!fresh(item));
+  }
+  if(!key)state.categories.splice(state.categories.indexOf(normalKind),1);
+  recent.push(fingerprint(item));
+  if(recent.length>60)recent.shift();
   return {...item,key};
  }
  function record(state,key,correct){
@@ -83,6 +141,7 @@ if(typeof document!=='undefined'){
  const E=ZamaPractice;
  const byId=id=>document.getElementById(id);
  const profilePrefix='zamatype:practice-profile:v1:';
+ const recentKey='zamatype:practice-recent:v1';
  const lastProfileKey='zamatype:practice-last-profile:v1';
  const answer=byId('answer'),nameField=byId('playerName');
  const format=new Intl.NumberFormat('ja-JP');
@@ -164,7 +223,12 @@ if(typeof document!=='undefined'){
   byId('remaining').textContent=current.text.slice(count+1);
  }
  function nextQuestion(){
+  try{
+   const recent=JSON.parse(localStorage.getItem(recentKey));
+   if(Array.isArray(recent))session.recent=recent.filter(item=>typeof item==='string').slice(-60);
+  }catch{}
   current=E.question(session);
+  try{localStorage.setItem(recentKey,JSON.stringify(session.recent));}catch{}
   goal=E.normalize(current.text);
   credited=0;
   previous='';
