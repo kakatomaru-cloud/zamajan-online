@@ -32,7 +32,8 @@ const ZamaPractice=(()=>{
      label+'+'+number(3)+'@example.com', '{x: '+number(3)+', y: '+number(3)+'}',
      label+'/'+number(2)+'?id='+number(4)+'#top', '$'+price+' / '+number(2)+'%',
      '('+number(3)+' + '+number(2)+') * '+number(1), '"'+label+'" & '+number(3)+'!',
-     '<'+label+'> '+number(4)+' </'+label+'>', label+'-'+number(3)+' = '+number(4)
+     '<'+label+'> '+number(4)+' </'+label+'>', label+'-'+number(3)+' = '+number(4),
+     'C:\\'+label+'\\'+number(4)+'.txt'
     ]);
    }
    case 3:{
@@ -54,7 +55,10 @@ const ZamaPractice=(()=>{
   return kind===3?{kind,text:globalThis.ZamaEngine.display(reading).toLowerCase(),reading}:{kind,text:reading,reading:''};
  }
  const normalize=value=>value.normalize('NFKC');
- const matchText=(text,question)=>question.kind===4&&!question.drill?text:text.toLowerCase();
+ // Japanese keyboards may enter a yen sign for the backslash key.
+ const matchText=(text,question)=>question.kind===4&&!question.drill
+  ?text
+  :text.toLowerCase().replace(/¥/g,'\\');
  const bosses=[
   ['黒炎竜 イグニス','midboss-dragon.webp','🐉',2],
   ['魔獣 ベヒーモス','midboss-behemoth.webp','🐗',2],
@@ -100,7 +104,7 @@ const ZamaPractice=(()=>{
    if(relevant.length)item=pick(relevant,random);
   }
   if(!item){
-   const isJapanese=/[^\x00-\x7f]/.test(key);
+   const isJapanese=/[^\x00-\x7f¥]/.test(key);
    let suffix=Number(digits(5,random));
    do{
     const code=String(suffix++).padStart(5,'0');
