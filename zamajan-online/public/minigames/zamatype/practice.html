@@ -29,8 +29,11 @@ progress{width:min(300px,100%);height:12px;accent-color:#dbb36e}
 #feedback{margin-top:9px;min-height:1.55em;color:#ffd5a2}
 .practiceStats{padding:14px;align-self:start}
 .profileForm{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:14px}
-.profileForm input,.profileForm button{font:inherit;color:inherit;background:#111a28;border:1px solid #53687f;border-radius:7px;padding:7px 10px}
-.profileForm input{width:min(240px,100%)}.profileForm button{cursor:pointer}
+.profileForm input,.profileForm button,#pausePractice{font:inherit;color:inherit;background:#111a28;border:1px solid #53687f;border-radius:7px;padding:7px 10px}
+.profileForm input{width:min(240px,100%)}.profileForm button,#pausePractice{cursor:pointer}
+.typingControls{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;margin-bottom:6px}
+#pauseStatus{color:#ffd5a2}
+#answer[readonly]{opacity:.65}
 #profileLabel{overflow-wrap:anywhere}.totals{display:grid;grid-template-columns:1fr auto;gap:7px}
 .totals dd{margin:0;font-variant-numeric:tabular-nums}
 .practiceStats h2{margin-top:1rem}.practiceStats ol{padding-left:1.35rem}.practiceStats li{margin:.38rem 0}
@@ -58,6 +61,10 @@ progress{width:min(300px,100%);height:12px;accent-color:#dbb36e}
 <div><progress id="enemyHp" aria-label="敵の残り体力"></progress><p id="enemyHits"></p></div>
 </section>
 <section class="typing" aria-label="タイピング">
+<div class="typingControls">
+<button type="button" id="pausePractice" aria-controls="answer">一時停止</button>
+<span id="pauseStatus" role="status"></span>
+</div>
 <p id="kind" class="muted"></p>
 <p id="prompt"><span id="done"></span><span id="next"></span><span id="remaining"></span></p>
 <p id="reading" class="muted" hidden></p>

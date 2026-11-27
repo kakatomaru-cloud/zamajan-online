@@ -148,6 +148,8 @@ if(typeof document!=='undefined'){
  const recentKey='zamatype:practice-recent:v1';
  const lastProfileKey='zamatype:practice-last-profile:v1';
  const answer=byId('answer'),nameField=byId('playerName');
+ const pauseButton=byId('pausePractice'), pauseStatus=byId('pauseStatus');
+ let paused=false;
  const format=new Intl.NumberFormat('ja-JP');
  let profileName='',profile,session;
  let current,goal,credited=0,previous='',composing=false;
@@ -158,18 +160,33 @@ if(typeof document!=='undefined'){
   }catch{}
   return fallback??{attempts:0,misses:0,keys:Object.create(null)};
  }
+ function setPaused(value){
+  paused=value;
+  if(paused&&composing){
+   answer.value=previous;
+   composing=false;
+  }
+  answer.readOnly=paused;
+  pauseButton.textContent=paused?'再開':'一時停止';
+  pauseStatus.textContent=paused?'一時停止中':'';
+ }
+ pauseButton.addEventListener('click',()=>{
+  setPaused(!paused);
+  if(!paused)answer.focus();
+ });
  function openProfile(name){
   if(name===profileName){
    profile=readProfile(name,profile);
    session.stats=profile.keys;
    updateStats();
-   answer.focus();
+   (paused?pauseButton:answer).focus();
    return;
   }
   profileName=name;
   profile=readProfile(name);
   session=E.create(profile.keys);
   composing=false;
+  setPaused(false);
   try{localStorage.setItem(lastProfileKey,name);}catch{}
   byId('profileLabel').textContent=name+' の記録';
   byId('feedback').textContent='';
@@ -245,7 +262,7 @@ if(typeof document!=='undefined'){
  }
  function checkInput(){
   const entered=E.normalize(answer.value);
-  if(!session||entered===previous)return;
+  if(!session||paused||entered===previous)return;
   profile=readProfile(profileName,profile);
   session.stats=profile.keys;
   const {attempts,mistakes}=session;
